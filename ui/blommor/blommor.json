@@ -1,0 +1,101 @@
+{
+ "iris": {
+  "w": 1484,
+  "h": 1164,
+  "fot": [
+   0.56,
+   1.0
+  ],
+  "bg": "#f9efea",
+  "ring": 32984,
+  "cirkel": true
+ },
+ "strelitzia": {
+  "w": 1608,
+  "h": 1100,
+  "fot": [
+   0.24,
+   1.0
+  ],
+  "bg": "#faf0ec",
+  "ring": 16865,
+  "cirkel": true
+ },
+ "lilja": {
+  "w": 1500,
+  "h": 1140,
+  "fot": [
+   0.05,
+   1.0
+  ],
+  "bg": "#f9f5f5",
+  "ring": 0,
+  "cirkel": false
+ },
+ "eukalyptus": {
+  "w": 1500,
+  "h": 1120,
+  "fot": [
+   0.03,
+   0.97
+  ],
+  "bg": "#f8f2ef",
+  "ring": 0,
+  "cirkel": false
+ },
+ "silke": {
+  "w": 1320,
+  "h": 1060,
+  "fot": [
+   0.33,
+   1.0
+  ],
+  "bg": "#f4efea",
+  "ring": 36753,
+  "cirkel": true
+ },
+ "solfjader": {
+  "w": 1460,
+  "h": 1110,
+  "fot": [
+   0.4,
+   1.0
+  ],
+  "bg": "#f7f2ef",
+  "ring": 0,
+  "cirkel": false
+ },
+ "lavendel": {
+  "w": 1060,
+  "h": 972,
+  "fot": [
+   0.72,
+   1.0
+  ],
+  "bg": "#f7f2f0",
+  "ring": 34566,
+  "cirkel": true
+ },
+ "orange": {
+  "w": 940,
+  "h": 864,
+  "fot": [
+   0.7,
+   1.0
+  ],
+  "bg": "#e7dfdb",
+  "ring": 0,
+  "cirkel": false
+ },
+ "kanna": {
+  "w": 1320,
+  "h": 1400,
+  "fot": [
+   0.62,
+   1.0
+  ],
+  "bg": "#e5dad3",
+  "ring": 55669,
+  "cirkel": true
+ }
+}

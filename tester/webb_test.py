@@ -28,7 +28,7 @@ with sync_playwright() as p:
         ctx = b.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=2, has_touch=mobil)
         pg = ctx.new_page()
         logs = []
-        pg.on("console", lambda m: logs.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)
+        pg.on("console", lambda m: logs.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") and "GL Driver Message" not in m.text else None)
         pg.on("pageerror", lambda e: logs.append(f"pageerror: {e}"))
         pg.goto(URL); pg.wait_for_timeout(1200)
         pg.click("#start"); pg.wait_for_timeout(600)

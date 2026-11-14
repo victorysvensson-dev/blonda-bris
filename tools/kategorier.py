@@ -25,36 +25,36 @@ EXTRA = [
 # Växterna. Ordningen = ordningen i ljudlistan. id används av växtritaren i ui/vaxter.js.
 # fx = (rvb, rsize, drive) som sätts när man väljer ett ljud av växten.
 VAXTER = [
-    dict(id="iris", kat="PAD", namn="IRIS", farg="#7a4bd4", bg="#f6f1f4", fx=(0.35, 0.75, 0.0)),
-    dict(id="magnolia", kat="STRINGS", namn="MAGNOLIA", farg="#b3587a", bg="#f7f1ef", fx=(0.30, 0.65, 0.0)),
-    dict(id="pion", kat="POLY", namn="PION", farg="#c42f6c", bg="#f8f1f1", fx=(0.20, 0.55, 0.0)),
-    dict(id="pasklilja", kat="BRASS", namn="PÅSKLILJA", farg="#c98a00", bg="#f7f3ec", fx=(0.20, 0.55, 0.05)),
-    dict(id="strelitzia", kat="LEAD", namn="STRELITZIA", farg="#d8401f", bg="#f8f1ed", fx=(0.18, 0.50, 0.10)),
-    dict(id="eukalyptus", kat="BASS", namn="EUKALYPTUS", farg="#5d6b22", bg="#f5f3ee", fx=(0.00, 0.40, 0.15)),
-    dict(id="kanna", kat="PLUCK", namn="KANNA", farg="#e8601c", bg="#f2ece8", fx=(0.22, 0.50, 0.0)),
-    dict(id="lilja", kat="BELL", namn="LILJA", farg="#2f5bd3", bg="#f6f4f4", fx=(0.30, 0.60, 0.0)),
-    dict(id="lavendel", kat="ARP", namn="LAVENDEL", farg="#6a58c6", bg="#f4f2f5", fx=(0.18, 0.50, 0.0)),
-    dict(id="maskros", kat="FX", namn="MASKROS", farg="#a07a3a", bg="#f5f2ec", fx=(0.40, 0.85, 0.0)),
-    dict(id="fro", kat="INIT", namn="FRÖ", farg="#5f8a4e", bg="#f4f3ef", fx=(0.20, 0.55, 0.0)),
+    dict(id="iris", kat="PAD", namn="IRIS", foto="lavendel", farg="#8350c5", fx=(0.35, 0.75, 0.0)),
+    dict(id="gladiolus", kat="STRINGS", namn="GLADIOLUS", foto="silke", farg="#d9562a", fx=(0.30, 0.65, 0.0)),
+    dict(id="skaggiris", kat="POLY", namn="SKÄGGIRIS", foto="iris", farg="#6a3dc0", fx=(0.20, 0.55, 0.0)),
+    dict(id="kanna", kat="BRASS", namn="KANNA", foto="kanna", farg="#e2612c", fx=(0.20, 0.55, 0.05)),
+    dict(id="strelitzia", kat="LEAD", namn="STRELITZIA", foto="strelitzia", farg="#e23f18", fx=(0.18, 0.50, 0.10)),
+    dict(id="eukalyptus", kat="BASS", namn="EUKALYPTUS", foto="eukalyptus", farg="#5a6510", fx=(0.00, 0.40, 0.15)),
+    dict(id="solfjader", kat="PLUCK", namn="SOLFJÄDER", foto="solfjader", farg="#8c50d3", fx=(0.22, 0.50, 0.0)),
+    dict(id="lilja", kat="BELL", namn="LILJA", foto="lilja", farg="#1f55cc", fx=(0.30, 0.60, 0.0)),
+    dict(id="amaryllis", kat="ARP", namn="AMARYLLIS", foto="orange", ton=-22, farg="#d8402e", fx=(0.18, 0.50, 0.0)),
+    dict(id="nattviol", kat="FX", namn="NATTVIOL", foto="solfjader", ton=-48, mattnad=1.05, farg="#4b4fd0", fx=(0.40, 0.85, 0.0)),
+    dict(id="vitiris", kat="INIT", namn="VIT IRIS", foto="lavendel", mattnad=0.12, farg="#7c7470", fx=(0.20, 0.55, 0.0)),
 ]
 
 # Vilken växt varje fabriksljud är (namn exakt som i blonda-motor).
 INDELNING = {
     "iris": ["Simple Pad", "Winter", "Brassy Pad", "Beauty", "Romance", "Twisted Pad", "Morning Pad", "Dove Pad",
              "bris", "blå pad", "mörk drone"],
-    "magnolia": ["Ensemble", "Strings", "Juno Low Strings 1", "Juno Low Strings 2", "Humana", "pwm-sträng", "kör"],
-    "pion": ["Poly Magic", "Poly Pulse", "Encore", "Vintage Saw", "Vintage Pulse", "Fake Hi Pass", "Hello Bree6",
+    "gladiolus": ["Ensemble", "Strings", "Juno Low Strings 1", "Juno Low Strings 2", "Humana", "pwm-sträng", "kör"],
+    "skaggiris": ["Poly Magic", "Poly Pulse", "Encore", "Vintage Saw", "Vintage Pulse", "Fake Hi Pass", "Hello Bree6",
              "Chordz", "Poly Synth", "vintagekeys", "tremolo", "Sines"],
-    "pasklilja": ["Synth Brass", "Synth Horns", "Synth Trumpet", "brass", "syntbrass"],
+    "kanna": ["Synth Brass", "Synth Horns", "Synth Trumpet", "brass", "syntbrass"],
     "strelitzia": ["SQR Lead", "SAW Lead", "Porta Fun", "Rock Amour", "Prog Synth", "MPE Lead", "mono lead",
                    "kvintlead", "mjuk lead", "visselfilter", "Gladiator", "Distroyer", "Full On", "stor unison"],
     "eukalyptus": ["Unison Bass", "Dance Bass", "PWM Bass", "Deep Bass", "Duckling", "Wawa Bass", "New Wave Bass",
                    "Kompressor Bass", "Rezo Bass", "unison bas", "oktavbas", "pulsbas", "sub-bas"],
-    "kanna": ["Strummer", "Pluck 1", "12 Strings", "Soft Pluck", "pluck", "ekopluck"],
+    "solfjader": ["Strummer", "Pluck 1", "12 Strings", "Soft Pluck", "pluck", "ekopluck"],
     "lilja": ["Steel Drums", "Bellish", "Audio Rate Perc", "ringping", "klocka"],
-    "lavendel": ["PWM ARP", "Fly SEQ", "Octave ARP", "Brittle ARP", "Octave SEQ", "Bits", "Mute ARP", "arpeggio"],
-    "maskros": ["Riser", "Riser 2", "Opening", "Riser 3", "Riser 4", "Riser 5", "svep", "s&h-bubbel"],
-    "fro": ["init"],
+    "amaryllis": ["PWM ARP", "Fly SEQ", "Octave ARP", "Brittle ARP", "Octave SEQ", "Bits", "Mute ARP", "arpeggio"],
+    "nattviol": ["Riser", "Riser 2", "Opening", "Riser 3", "Riser 4", "Riser 5", "svep", "s&h-bubbel"],
+    "vitiris": ["init"],
 }
 
 
@@ -65,26 +65,29 @@ def ack(*toner):
 # Standardfraser i rullen (16 steg). rate 4 = sextondelar, 2 = åttondelar. Toner: (steg, längd, ton(er), styrka)
 FRASER = {
     "iris": dict(rate=2, toner=[(0, 8, ack(60, 63, 67, 70), 92), (8, 8, ack(56, 60, 63, 67), 88)]),
-    "magnolia": dict(rate=2, toner=[(0, 8, ack(55, 60, 63), 90), (8, 4, ack(53, 58, 62), 86), (12, 4, ack(55, 58, 63), 88)]),
-    "pion": dict(rate=4, toner=[(0, 4, ack(60, 63, 67, 70), 100), (6, 2, ack(60, 63, 67, 70), 84), (8, 4, ack(56, 60, 63, 67), 96),
+    "gladiolus": dict(rate=2, toner=[(0, 8, ack(55, 60, 63), 90), (8, 4, ack(53, 58, 62), 86), (12, 4, ack(55, 58, 63), 88)]),
+    "skaggiris": dict(rate=4, toner=[(0, 4, ack(60, 63, 67, 70), 100), (6, 2, ack(60, 63, 67, 70), 84), (8, 4, ack(56, 60, 63, 67), 96),
                                (14, 2, ack(58, 62, 65), 80)]),
-    "pasklilja": dict(rate=4, toner=[(0, 3, ack(60, 63, 67), 110), (6, 2, ack(60, 63, 67), 90), (8, 4, ack(58, 62, 65), 104),
+    "kanna": dict(rate=4, toner=[(0, 3, ack(60, 63, 67), 110), (6, 2, ack(60, 63, 67), 90), (8, 4, ack(58, 62, 65), 104),
                                     (12, 3, ack(56, 60, 63), 100)]),
     "strelitzia": dict(rate=4, toner=[(0, 3, 72, 104), (3, 1, 75, 88), (4, 4, 79, 100), (8, 2, 77, 92), (10, 2, 75, 90),
                                      (12, 4, 74, 96)]),
     "eukalyptus": dict(rate=4, toner=[(0, 2, 36, 112), (3, 1, 36, 90), (6, 2, 48, 100), (8, 2, 36, 110), (11, 1, 39, 92),
                                      (12, 2, 43, 104), (14, 1, 46, 96)]),
-    "kanna": dict(rate=4, toner=[(0, 1, 72, 108), (2, 1, 70, 90), (3, 1, 67, 96), (6, 1, 75, 104), (8, 1, 72, 100),
+    "solfjader": dict(rate=4, toner=[(0, 1, 72, 108), (2, 1, 70, 90), (3, 1, 67, 96), (6, 1, 75, 104), (8, 1, 72, 100),
                                 (10, 1, 79, 96), (11, 1, 77, 88), (14, 1, 75, 92)]),
     "lilja": dict(rate=4, toner=[(0, 3, 79, 104), (4, 2, 84, 92), (7, 1, 82, 84), (8, 4, 75, 100), (12, 2, 77, 90),
                                 (14, 2, 79, 88)]),
-    "lavendel": dict(rate=4, toner=[(i, 1, [60, 63, 67, 70, 72, 70, 67, 63][i % 8], 112 if i % 4 == 0 else 88) for i in range(16)]),
-    "maskros": dict(rate=2, toner=[(0, 16, ack(48, 60), 100)]),
-    "fro": dict(rate=4, toner=[(0, 4, 60, 100), (4, 4, 63, 96), (8, 4, 67, 100), (12, 4, 70, 96)]),
+    "amaryllis": dict(rate=4, toner=[(i, 1, [60, 63, 67, 70, 72, 70, 67, 63][i % 8], 112 if i % 4 == 0 else 88) for i in range(16)]),
+    "nattviol": dict(rate=2, toner=[(0, 16, ack(48, 60), 100)]),
+    "vitiris": dict(rate=4, toner=[(0, 4, 60, 100), (4, 4, 63, 96), (8, 4, 67, 100), (12, 4, 70, 96)]),
 }
 
 
 def main():
+    blom = json.load(open(os.path.join(ROT, "ui/blommor/blommor.json"), encoding="utf-8"))
+    for v in VAXTER:
+        v["bg"] = blom[v["foto"]]["bg"]
     namn = [p["name"] for p in BRIS["presets"]]
     vaxt_av = {}
     for vid, lista in INDELNING.items():
@@ -151,8 +154,9 @@ def main():
                 toner.append([steg, lang, t, sty])
         fraser[vid] = dict(rate=f["rate"], notes=toner)
     data = dict(params=params, presets=presets, order=ordning,
-                plants=[dict(id=v["id"], cat=v["kat"], name=v["namn"], color=v["farg"], bg=v["bg"],
-                             fx=list(v["fx"])) for v in VAXTER],
+                plants=[dict(id=v["id"], cat=v["kat"], name=v["namn"], color=v["farg"], bg=v["bg"], photo=v["foto"],
+                             hue=v.get("ton", 0), sat=v.get("mattnad", 1), fx=list(v["fx"])) for v in VAXTER],
+                blommor=blom,
                 phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip())
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
           "window.BRIS_DATA = " + json.dumps(data, ensure_ascii=True, separators=(",", ":")) + ";\n")

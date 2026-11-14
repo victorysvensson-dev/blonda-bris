@@ -14,6 +14,7 @@ const char* mimeFor(const juce::String& file) {
     if (ext == "woff2") return "font/woff2";
     if (ext == "svg") return "image/svg+xml";
     if (ext == "png") return "image/png";
+    if (ext == "webp") return "image/webp";
     if (ext == "json") return "application/json; charset=utf-8";
     return "application/octet-stream";
 }

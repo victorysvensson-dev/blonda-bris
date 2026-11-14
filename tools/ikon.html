@@ -1,9 +1,0 @@
-<!doctype html><meta charset="utf-8">
-<!-- Ritar appikonen (resurser/ikon.png) med växtritaren: python3 tools/ikon.py -->
-<style>html,body{margin:0;background:#f4eef2}#c{width:1024px;height:1024px;display:block;background:radial-gradient(circle at 50% 42%,#fbf8fa 0%,#f2ebf0 62%,#e9e0e8 100%)}</style>
-<canvas id="c"></canvas>
-<script src="../ui/vaxter.js"></script>
-<script>
-const r = Vaxter.create(document.getElementById("c"), { ring: false, size: 0.36, cy: 0.4 });
-r.set("iris", 4, "#7a4bd4"); r.signals({ env: 0.25, cut: 0.6 });
-</script>

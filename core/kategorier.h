@@ -9,16 +9,16 @@ constexpr int kNumFactory = 90;
 struct PlantInfo { const char* id; const char* category; const char* name; float rvb, rsize, drive; };
 inline constexpr PlantInfo kPlants[kNumPlants] = {
     {"iris", "PAD", "IRIS", 0.350f, 0.750f, 0.000f},
-    {"magnolia", "STRINGS", "MAGNOLIA", 0.300f, 0.650f, 0.000f},
-    {"pion", "POLY", "PION", 0.200f, 0.550f, 0.000f},
-    {"pasklilja", "BRASS", "PÅSKLILJA", 0.200f, 0.550f, 0.050f},
+    {"gladiolus", "STRINGS", "GLADIOLUS", 0.300f, 0.650f, 0.000f},
+    {"skaggiris", "POLY", "SKÄGGIRIS", 0.200f, 0.550f, 0.000f},
+    {"kanna", "BRASS", "KANNA", 0.200f, 0.550f, 0.050f},
     {"strelitzia", "LEAD", "STRELITZIA", 0.180f, 0.500f, 0.100f},
     {"eukalyptus", "BASS", "EUKALYPTUS", 0.000f, 0.400f, 0.150f},
-    {"kanna", "PLUCK", "KANNA", 0.220f, 0.500f, 0.000f},
+    {"solfjader", "PLUCK", "SOLFJÄDER", 0.220f, 0.500f, 0.000f},
     {"lilja", "BELL", "LILJA", 0.300f, 0.600f, 0.000f},
-    {"lavendel", "ARP", "LAVENDEL", 0.180f, 0.500f, 0.000f},
-    {"maskros", "FX", "MASKROS", 0.400f, 0.850f, 0.000f},
-    {"fro", "INIT", "FRÖ", 0.200f, 0.550f, 0.000f},
+    {"amaryllis", "ARP", "AMARYLLIS", 0.180f, 0.500f, 0.000f},
+    {"nattviol", "FX", "NATTVIOL", 0.400f, 0.850f, 0.000f},
+    {"vitiris", "INIT", "VIT IRIS", 0.200f, 0.550f, 0.000f},
 };
 
 // växt för varje fabriksljud (index som i blonda-motor)

@@ -63,8 +63,10 @@ juce_add_plugin(BlondaBris
 target_sources(BlondaBris PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp)
 
 juce_add_binary_data(BrisUi SOURCES
-    ui/index.html ui/style.css ui/app.js ui/bridge.js ui/vaxter.js ui/data.js
-    ui/fonts/blonda-mono.woff2 ui/fonts/blonda-grotesk.woff2)
+    ui/index.html ui/style.css ui/app.js ui/bridge.js ui/blommor.js ui/data.js
+    ui/fonts/blonda-mono.woff2 ui/fonts/blonda-grotesk.woff2
+    ui/blommor/iris.webp ui/blommor/strelitzia.webp ui/blommor/lilja.webp ui/blommor/eukalyptus.webp ui/blommor/silke.webp
+    ui/blommor/solfjader.webp ui/blommor/lavendel.webp ui/blommor/orange.webp ui/blommor/kanna.webp)
 set_target_properties(BrisUi PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(BlondaBris SYSTEM PRIVATE External/blonda-motor/include External/blonda-motor/motorer)

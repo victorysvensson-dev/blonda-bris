@@ -116,7 +116,11 @@ public:
     // (samma regler som Max-pluggen: allt som ljudet inte nämner får standardvärdet, utom volym/böjomfång).
     // Effekterna får växtens startvärden. Allokerar inte, men använder en egen motor: anropa inte från ljudtråden.
     static void presetValues(int index, const double* current, double* out) {
-        thread_local bris::Bris scratch;   // en egen per tråd: anropas från meddelande-/gränssnittstråden
+#if defined(__wasm__)
+        static bris::Bris scratch;          // webben: en enda tråd
+#else
+        thread_local bris::Bris scratch;    // en egen per tråd: anropas från meddelande-/gränssnittstråden
+#endif
         const CoreParams& cp = coreParams();
         for (int i = 0; i < cp.count; ++i) {
             out[i] = current[i];

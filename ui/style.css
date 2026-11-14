@@ -92,7 +92,8 @@ nav button.on::after { content: ""; position: absolute; left: 0; right: .32em; b
 
 /* ---------------------------------------------------------------- växten */
 #stage { grid-area: stage; position: relative; min-height: 0; min-width: 0; }
-#flower { position: absolute; inset: -40px -60px -10px; width: calc(100% + 120px); height: calc(100% + 50px); pointer-events: none; }
+#stage .fl { position: absolute; inset: -30px -70px -6px; width: calc(100% + 140px); height: calc(100% + 36px); pointer-events: none; }
+#fGl { transition: opacity .25s; }
 header, #tabs2 { position: relative; z-index: 2; }
 
 /* ---------------------------------------------------------------- transport */
@@ -183,7 +184,7 @@ header, #tabs2 { position: relative; z-index: 2; }
   }
   header { grid-template-columns: 1fr auto; height: 58px; }
   header nav { display: none; }
-  #tabs2 { display: flex !important; grid-area: tabs; justify-content: space-between; padding: 0 2px 4px; gap: 0; }
+  #tabs2 { display: flex !important; grid-area: tabs; justify-content: space-between; padding: 0 2px 4px; gap: 0; overflow: visible; min-height: 36px; }
   #tabs2 button { font-size: 10.5px; letter-spacing: .18em; padding: 8px 0; }
   .logo { font-size: 13px; }
   #tempo { font-size: 11px; }
@@ -198,7 +199,7 @@ header, #tabs2 { position: relative; z-index: 2; }
   .ttl { margin-bottom: 10px; font-size: 11px; }
   #trans { height: 52px; }
   #bottom { height: 140px; margin-bottom: 10px; }
-  #flower { inset: 0 -18px -10px; width: calc(100% + 36px); height: calc(100% + 10px); }
+  #stage .fl { inset: 0 -18px -6px; width: calc(100% + 36px); height: calc(100% + 6px); }
 }
 #tabs2 { display: none; }
 /* låg höjd (t.ex. AUv3 i GarageBand): bara huvud, paneler och växt */

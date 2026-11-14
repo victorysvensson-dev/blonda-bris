@@ -261,7 +261,7 @@
     const rgb = hexRgb(pl.color);
     r.setProperty("--a", pl.color); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", pl.bg);
     const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = pl.bg;
-    flower.set(pl.id, S.preset, pl.color);
+    flower.set(pl, S.preset, D.presets[S.preset].nr, pl.color);
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
     document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", +b.dataset.i === S.preset));
@@ -517,7 +517,8 @@
   function roundRect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   // ---------------------------------------------------------------- start
-  const flower = Vaxter.create($("#flower"));
+  const flower = Blommor.create($("#fBack"), $("#fGl"), $("#fFront"), D.blommor);
+  flower.preload([...new Set(D.plants.map((p) => p.photo))]);
   let envSm = 0;
   buildTabs();
   buildPanels();
