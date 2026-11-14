@@ -1,0 +1,2116 @@
+{
+ "motor": "bris",
+ "params": [
+  {
+   "id": "vform",
+   "name": "Waveform",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "lfoosc",
+   "name": "Osc LFO Mod",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "pw",
+   "name": "Pulse Width",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "sub",
+   "name": "Sub",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "lfopwm",
+   "name": "LFO PWM",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "cut",
+   "name": "Cutoff",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "res",
+   "name": "Resonance",
+   "min": 0,
+   "max": 1,
+   "default": 0.1,
+   "integer": false
+  },
+  {
+   "id": "eg1",
+   "name": "EG1 Mod",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "lfocut",
+   "name": "Filter LFO Mod",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "kbd",
+   "name": "Filter Key Track",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "lfoamp",
+   "name": "Amp LFO Mod",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "kbda",
+   "name": "Amp Key Track",
+   "min": -1,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "lwave",
+   "name": "LFO Wave",
+   "min": 0,
+   "max": 4,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "lrate",
+   "name": "LFO Rate",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "fa",
+   "name": "EG1 Attack",
+   "min": 0,
+   "max": 1,
+   "default": 0.05,
+   "integer": false
+  },
+  {
+   "id": "fd",
+   "name": "EG1 Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "fs",
+   "name": "EG1 Sustain",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "fr",
+   "name": "EG1 Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "aa",
+   "name": "EG2 Attack",
+   "min": 0,
+   "max": 1,
+   "default": 0.02,
+   "integer": false
+  },
+  {
+   "id": "ad",
+   "name": "EG2 Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "asus",
+   "name": "EG2 Sustain",
+   "min": 0,
+   "max": 1,
+   "default": 0.8,
+   "integer": false
+  },
+  {
+   "id": "ar",
+   "name": "EG2 Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "lage",
+   "name": "Voice Mode",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "porta",
+   "name": "Portamento",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "detune",
+   "name": "Detune",
+   "min": 0,
+   "max": 1,
+   "default": 0.1,
+   "integer": false
+  },
+  {
+   "id": "uniint",
+   "name": "Unison Interval",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "velf",
+   "name": "Velocity > EG1",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "mwosc",
+   "name": "Wheel > LFO",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "mwcut",
+   "name": "Wheel > Cutoff",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "hyll",
+   "name": "Homage",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": true
+  }
+ ],
+ "keep": [
+  "bendr",
+  "hyll",
+  "vol"
+ ],
+ "uiOnly": [
+  "hyll"
+ ],
+ "factoryBank": 64,
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "Poly Magic",
+   "values": {
+    "vform": 2,
+    "cut": 0.5,
+    "res": 0.25,
+    "eg1": 0.45,
+    "fa": 0,
+    "fd": 0.5,
+    "fs": 0.35,
+    "fr": 0.5,
+    "aa": 0.02,
+    "ad": 0.5,
+    "asus": 0.8,
+    "ar": 0.5,
+    "detune": 0.25,
+    "chorus": 0.6,
+    "dmix": 0.2,
+    "dtime": 0.45,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "PWM ARP",
+   "values": {
+    "vform": 1,
+    "pw": 0.4,
+    "lfopwm": 0.45,
+    "lrate": 0.35,
+    "cut": 0.45,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.1,
+    "fr": 0.3,
+    "aa": 0,
+    "ad": 0.35,
+    "asus": 0.2,
+    "ar": 0.3,
+    "dmix": 0.35,
+    "dtime": 0.38,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Fly SEQ",
+   "values": {
+    "vform": 0,
+    "cut": 0.3,
+    "res": 0.55,
+    "eg1": 0.6,
+    "fa": 0,
+    "fd": 0.28,
+    "fs": 0,
+    "fr": 0.28,
+    "aa": 0,
+    "ad": 0.3,
+    "asus": 0,
+    "ar": 0.3,
+    "dmix": 0.4,
+    "dtime": 0.33,
+    "dfb": 0.5,
+    "lfocut": 0.15,
+    "lwave": 4,
+    "lrate": 0.55,
+    "chorus": 0.2
+   }
+  },
+  {
+   "name": "Simple Pad",
+   "values": {
+    "vform": 0,
+    "cut": 0.48,
+    "res": 0.1,
+    "eg1": 0.15,
+    "fa": 0.5,
+    "fd": 0.6,
+    "fs": 0.6,
+    "fr": 0.65,
+    "aa": 0.6,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.65,
+    "detune": 0.3,
+    "chorus": 0.75
+   }
+  },
+  {
+   "name": "Unison Bass",
+   "values": {
+    "lage": 3,
+    "vform": 0,
+    "sub": 0.7,
+    "cut": 0.28,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0,
+    "fd": 0.35,
+    "fs": 0.15,
+    "fr": 0.25,
+    "aa": 0,
+    "ad": 0.4,
+    "asus": 0.9,
+    "ar": 0.2,
+    "detune": 0.35,
+    "chorus": 0,
+    "kbd": 0.6
+   }
+  },
+  {
+   "name": "Steel Drums",
+   "values": {
+    "vform": 1,
+    "pw": 0.15,
+    "cut": 0.62,
+    "res": 0.55,
+    "eg1": 0.2,
+    "kbd": 1,
+    "fa": 0,
+    "fd": 0.35,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.5,
+    "asus": 0,
+    "ar": 0.45,
+    "chorus": 0.4,
+    "dmix": 0.15
+   }
+  },
+  {
+   "name": "Ensemble",
+   "values": {
+    "vform": 0,
+    "cut": 0.55,
+    "res": 0.05,
+    "eg1": 0.1,
+    "aa": 0.45,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.6,
+    "detune": 0.4,
+    "chorus": 1,
+    "lfoosc": 0.05,
+    "lrate": 0.4
+   }
+  },
+  {
+   "name": "Synth Brass",
+   "values": {
+    "vform": 0,
+    "cut": 0.32,
+    "res": 0.15,
+    "eg1": 0.6,
+    "fa": 0.3,
+    "fd": 0.48,
+    "fs": 0.4,
+    "fr": 0.4,
+    "aa": 0.18,
+    "ad": 0.45,
+    "asus": 0.85,
+    "ar": 0.35,
+    "detune": 0.25,
+    "velf": 0.5,
+    "chorus": 0.35
+   }
+  },
+  {
+   "name": "Strummer",
+   "values": {
+    "vform": 2,
+    "cut": 0.45,
+    "res": 0.2,
+    "eg1": 0.4,
+    "fa": 0,
+    "fd": 0.45,
+    "fs": 0.2,
+    "fr": 0.5,
+    "aa": 0,
+    "ad": 0.55,
+    "asus": 0.3,
+    "ar": 0.55,
+    "chorus": 0.5,
+    "dmix": 0.3,
+    "dtime": 0.3,
+    "dfb": 0.3
+   }
+  },
+  {
+   "name": "SQR Lead",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.55,
+    "res": 0.25,
+    "eg1": 0.3,
+    "aa": 0.01,
+    "asus": 0.9,
+    "ar": 0.3,
+    "porta": 0.2,
+    "lfoosc": 0.12,
+    "lrate": 0.52,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.35,
+    "chorus": 0.15
+   }
+  },
+  {
+   "name": "Pluck 1",
+   "values": {
+    "vform": 0,
+    "cut": 0.3,
+    "res": 0.3,
+    "eg1": 0.6,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0,
+    "fr": 0.3,
+    "aa": 0,
+    "ad": 0.4,
+    "asus": 0,
+    "ar": 0.38,
+    "chorus": 0.45,
+    "velf": 0.6
+   }
+  },
+  {
+   "name": "Distroyer",
+   "values": {
+    "lage": 3,
+    "vform": 2,
+    "sub": 0.6,
+    "cut": 0.4,
+    "res": 0.75,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.4,
+    "fs": 0.2,
+    "aa": 0,
+    "asus": 0.9,
+    "ar": 0.25,
+    "detune": 0.6,
+    "lfocut": 0.2,
+    "lwave": 3,
+    "lrate": 0.6,
+    "chorus": 0.2,
+    "dmix": 0.2,
+    "dtime": 0.3,
+    "dfb": 0.6
+   }
+  },
+  {
+   "name": "SAW Lead",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "cut": 0.6,
+    "res": 0.2,
+    "eg1": 0.25,
+    "aa": 0.01,
+    "asus": 0.9,
+    "ar": 0.3,
+    "porta": 0.15,
+    "detune": 0.2,
+    "lfoosc": 0.1,
+    "lrate": 0.5,
+    "dmix": 0.25,
+    "dtime": 0.45,
+    "dfb": 0.3
+   }
+  },
+  {
+   "name": "Synth Horns",
+   "values": {
+    "vform": 0,
+    "cut": 0.36,
+    "res": 0.1,
+    "eg1": 0.5,
+    "fa": 0.35,
+    "fd": 0.5,
+    "fs": 0.45,
+    "fr": 0.4,
+    "aa": 0.25,
+    "ad": 0.5,
+    "asus": 0.85,
+    "ar": 0.4,
+    "lfoosc": 0.06,
+    "lrate": 0.48,
+    "detune": 0.3,
+    "chorus": 0.45
+   }
+  },
+  {
+   "name": "Dance Bass",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.35,
+    "sub": 0.5,
+    "cut": 0.25,
+    "res": 0.4,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.1,
+    "fr": 0.2,
+    "aa": 0,
+    "ad": 0.35,
+    "asus": 0.8,
+    "ar": 0.15,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Poly Pulse",
+   "values": {
+    "vform": 1,
+    "pw": 0.3,
+    "cut": 0.5,
+    "res": 0.15,
+    "eg1": 0.35,
+    "fa": 0,
+    "fd": 0.45,
+    "fs": 0.3,
+    "aa": 0,
+    "ad": 0.5,
+    "asus": 0.7,
+    "ar": 0.4,
+    "chorus": 0.5
+   }
+  },
+  {
+   "name": "Riser",
+   "values": {
+    "vform": 2,
+    "cut": 0.12,
+    "res": 0.6,
+    "eg1": 0.9,
+    "fa": 0.85,
+    "fd": 0.8,
+    "fs": 0.9,
+    "fr": 0.6,
+    "aa": 0.75,
+    "asus": 1,
+    "ar": 0.6,
+    "lfocut": 0.2,
+    "lwave": 1,
+    "lrate": 0.15,
+    "detune": 0.4,
+    "chorus": 0.6,
+    "dmix": 0.4,
+    "dtime": 0.6,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "Strings",
+   "values": {
+    "vform": 0,
+    "cut": 0.5,
+    "res": 0.05,
+    "eg1": 0.15,
+    "fa": 0.4,
+    "fs": 0.7,
+    "aa": 0.55,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.6,
+    "detune": 0.35,
+    "chorus": 0.9,
+    "lfoosc": 0.04,
+    "lrate": 0.45
+   }
+  },
+  {
+   "name": "Octave ARP",
+   "values": {
+    "lage": 3,
+    "uniint": 12,
+    "vform": 1,
+    "pw": 0.4,
+    "cut": 0.42,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.1,
+    "aa": 0,
+    "ad": 0.35,
+    "asus": 0.2,
+    "ar": 0.3,
+    "detune": 0.1,
+    "dmix": 0.35,
+    "dtime": 0.36,
+    "dfb": 0.45,
+    "chorus": 0.2
+   }
+  },
+  {
+   "name": "Winter",
+   "values": {
+    "vform": 1,
+    "pw": 0.3,
+    "lfopwm": 0.3,
+    "lrate": 0.25,
+    "cut": 0.55,
+    "res": 0.3,
+    "eg1": 0.15,
+    "aa": 0.5,
+    "ad": 0.6,
+    "asus": 0.7,
+    "ar": 0.75,
+    "chorus": 0.8,
+    "dmix": 0.45,
+    "dtime": 0.65,
+    "dfb": 0.6
+   }
+  },
+  {
+   "name": "Encore",
+   "values": {
+    "vform": 2,
+    "cut": 0.4,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0.15,
+    "fd": 0.5,
+    "fs": 0.4,
+    "aa": 0.1,
+    "ad": 0.5,
+    "asus": 0.85,
+    "ar": 0.5,
+    "detune": 0.4,
+    "chorus": 0.6,
+    "dmix": 0.25,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "PWM Bass",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.4,
+    "lfopwm": 0.4,
+    "lrate": 0.3,
+    "sub": 0.6,
+    "cut": 0.25,
+    "res": 0.25,
+    "eg1": 0.45,
+    "fa": 0,
+    "fd": 0.35,
+    "fs": 0.15,
+    "aa": 0,
+    "asus": 0.9,
+    "ar": 0.2,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Riser 2",
+   "values": {
+    "vform": 1,
+    "pw": 0.2,
+    "lfopwm": 0.6,
+    "lrate": 0.4,
+    "cut": 0.18,
+    "res": 0.7,
+    "eg1": 0.85,
+    "fa": 0.9,
+    "fd": 0.8,
+    "fs": 0.8,
+    "aa": 0.8,
+    "asus": 1,
+    "ar": 0.6,
+    "lfocut": 0.3,
+    "lwave": 4,
+    "chorus": 0.5,
+    "dmix": 0.45,
+    "dtime": 0.55,
+    "dfb": 0.6
+   }
+  },
+  {
+   "name": "Sines",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.4,
+    "res": 0,
+    "eg1": 0.05,
+    "kbd": 1,
+    "aa": 0.1,
+    "ad": 0.6,
+    "asus": 0.8,
+    "ar": 0.5,
+    "chorus": 0.4
+   }
+  },
+  {
+   "name": "Deep Bass",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "sub": 0.9,
+    "cut": 0.22,
+    "res": 0.15,
+    "eg1": 0.25,
+    "fa": 0,
+    "fd": 0.4,
+    "fs": 0.2,
+    "aa": 0,
+    "asus": 1,
+    "ar": 0.2,
+    "chorus": 0,
+    "detune": 0
+   }
+  },
+  {
+   "name": "Porta Fun",
+   "values": {
+    "lage": 3,
+    "uniint": 7,
+    "vform": 0,
+    "porta": 0.55,
+    "cut": 0.45,
+    "res": 0.35,
+    "eg1": 0.4,
+    "aa": 0.02,
+    "asus": 0.9,
+    "ar": 0.35,
+    "detune": 0.3,
+    "dmix": 0.35,
+    "dtime": 0.45,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Opening",
+   "values": {
+    "vform": 2,
+    "cut": 0.16,
+    "res": 0.45,
+    "eg1": 0.75,
+    "fa": 0.8,
+    "fd": 0.9,
+    "fs": 0.85,
+    "fr": 0.8,
+    "aa": 0.7,
+    "asus": 1,
+    "ar": 0.75,
+    "detune": 0.35,
+    "chorus": 0.8,
+    "dmix": 0.4,
+    "dtime": 0.7,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "Juno Low Strings 1",
+   "values": {
+    "vform": 0,
+    "sub": 0.3,
+    "cut": 0.4,
+    "res": 0.05,
+    "eg1": 0.1,
+    "kbd": 0.3,
+    "aa": 0.5,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.55,
+    "detune": 0.2,
+    "chorus": 1
+   }
+  },
+  {
+   "name": "Juno Low Strings 2",
+   "values": {
+    "vform": 1,
+    "pw": 0.3,
+    "lfopwm": 0.35,
+    "lrate": 0.3,
+    "sub": 0.4,
+    "cut": 0.38,
+    "res": 0.1,
+    "eg1": 0.12,
+    "aa": 0.45,
+    "asus": 0.9,
+    "ar": 0.6,
+    "chorus": 1,
+    "detune": 0.15
+   }
+  },
+  {
+   "name": "Brittle ARP",
+   "values": {
+    "vform": 1,
+    "pw": 0.12,
+    "cut": 0.6,
+    "res": 0.45,
+    "eg1": 0.35,
+    "fa": 0,
+    "fd": 0.22,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.25,
+    "asus": 0,
+    "ar": 0.25,
+    "kbd": 0.8,
+    "dmix": 0.4,
+    "dtime": 0.3,
+    "dfb": 0.45,
+    "chorus": 0.2
+   }
+  },
+  {
+   "name": "Bellish",
+   "values": {
+    "vform": 1,
+    "pw": 0.1,
+    "cut": 0.68,
+    "res": 0.55,
+    "eg1": 0.15,
+    "kbd": 1,
+    "aa": 0,
+    "ad": 0.7,
+    "asus": 0,
+    "ar": 0.65,
+    "chorus": 0.5,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Riser 3",
+   "values": {
+    "lage": 3,
+    "vform": 0,
+    "cut": 0.22,
+    "res": 0.65,
+    "eg1": 0.9,
+    "fa": 0.9,
+    "fs": 1,
+    "aa": 0.85,
+    "asus": 1,
+    "ar": 0.5,
+    "detune": 0.7,
+    "lfocut": 0.25,
+    "lwave": 1,
+    "lrate": 0.2,
+    "chorus": 0.4,
+    "dmix": 0.35,
+    "dtime": 0.4,
+    "dfb": 0.65
+   }
+  },
+  {
+   "name": "Audio Rate Perc",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "lfoosc": 0.55,
+    "lwave": 0,
+    "lrate": 0.95,
+    "cut": 0.55,
+    "res": 0.4,
+    "eg1": 0.4,
+    "fa": 0,
+    "fd": 0.25,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.28,
+    "asus": 0,
+    "ar": 0.28,
+    "dmix": 0.2,
+    "dtime": 0.25,
+    "dfb": 0.3
+   }
+  },
+  {
+   "name": "Duckling",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "cut": 0.2,
+    "res": 0.8,
+    "eg1": 0.7,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.15,
+    "aa": 0,
+    "asus": 0.85,
+    "ar": 0.2,
+    "porta": 0.12,
+    "velf": 0.5,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Brassy Pad",
+   "values": {
+    "vform": 2,
+    "cut": 0.35,
+    "res": 0.15,
+    "eg1": 0.45,
+    "fa": 0.45,
+    "fd": 0.6,
+    "fs": 0.5,
+    "fr": 0.6,
+    "aa": 0.4,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.6,
+    "detune": 0.35,
+    "chorus": 0.75,
+    "dmix": 0.2,
+    "dtime": 0.5
+   }
+  },
+  {
+   "name": "Full On",
+   "values": {
+    "lage": 3,
+    "vform": 2,
+    "sub": 0.5,
+    "cut": 0.65,
+    "res": 0.25,
+    "eg1": 0.3,
+    "aa": 0,
+    "asus": 1,
+    "ar": 0.35,
+    "detune": 0.8,
+    "chorus": 0.7,
+    "dmix": 0.25,
+    "dtime": 0.4,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "Synth Trumpet",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "cut": 0.34,
+    "res": 0.1,
+    "eg1": 0.55,
+    "fa": 0.25,
+    "fd": 0.4,
+    "fs": 0.55,
+    "aa": 0.15,
+    "asus": 0.9,
+    "ar": 0.3,
+    "lfoosc": 0.1,
+    "lrate": 0.52,
+    "porta": 0.08,
+    "velf": 0.6,
+    "dmix": 0.2,
+    "dtime": 0.45
+   }
+  },
+  {
+   "name": "Beauty",
+   "values": {
+    "vform": 2,
+    "cut": 0.5,
+    "res": 0.2,
+    "eg1": 0.2,
+    "lfocut": 0.08,
+    "lrate": 0.25,
+    "aa": 0.55,
+    "ad": 0.65,
+    "asus": 0.85,
+    "ar": 0.75,
+    "detune": 0.35,
+    "chorus": 0.9,
+    "dmix": 0.45,
+    "dtime": 0.62,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "Octave SEQ",
+   "values": {
+    "lage": 3,
+    "uniint": 12,
+    "vform": 0,
+    "cut": 0.3,
+    "res": 0.5,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.28,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.3,
+    "asus": 0,
+    "ar": 0.3,
+    "dmix": 0.35,
+    "dtime": 0.33,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "Riser 4",
+   "values": {
+    "vform": 0,
+    "cut": 0.2,
+    "res": 0.55,
+    "eg1": 0.9,
+    "fa": 0.88,
+    "fs": 1,
+    "aa": 0.8,
+    "asus": 1,
+    "ar": 0.5,
+    "lfoamp": 0.4,
+    "lwave": 3,
+    "lrate": 0.35,
+    "detune": 0.5,
+    "chorus": 0.6,
+    "dmix": 0.35,
+    "dtime": 0.45,
+    "dfb": 0.6
+   }
+  },
+  {
+   "name": "Vintage Saw",
+   "values": {
+    "vform": 0,
+    "cut": 0.58,
+    "res": 0.1,
+    "eg1": 0.25,
+    "fd": 0.5,
+    "fs": 0.5,
+    "aa": 0.02,
+    "ad": 0.5,
+    "asus": 0.85,
+    "ar": 0.45,
+    "detune": 0.3,
+    "lfoosc": 0.03,
+    "lrate": 0.45,
+    "chorus": 0.6
+   }
+  },
+  {
+   "name": "Vintage Pulse",
+   "values": {
+    "vform": 1,
+    "pw": 0.42,
+    "lfopwm": 0.2,
+    "lrate": 0.32,
+    "cut": 0.55,
+    "res": 0.1,
+    "eg1": 0.25,
+    "aa": 0.02,
+    "asus": 0.85,
+    "ar": 0.45,
+    "detune": 0.2,
+    "chorus": 0.6
+   }
+  },
+  {
+   "name": "Wawa Bass",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "sub": 0.4,
+    "cut": 0.15,
+    "res": 0.6,
+    "eg1": 0.7,
+    "fa": 0.25,
+    "fd": 0.4,
+    "fs": 0.1,
+    "aa": 0,
+    "asus": 0.9,
+    "ar": 0.2,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Fake Hi Pass",
+   "values": {
+    "vform": 1,
+    "pw": 0.08,
+    "cut": 0.85,
+    "res": 0.75,
+    "kbd": 1,
+    "eg1": 0.05,
+    "aa": 0.05,
+    "asus": 0.85,
+    "ar": 0.4,
+    "chorus": 0.5
+   }
+  },
+  {
+   "name": "Gladiator",
+   "values": {
+    "lage": 3,
+    "uniint": -12,
+    "vform": 2,
+    "cut": 0.42,
+    "res": 0.2,
+    "eg1": 0.45,
+    "fa": 0.2,
+    "fd": 0.5,
+    "fs": 0.45,
+    "aa": 0.12,
+    "asus": 0.9,
+    "ar": 0.45,
+    "detune": 0.45,
+    "chorus": 0.55,
+    "dmix": 0.25,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Romance",
+   "values": {
+    "vform": 1,
+    "pw": 0.35,
+    "lfopwm": 0.25,
+    "lrate": 0.28,
+    "cut": 0.42,
+    "res": 0.1,
+    "eg1": 0.2,
+    "aa": 0.45,
+    "ad": 0.6,
+    "asus": 0.85,
+    "ar": 0.7,
+    "chorus": 0.9,
+    "detune": 0.25,
+    "dmix": 0.35,
+    "dtime": 0.6,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "Twisted Pad",
+   "values": {
+    "vform": 2,
+    "cut": 0.38,
+    "res": 0.45,
+    "eg1": 0.35,
+    "lfocut": 0.3,
+    "lwave": 4,
+    "lrate": 0.3,
+    "fa": 0.5,
+    "fs": 0.5,
+    "aa": 0.55,
+    "asus": 0.9,
+    "ar": 0.7,
+    "detune": 0.5,
+    "chorus": 0.8,
+    "dmix": 0.4,
+    "dtime": 0.7,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "Hello Bree6",
+   "values": {
+    "vform": 2,
+    "cut": 0.5,
+    "res": 0.25,
+    "eg1": 0.4,
+    "fd": 0.5,
+    "fs": 0.4,
+    "aa": 0.1,
+    "ad": 0.55,
+    "asus": 0.85,
+    "ar": 0.55,
+    "detune": 0.3,
+    "chorus": 0.7,
+    "dmix": 0.3,
+    "dtime": 0.45,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "New Wave Bass",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.3,
+    "cut": 0.3,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0,
+    "fd": 0.28,
+    "fs": 0.12,
+    "aa": 0,
+    "asus": 0.8,
+    "ar": 0.15,
+    "chorus": 0.35
+   }
+  },
+  {
+   "name": "12 Strings",
+   "values": {
+    "vform": 0,
+    "cut": 0.6,
+    "res": 0.15,
+    "eg1": 0.35,
+    "fa": 0,
+    "fd": 0.45,
+    "fs": 0.25,
+    "aa": 0,
+    "ad": 0.6,
+    "asus": 0.3,
+    "ar": 0.55,
+    "detune": 0.55,
+    "chorus": 0.8,
+    "dmix": 0.15
+   }
+  },
+  {
+   "name": "Chordz",
+   "values": {
+    "lage": 3,
+    "uniint": 7,
+    "vform": 0,
+    "cut": 0.4,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fd": 0.35,
+    "fs": 0.2,
+    "aa": 0,
+    "ad": 0.45,
+    "asus": 0.4,
+    "ar": 0.3,
+    "detune": 0.15,
+    "chorus": 0.45,
+    "dmix": 0.35,
+    "dtime": 0.38,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Bits",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "lfoosc": 0.3,
+    "lwave": 4,
+    "lrate": 0.7,
+    "cut": 0.6,
+    "res": 0.3,
+    "eg1": 0.25,
+    "fa": 0,
+    "fd": 0.2,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.22,
+    "asus": 0,
+    "ar": 0.22,
+    "dmix": 0.3,
+    "dtime": 0.25,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Morning Pad",
+   "values": {
+    "vform": 1,
+    "pw": 0.4,
+    "lfopwm": 0.4,
+    "lrate": 0.22,
+    "cut": 0.48,
+    "res": 0.15,
+    "eg1": 0.25,
+    "fa": 0.55,
+    "fd": 0.7,
+    "fs": 0.6,
+    "aa": 0.6,
+    "asus": 0.9,
+    "ar": 0.7,
+    "chorus": 0.85,
+    "detune": 0.3,
+    "dmix": 0.4,
+    "dtime": 0.6,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "Riser 5",
+   "values": {
+    "vform": 2,
+    "cut": 0.15,
+    "res": 0.6,
+    "eg1": 0.8,
+    "fa": 0.88,
+    "fs": 0.9,
+    "lfocut": 0.35,
+    "lwave": 1,
+    "lrate": 0.3,
+    "aa": 0.85,
+    "asus": 1,
+    "ar": 0.6,
+    "detune": 0.4,
+    "chorus": 0.5,
+    "dmix": 0.5,
+    "dtime": 0.5,
+    "dfb": 0.7
+   }
+  },
+  {
+   "name": "Kompressor Bass",
+   "values": {
+    "lage": 2,
+    "vform": 2,
+    "sub": 0.6,
+    "cut": 0.26,
+    "res": 0.2,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.25,
+    "fs": 0.2,
+    "aa": 0,
+    "ad": 0.3,
+    "asus": 0.85,
+    "ar": 0.15,
+    "vela": 0.8,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Poly Synth",
+   "values": {
+    "vform": 2,
+    "cut": 0.48,
+    "res": 0.2,
+    "eg1": 0.35,
+    "fd": 0.5,
+    "fs": 0.35,
+    "aa": 0.02,
+    "ad": 0.5,
+    "asus": 0.8,
+    "ar": 0.45,
+    "detune": 0.3,
+    "chorus": 0.55,
+    "dmix": 0.2,
+    "dtime": 0.4
+   }
+  },
+  {
+   "name": "Humana",
+   "values": {
+    "vform": 1,
+    "pw": 0.2,
+    "lfopwm": 0.3,
+    "lrate": 0.4,
+    "cut": 0.38,
+    "res": 0.55,
+    "eg1": 0.1,
+    "lfocut": 0.06,
+    "aa": 0.4,
+    "asus": 0.9,
+    "ar": 0.55,
+    "chorus": 1,
+    "detune": 0.2
+   }
+  },
+  {
+   "name": "Rock Amour",
+   "values": {
+    "lage": 3,
+    "vform": 0,
+    "cut": 0.5,
+    "res": 0.3,
+    "eg1": 0.35,
+    "aa": 0.01,
+    "asus": 0.9,
+    "ar": 0.4,
+    "detune": 0.5,
+    "porta": 0.1,
+    "lfoosc": 0.1,
+    "lrate": 0.55,
+    "chorus": 0.3,
+    "dmix": 0.3,
+    "dtime": 0.45,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "Soft Pluck",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.28,
+    "res": 0.1,
+    "eg1": 0.45,
+    "fa": 0,
+    "fd": 0.35,
+    "fs": 0,
+    "fr": 0.35,
+    "aa": 0,
+    "ad": 0.45,
+    "asus": 0,
+    "ar": 0.45,
+    "chorus": 0.55,
+    "dmix": 0.2,
+    "dtime": 0.45,
+    "dfb": 0.3
+   }
+  },
+  {
+   "name": "Prog Synth",
+   "values": {
+    "lage": 2,
+    "vform": 2,
+    "cut": 0.42,
+    "res": 0.4,
+    "eg1": 0.45,
+    "fa": 0.1,
+    "fd": 0.5,
+    "fs": 0.4,
+    "aa": 0.02,
+    "asus": 0.9,
+    "ar": 0.35,
+    "porta": 0.3,
+    "lfoosc": 0.12,
+    "lrate": 0.5,
+    "detune": 0.25,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "Mute ARP",
+   "values": {
+    "vform": 1,
+    "pw": 0.3,
+    "cut": 0.24,
+    "res": 0.25,
+    "eg1": 0.35,
+    "fa": 0,
+    "fd": 0.2,
+    "fs": 0,
+    "aa": 0,
+    "ad": 0.22,
+    "asus": 0,
+    "ar": 0.2,
+    "dmix": 0.3,
+    "dtime": 0.36,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "Rezo Bass",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "sub": 0.5,
+    "cut": 0.18,
+    "res": 0.75,
+    "eg1": 0.6,
+    "fa": 0,
+    "fd": 0.32,
+    "fs": 0.1,
+    "aa": 0,
+    "asus": 0.9,
+    "ar": 0.18,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "Dove Pad",
+   "values": {
+    "vform": 0,
+    "cut": 0.42,
+    "res": 0.1,
+    "eg1": 0.15,
+    "lfocut": 0.05,
+    "lrate": 0.2,
+    "fa": 0.6,
+    "fs": 0.6,
+    "aa": 0.65,
+    "ad": 0.6,
+    "asus": 0.95,
+    "ar": 0.75,
+    "detune": 0.4,
+    "chorus": 0.9,
+    "dmix": 0.45,
+    "dtime": 0.7,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "MPE Lead",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "cut": 0.4,
+    "res": 0.3,
+    "eg1": 0.3,
+    "aa": 0.02,
+    "asus": 0.9,
+    "ar": 0.35,
+    "porta": 0.15,
+    "mwcut": 0.5,
+    "mwosc": 0.6,
+    "velf": 0.5,
+    "dmix": 0.25,
+    "dtime": 0.45,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "bris",
+   "values": {
+    "vform": 0,
+    "cut": 0.52,
+    "res": 0.15,
+    "eg1": 0.3,
+    "fa": 0.4,
+    "fd": 0.6,
+    "fs": 0.5,
+    "fr": 0.6,
+    "aa": 0.45,
+    "ad": 0.6,
+    "asus": 0.85,
+    "ar": 0.62,
+    "detune": 0.25,
+    "chorus": 0.7
+   }
+  },
+  {
+   "name": "blå pad",
+   "values": {
+    "vform": 2,
+    "sub": 0.3,
+    "cut": 0.45,
+    "res": 0.2,
+    "eg1": 0.25,
+    "lfocut": 0.12,
+    "lrate": 0.25,
+    "fa": 0.6,
+    "fd": 0.6,
+    "fs": 0.6,
+    "fr": 0.7,
+    "aa": 0.6,
+    "ad": 0.6,
+    "asus": 0.9,
+    "ar": 0.7,
+    "detune": 0.3,
+    "chorus": 0.85,
+    "dmix": 0.25,
+    "dtime": 0.55,
+    "dfb": 0.45
+   }
+  },
+  {
+   "name": "pwm-sträng",
+   "values": {
+    "vform": 1,
+    "pw": 0.45,
+    "lfopwm": 0.55,
+    "lrate": 0.3,
+    "cut": 0.58,
+    "res": 0.05,
+    "eg1": 0.15,
+    "aa": 0.5,
+    "ad": 0.5,
+    "asus": 0.85,
+    "ar": 0.6,
+    "chorus": 0.6
+   }
+  },
+  {
+   "name": "brass",
+   "values": {
+    "vform": 0,
+    "cut": 0.35,
+    "res": 0.15,
+    "eg1": 0.55,
+    "fa": 0.32,
+    "fd": 0.45,
+    "fs": 0.45,
+    "fr": 0.4,
+    "aa": 0.2,
+    "ad": 0.4,
+    "asus": 0.85,
+    "ar": 0.35,
+    "detune": 0.2,
+    "velf": 0.6,
+    "chorus": 0.25
+   }
+  },
+  {
+   "name": "syntbrass",
+   "values": {
+    "vform": 2,
+    "cut": 0.3,
+    "res": 0.25,
+    "eg1": 0.65,
+    "fa": 0.28,
+    "fd": 0.5,
+    "fs": 0.3,
+    "fr": 0.4,
+    "aa": 0.15,
+    "asus": 0.8,
+    "ar": 0.3,
+    "detune": 0.35,
+    "chorus": 0.5
+   }
+  },
+  {
+   "name": "unison bas",
+   "values": {
+    "lage": 3,
+    "vform": 0,
+    "sub": 0.6,
+    "cut": 0.25,
+    "res": 0.3,
+    "eg1": 0.5,
+    "fa": 0,
+    "fd": 0.35,
+    "fs": 0.15,
+    "fr": 0.25,
+    "aa": 0,
+    "ad": 0.4,
+    "asus": 0.9,
+    "ar": 0.2,
+    "detune": 0.35,
+    "porta": 0.15,
+    "chorus": 0,
+    "kbd": 0.6
+   }
+  },
+  {
+   "name": "oktavbas",
+   "values": {
+    "lage": 3,
+    "uniint": -12,
+    "vform": 1,
+    "pw": 0.35,
+    "cut": 0.28,
+    "res": 0.2,
+    "eg1": 0.45,
+    "fd": 0.35,
+    "fs": 0.2,
+    "aa": 0,
+    "ad": 0.4,
+    "asus": 0.85,
+    "ar": 0.2,
+    "detune": 0.15,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "pulsbas",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.25,
+    "sub": 0.7,
+    "cut": 0.22,
+    "res": 0.35,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.1,
+    "fr": 0.2,
+    "aa": 0,
+    "ad": 0.3,
+    "asus": 0.8,
+    "ar": 0.15,
+    "porta": 0.1,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "sub-bas",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "sub": 1,
+    "cut": 0.18,
+    "res": 0.05,
+    "eg1": 0.2,
+    "aa": 0,
+    "asus": 1,
+    "ar": 0.25,
+    "chorus": 0,
+    "detune": 0
+   }
+  },
+  {
+   "name": "mono lead",
+   "values": {
+    "lage": 2,
+    "vform": 0,
+    "cut": 0.5,
+    "res": 0.35,
+    "eg1": 0.35,
+    "fd": 0.45,
+    "fs": 0.4,
+    "aa": 0.02,
+    "asus": 0.9,
+    "ar": 0.3,
+    "porta": 0.3,
+    "lfoosc": 0.18,
+    "lrate": 0.5,
+    "chorus": 0.2,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.35
+   }
+  },
+  {
+   "name": "kvintlead",
+   "values": {
+    "lage": 3,
+    "uniint": 7,
+    "vform": 1,
+    "pw": 0.4,
+    "cut": 0.48,
+    "res": 0.3,
+    "eg1": 0.4,
+    "fd": 0.45,
+    "fs": 0.45,
+    "asus": 0.9,
+    "ar": 0.3,
+    "porta": 0.2,
+    "detune": 0.2,
+    "dmix": 0.25,
+    "dtime": 0.45
+   }
+  },
+  {
+   "name": "mjuk lead",
+   "values": {
+    "lage": 2,
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.42,
+    "res": 0.1,
+    "eg1": 0.3,
+    "fa": 0.2,
+    "aa": 0.25,
+    "asus": 0.85,
+    "ar": 0.4,
+    "porta": 0.35,
+    "lfoosc": 0.15,
+    "lrate": 0.5,
+    "chorus": 0.4,
+    "dmix": 0.35,
+    "dtime": 0.6,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "pluck",
+   "values": {
+    "vform": 0,
+    "cut": 0.32,
+    "res": 0.3,
+    "eg1": 0.6,
+    "fa": 0,
+    "fd": 0.32,
+    "fs": 0,
+    "fr": 0.32,
+    "aa": 0,
+    "ad": 0.42,
+    "asus": 0,
+    "ar": 0.4,
+    "chorus": 0.45,
+    "velf": 0.6
+   }
+  },
+  {
+   "name": "ekopluck",
+   "values": {
+    "vform": 1,
+    "pw": 0.3,
+    "cut": 0.35,
+    "res": 0.35,
+    "eg1": 0.55,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0,
+    "fr": 0.3,
+    "aa": 0,
+    "ad": 0.38,
+    "asus": 0,
+    "ar": 0.35,
+    "chorus": 0.35,
+    "dmix": 0.6,
+    "dtime": 0.42,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "vintagekeys",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.48,
+    "res": 0.05,
+    "eg1": 0.3,
+    "fd": 0.55,
+    "fs": 0.2,
+    "aa": 0,
+    "ad": 0.6,
+    "asus": 0.35,
+    "ar": 0.42,
+    "lfoamp": 0.25,
+    "lrate": 0.42,
+    "chorus": 0.55,
+    "kbda": -0.2
+   }
+  },
+  {
+   "name": "tremolo",
+   "values": {
+    "vform": 0,
+    "cut": 0.5,
+    "eg1": 0.2,
+    "aa": 0.05,
+    "ad": 0.6,
+    "asus": 0.6,
+    "ar": 0.45,
+    "lfoamp": 0.7,
+    "lwave": 0,
+    "lrate": 0.5,
+    "chorus": 0.4
+   }
+  },
+  {
+   "name": "svep",
+   "values": {
+    "vform": 2,
+    "cut": 0.15,
+    "res": 0.55,
+    "eg1": 0.8,
+    "fa": 0.72,
+    "fd": 0.7,
+    "fs": 0.2,
+    "fr": 0.7,
+    "aa": 0.5,
+    "asus": 0.9,
+    "ar": 0.65,
+    "detune": 0.3,
+    "chorus": 0.7,
+    "dmix": 0.3,
+    "dtime": 0.6
+   }
+  },
+  {
+   "name": "s&h-bubbel",
+   "values": {
+    "vform": 0,
+    "cut": 0.35,
+    "res": 0.6,
+    "eg1": 0.15,
+    "lwave": 4,
+    "lrate": 0.55,
+    "lfocut": 0.55,
+    "aa": 0.02,
+    "asus": 0.85,
+    "ar": 0.35,
+    "dmix": 0.45,
+    "dtime": 0.4,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "ringping",
+   "values": {
+    "vform": 1,
+    "pw": 0.5,
+    "cut": 0.6,
+    "eg1": 0.2,
+    "aa": 0,
+    "ad": 0.35,
+    "asus": 0,
+    "ar": 0.3,
+    "dmix": 1,
+    "dtime": 0.05,
+    "dfb": 0.8,
+    "chorus": 0
+   }
+  },
+  {
+   "name": "visselfilter",
+   "values": {
+    "vform": 0,
+    "cut": 0.42,
+    "res": 1,
+    "kbd": 1,
+    "eg1": 0,
+    "aa": 0.15,
+    "asus": 0.9,
+    "ar": 0.4,
+    "chorus": 0.3,
+    "sub": 0
+   }
+  },
+  {
+   "name": "stor unison",
+   "values": {
+    "lage": 3,
+    "vform": 2,
+    "cut": 0.5,
+    "res": 0.15,
+    "eg1": 0.35,
+    "fd": 0.5,
+    "fs": 0.5,
+    "aa": 0.15,
+    "asus": 0.9,
+    "ar": 0.5,
+    "detune": 0.75,
+    "chorus": 0.6,
+    "dmix": 0.2,
+    "dtime": 0.5
+   }
+  },
+  {
+   "name": "kör",
+   "values": {
+    "vform": 1,
+    "pw": 0.15,
+    "lfopwm": 0.25,
+    "lrate": 0.35,
+    "cut": 0.4,
+    "res": 0.4,
+    "eg1": 0.1,
+    "aa": 0.55,
+    "asus": 0.9,
+    "ar": 0.65,
+    "chorus": 1,
+    "detune": 0.2
+   }
+  },
+  {
+   "name": "mörk drone",
+   "values": {
+    "lage": 3,
+    "vform": 0,
+    "sub": 0.8,
+    "cut": 0.34,
+    "res": 0.4,
+    "eg1": 0.1,
+    "lfocut": 0.3,
+    "lwave": 0,
+    "lrate": 0.12,
+    "aa": 0.7,
+    "asus": 1,
+    "ar": 0.8,
+    "detune": 0.5,
+    "chorus": 0.8,
+    "dmix": 0.4,
+    "dtime": 0.8,
+    "dfb": 0.6
+   }
+  },
+  {
+   "name": "arpeggio",
+   "values": {
+    "vform": 1,
+    "pw": 0.35,
+    "cut": 0.42,
+    "res": 0.25,
+    "eg1": 0.45,
+    "fa": 0,
+    "fd": 0.3,
+    "fs": 0.1,
+    "aa": 0,
+    "ad": 0.35,
+    "asus": 0.2,
+    "ar": 0.3,
+    "dmix": 0.4,
+    "dtime": 0.36,
+    "dfb": 0.4,
+    "chorus": 0.3
+   }
+  },
+  {
+   "name": "klocka",
+   "values": {
+    "vform": 1,
+    "pw": 0.12,
+    "cut": 0.7,
+    "res": 0.6,
+    "eg1": 0.1,
+    "aa": 0,
+    "ad": 0.7,
+    "asus": 0,
+    "ar": 0.65,
+    "kbd": 1,
+    "chorus": 0.5,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  }
+ ]
+}

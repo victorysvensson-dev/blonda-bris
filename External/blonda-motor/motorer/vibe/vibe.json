@@ -1,0 +1,223 @@
+{
+ "effekt": "vibe",
+ "namn": "BLONDA VIBE",
+ "kalla": "BLONDA VIBE.amxd",
+ "params": [
+  {
+   "id": "boom",
+   "name": "Boom",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "boomkey",
+   "name": "Boom Key",
+   "min": 0.0,
+   "max": 11.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "boomdecay",
+   "name": "Boom Decay",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 35.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "boomsens",
+   "name": "Boom Sens",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 50.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "punch",
+   "name": "Punch",
+   "min": -100.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "drive",
+   "name": "Drive",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "dtype",
+   "name": "Drive Type",
+   "min": 0.0,
+   "max": 3.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "crush",
+   "name": "Crush",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wobble",
+   "name": "Wobble",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "tape",
+   "name": "Tape",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "glue",
+   "name": "Glue",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "space",
+   "name": "Space",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "roomsize",
+   "name": "Room Size",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 50.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wobrate",
+   "name": "Wobble Rate",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 35.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "noiseamt",
+   "name": "Noise",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "ntype",
+   "name": "Noise Type",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "lowcut",
+   "name": "Low Cut",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "highcut",
+   "name": "High Cut",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "clipamt",
+   "name": "Clip",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "width",
+   "name": "Width",
+   "min": 0.0,
+   "max": 200.0,
+   "default": 100.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "magnitude",
+   "name": "Vibe",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 100.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "mixp",
+   "name": "Mix",
+   "min": 0.0,
+   "max": 100.0,
+   "default": 100.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "outdb",
+   "name": "Output",
+   "min": -24.0,
+   "max": 12.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "nage",
+   "name": "Noise Tone",
+   "min": -100.0,
+   "max": 100.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  }
+ ]
+}

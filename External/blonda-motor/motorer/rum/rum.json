@@ -1,0 +1,115 @@
+{
+ "effekt": "rum",
+ "namn": "BLONDA RUM",
+ "kalla": "BLONDA RUM.amxd",
+ "params": [
+  {
+   "id": "size",
+   "name": "Size",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.55,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "decay",
+   "name": "Decay",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "damp",
+   "name": "Damping",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.45,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "predel",
+   "name": "Predelay",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.15,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "lowc",
+   "name": "Low Cut",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.25,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "modd",
+   "name": "Movement",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.35,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "width",
+   "name": "Width",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 1.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wet",
+   "name": "Mix",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.3,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "duck",
+   "name": "Duck",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "outv",
+   "name": "Output",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.75,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "shape",
+   "name": "Type",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "highc",
+   "name": "High Cut",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 1.0,
+   "integer": false,
+   "labels": null
+  }
+ ]
+}

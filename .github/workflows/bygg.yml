@@ -1,0 +1,172 @@
+name: Bygg och testa
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: bygg-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------ ljudkärnan, webben och pluggens ljuddel (Linux)
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Genererade filer är aktuella
+        run: |
+          python3 tools/kategorier.py
+          git diff --exit-code -- core/kategorier.h ui/data.js
+      - name: Ljudkärnan (alla 90 ljud, frasen, effekterna)
+        run: |
+          g++ -std=c++17 -O2 -Wall -Werror -Icore -IExternal/blonda-motor/include -IExternal/blonda-motor/motorer tester/karna_test.cpp -o karna_test
+          ./karna_test | tail -8
+      - name: wasi-sdk
+        run: |
+          curl -sSL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz | tar xz
+          echo "WASI_SDK=$PWD/wasi-sdk-25.0-x86_64-linux" >> $GITHUB_ENV
+      - name: Webbversionen
+        run: sh web/bygg.sh
+      - name: WebAssembly räknar som C++
+        run: |
+          g++ -std=c++17 -O2 -Icore -IExternal/blonda-motor/include -IExternal/blonda-motor/motorer tester/dump.cpp -o dump
+          node tester/wasm_test.mjs dist/web/bris.wasm ./dump
+      - name: Webbversionen i Chrome
+        run: |
+          pip install -q playwright
+          python3 -m playwright install --with-deps chromium > /dev/null
+          python3 tester/webb_test.py dist/web
+      - name: Pluggens ljuddel (samma kod som AU/VST3/AUv3)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libasound2-dev libfreetype-dev libfontconfig1-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxext-dev libgtk-3-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev xvfb > /dev/null
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBRIS_TESTER=ON > /dev/null
+          cmake --build build -j4 --target bris-plugin-test
+          xvfb-run -a ./build/bris-plugin-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webb
+          path: dist/web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skarmdumpar-webb
+          path: dist/skärmdumpar
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: dist/web
+
+  pages:
+    needs: linux
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.dep.outputs.page_url }}
+    steps:
+      - id: dep
+        uses: actions/deploy-pages@v4
+
+  # ------------------------------------------------------------------ Mac: AU (Logic), VST3, Standalone
+  mac:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bygg (universell: Apple Silicon + Intel)
+        run: |
+          cmake -B build -G Xcode > /dev/null
+          set -o pipefail
+          cmake --build build --config Release -j4 -- -quiet CODE_SIGN_IDENTITY=- 2>&1 | grep -E "error|warning: .*plugin/|BUILD" || true
+          test -d "build/BlondaBris_artefacts/Release/AU/BLONDA BRIS.component"
+          test -d "build/BlondaBris_artefacts/Release/VST3/BLONDA BRIS.vst3"
+          test -d "build/BlondaBris_artefacts/Release/Standalone/BLONDA BRIS.app"
+          lipo -info "build/BlondaBris_artefacts/Release/AU/BLONDA BRIS.component/Contents/MacOS/BLONDA BRIS"
+      - name: Signera (ad hoc)
+        run: |
+          cd build/BlondaBris_artefacts/Release
+          codesign --force --deep -s - "AU/BLONDA BRIS.component" "VST3/BLONDA BRIS.vst3" "Standalone/BLONDA BRIS.app"
+      - name: auval (samma kontroll som Logic gör)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/BlondaBris_artefacts/Release/AU/BLONDA BRIS.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 3
+          auval -a | grep -i blnd || true
+          auval -strict -v aumu Bris Blnd | tail -25
+      - name: Starta appen och ta en skärmdump
+        continue-on-error: true
+        run: |
+          open "build/BlondaBris_artefacts/Release/Standalone/BLONDA BRIS.app"
+          sleep 15
+          mkdir -p shots
+          screencapture -x shots/mac_app.png
+          pkill -f "BLONDA BRIS" || true
+      - name: Paketera
+        run: |
+          mkdir -p ut
+          cd build/BlondaBris_artefacts/Release
+          ditto -c -k --sequesterRsrc --keepParent "AU/BLONDA BRIS.component" "$GITHUB_WORKSPACE/ut/BLONDA-BRIS-AU-mac.zip"
+          ditto -c -k --sequesterRsrc --keepParent "VST3/BLONDA BRIS.vst3" "$GITHUB_WORKSPACE/ut/BLONDA-BRIS-VST3-mac.zip"
+          ditto -c -k --sequesterRsrc --keepParent "Standalone/BLONDA BRIS.app" "$GITHUB_WORKSPACE/ut/BLONDA-BRIS-app-mac.zip"
+          ls -la "$GITHUB_WORKSPACE/ut"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: ut
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: skarmdumpar-mac
+          path: shots
+          if-no-files-found: ignore
+      - name: Lägg ut som "senaste"
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view senaste > /dev/null 2>&1 || gh release create senaste --title "Senaste bygget" --notes "Byggs automatiskt från main." --prerelease
+          gh release upload senaste ut/*.zip --clobber
+
+  # ------------------------------------------------------------------ iPad / iPhone: app + AUv3 (simulator)
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode-projekt för iOS
+        run: cmake -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS > /dev/null
+      - name: Bygg för simulatorn (app + AUv3)
+        run: |
+          set -o pipefail
+          xcodebuild -project build-ios/BLONDA_BRIS.xcodeproj -scheme BlondaBris_Standalone -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build 2>&1 \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | head -40
+          find dd -name "*.app" -path "*iphonesimulator*" | head -3
+          find dd -name "*.appex" | head -3
+      - name: Kör i simulatorn och ta skärmdumpar
+        continue-on-error: true
+        timeout-minutes: 20
+        run: |
+          T() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+          APP=$(find dd -name "*.app" -path "*iphonesimulator*" | head -1)
+          mkdir -p shots
+          for DEV in "iPad Pro 13" "iPhone 16 Pro"; do
+            UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('$DEV')))")
+            xcrun simctl boot $UDID; T 300 xcrun simctl bootstatus $UDID -b
+            T 120 xcrun simctl install $UDID "$APP"
+            T 60 xcrun simctl launch $UDID se.blonda.bris || true
+            sleep 12
+            T 60 xcrun simctl io $UDID screenshot "shots/$(echo $DEV | tr ' ' '_').png" || true
+            xcrun simctl shutdown $UDID || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: skarmdumpar-ios
+          path: shots
+          if-no-files-found: ignore

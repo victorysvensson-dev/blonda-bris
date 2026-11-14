@@ -1,0 +1,106 @@
+{
+ "effekt": "sliten",
+ "namn": "BLONDA SLITEN",
+ "kalla": "BLONDA SLITEN.amxd",
+ "params": [
+  {
+   "id": "media",
+   "name": "Media",
+   "min": 0.0,
+   "max": 8.0,
+   "default": 0.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "age",
+   "name": "Wear",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wow",
+   "name": "Wow",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.35,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "flut",
+   "name": "Flutter",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.3,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "sat",
+   "name": "Saturation",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.4,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "brus",
+   "name": "Noise",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.3,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "avbr",
+   "name": "Dropouts",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.2,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "ton",
+   "name": "Tone",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "bredd",
+   "name": "Width",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 1.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wet",
+   "name": "Mix",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 1.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "outv",
+   "name": "Output",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.75,
+   "integer": false,
+   "labels": null
+  }
+ ]
+}
