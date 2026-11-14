@@ -77,7 +77,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Bygg (universell: Apple Silicon + Intel)
+      - name: "Bygg (universell, Apple Silicon + Intel)"
         run: |
           cmake -B build -G Xcode > /dev/null
           set -o pipefail
