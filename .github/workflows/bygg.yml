@@ -118,6 +118,16 @@ jobs:
         with:
           name: mac
           path: ut
+      - name: Skärmdumpar till grenen ci-bilder-mac
+        if: always() && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          [ -d shots ] && [ "$(ls -A shots)" ] || exit 0
+          cd shots
+          git init -q -b ci-bilder-mac
+          git -c user.name=ci -c user.email=ci@blonda.studio add -A
+          git -c user.name=ci -c user.email=ci@blonda.studio commit -q -m "skärmdumpar ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-bilder-mac
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -146,14 +156,15 @@ jobs:
           xcodebuild -project build-ios/BLONDA_BRIS.xcodeproj -scheme BlondaBris_Standalone -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build 2>&1 \
             | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | head -40
-          find dd -name "*.app" -path "*iphonesimulator*" | head -3
-          find dd -name "*.appex" | head -3
+          find build-ios dd -name "*.app" -path "*iphonesimulator*" | head -3
+          find build-ios dd -name "*.appex" | head -3
       - name: Kör i simulatorn och ta skärmdumpar
         continue-on-error: true
         timeout-minutes: 20
         run: |
           T() { perl -e 'alarm shift; exec @ARGV' "$@"; }
-          APP=$(find dd -name "*.app" -path "*iphonesimulator*" | head -1)
+          APP=$(find build-ios dd -name "*.app" -path "*iphonesimulator*" -not -path "*/PlugIns/*" | head -1)
+          echo "app: $APP"
           mkdir -p shots
           for DEV in "iPad Pro 13" "iPhone 16 Pro"; do
             UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('$DEV')))")
@@ -164,6 +175,16 @@ jobs:
             T 60 xcrun simctl io $UDID screenshot "shots/$(echo $DEV | tr ' ' '_').png" || true
             xcrun simctl shutdown $UDID || true
           done
+      - name: Skärmdumpar till grenen ci-bilder-ios
+        if: always() && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          [ -d shots ] && [ "$(ls -A shots)" ] || exit 0
+          cd shots
+          git init -q -b ci-bilder-ios
+          git -c user.name=ci -c user.email=ci@blonda.studio add -A
+          git -c user.name=ci -c user.email=ci@blonda.studio commit -q -m "skärmdumpar ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-bilder-ios
       - uses: actions/upload-artifact@v4
         if: always()
         with:
