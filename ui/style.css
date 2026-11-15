@@ -156,7 +156,7 @@ header, #tabs2 { position: relative; z-index: 2; }
   .slider { grid-template-columns: minmax(86px, auto) 1fr; }
 }
 /* stående surfplatta / smalt fönster: växten överst, panelerna under */
-@media (max-width: 860px) {
+@media (max-width: 860px), (orientation: portrait) and (max-width: 1100px) {
   #app {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto minmax(200px, 1fr) auto auto auto;
