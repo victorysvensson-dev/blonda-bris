@@ -1,8 +1,10 @@
 #!/bin/bash
 # Bygger BLONDA BRIS (app + AUv3) och lägger den på en iPad/iPhone som är kopplad till Macen med sladd.
 #   curl -sL https://raw.githubusercontent.com/victorysvensson-dev/blonda-bris/main/tools/ios-installera.sh | bash
+#   ... | bash -s iphone      (välj iPhone när flera enheter syns; "ipad" är standard)
 # Kräver Xcode med ditt Apple-ID inlagt (Xcode > Settings > Accounts). CMake hämtas automatiskt om det saknas.
 set -e
+VILL="${1:-ipad}"
 MAPP="$HOME/Developer/blonda-bris"
 VERKTYG="$HOME/.blonda"
 steg() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
@@ -48,15 +50,18 @@ echo "team: $TEAM"
 steg "5/6 Letar efter din iPad/iPhone"
 J=$(mktemp)
 xcrun devicectl list devices --json-output "$J" >/dev/null 2>&1 || true
-ENHET=$(/usr/bin/python3 - "$J" <<'PY'
+ENHET=$(/usr/bin/python3 - "$J" "$VILL" <<'PY'
 import json, sys
 try: d = json.load(open(sys.argv[1]))["result"]["devices"]
 except Exception: d = []
+vill = sys.argv[2].lower()
 def ok(x):
     hw = x.get("hardwareProperties", {}); cp = x.get("connectionProperties", {})
     return hw.get("platform") == "iOS" and cp.get("pairingState") == "paired" and cp.get("tunnelState") != "unavailable"
 val = [x for x in d if ok(x)]
-val.sort(key=lambda x: x.get("hardwareProperties", {}).get("deviceType") != "iPad")   # iPad först
+# önskad sort (ipad/iphone) först, sedan de som sitter i sladd
+val.sort(key=lambda x: (x.get("hardwareProperties", {}).get("deviceType", "").lower() != vill,
+                        x.get("connectionProperties", {}).get("transportType") != "wired"))
 if val:
     x = val[0]; print(x["hardwareProperties"]["udid"] + "|" + x.get("deviceProperties", {}).get("name", "enhet"))
 PY
@@ -81,8 +86,8 @@ xcrun devicectl device process launch --device "$UDID" se.blonda.bris >/dev/null
   || echo "Appen är installerad på $NAMN men kunde inte startas än (se nedan)."
 cat <<'TXT'
 
-Om appen inte öppnas på iPaden:
-  - Inställningar > Integritet och säkerhet > Utvecklarläge: slå på och starta om iPaden.
+Om appen inte öppnas på enheten:
+  - Inställningar > Integritet och säkerhet > Utvecklarläge: slå på och starta om enheten.
   - Inställningar > Allmänt > VPN och enhetshantering: tryck på ditt Apple-ID och "Lita på".
 Som plugg: öppna GarageBand/Logic för iPad/AUM och välj AUv3-instrumentet BLONDA BRIS.
 TXT
