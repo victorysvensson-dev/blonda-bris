@@ -47,6 +47,19 @@ BrisEditor::BrisEditor(BrisProcessor& p)
    #endif
     sentValues.assign((size_t)proc.numParams(), std::numeric_limits<double>::quiet_NaN());
     startTimerHz(40);
+   #if ! JUCE_IOS
+    // fristående app: systemets egen titelrad i stället för JUCE:s mörka, i designens ljusa färg
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+        juce::MessageManager::callAsync([safe = juce::Component::SafePointer<BrisEditor>(this)] {
+            if (safe == nullptr) return;
+            if (auto* w = safe->findParentComponentOfClass<juce::DocumentWindow>()) {
+                w->setUsingNativeTitleBar(true);
+                w->setBackgroundColour(juce::Colour(0xfff6f1f4));
+                w->setResizable(true, false);
+                w->setContentComponentSize(safe->getWidth(), safe->getHeight());
+            }
+        });
+   #endif
 }
 
 BrisEditor::~BrisEditor() { stopTimer(); }

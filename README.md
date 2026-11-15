@@ -9,19 +9,31 @@ BLONDA BRIS – analog sexstämmig poly efter GS Music Bree6 – som plugg och a
 | Webben | samma synth i webbläsaren (WebAssembly), med Web MIDI |
 
 Ljudet är BRIS-motorn ur `blonda-motor` (oförändrad, samma GenExpr som Max for Live-pluggen) plus BLONDA RUM
-(reverb) och BLONDA VIBE (drive). Alla 90 fabriksljud finns med, och **varje sorts ljud är en egen växt**:
+(reverb) och BLONDA VIBE (drive). Alla 90 fabriksljud finns med, och **varje sorts ljud har sin egen blomma** ur BLONDAs design (se Blommorna nedan).
+Varje ljud inom en kategori får en egen variant (spegling, färgton, vinkel).
 
-| Kategori | Växt | | Kategori | Växt |
+## Installera på Macen
+
+```sh
+curl -sL https://raw.githubusercontent.com/victorysvensson-dev/blonda-bris/main/tools/installera-mac.sh | sh
+```
+
+Lägger AU-pluggen (Logic), VST3 och appen på plats från Releases → senaste och kontrollerar AU:n med `auval`.
+
+## Blommorna
+
+Blommorna är Victorys designbilder (`resurser/design/`), utklippta med `tools/blommor.py`: designens ring och prick
+tas bort, bilden förstoras med Real-ESRGAN och bakgrunden blir genomskinlig (`ui/blommor/*.webp`). I gränssnittet
+böjs bilden med WebGL (`ui/blommor.js`), så blomman vajar, andas och öppnar sig med ljudet.
+
+| Kategori | Blomma (bild) | | Kategori | Blomma (bild) |
 |---|---|---|---|---|
-| PAD | iris | | PLUCK | kanna |
-| STRINGS | magnolia | | BELL | lilja |
-| POLY | pion | | ARP | lavendel |
-| BRASS | påsklilja | | FX | maskros |
-| LEAD | strelitzia | | INIT | frö |
-| BASS | eukalyptus | | | |
-
-Växterna ritas med kod (fibrer som i silke, inga bilder) och lever med ljudet: de andas med volymhöljet, öppnar sig
-med filtret, vajar med LFO:n och släpper pollen när toner spelas. Varje ljud inom en kategori får sin egen variant.
+| PAD | iris (07) | | PLUCK | solfjäder (06) |
+| STRINGS | gladiolus (05) | | BELL | lilja (03) |
+| POLY | skäggiris (01) | | ARP | amaryllis (08, rödare ton) |
+| BRASS | kanna (10) | | FX | nattviol (06, blåare ton) |
+| LEAD | strelitzia (02) | | INIT | vit iris (07, utan färg) |
+| BASS | eukalyptus (04) | | | |
 
 ## Så hänger det ihop
 
@@ -30,12 +42,13 @@ core/bris_core.h        ljudkärnan: BRIS + RUM + VIBE + frasspelaren (rullen) +
 core/kategorier.h       GENERERAD: växt per ljud, effekter per växt
 ui/                     gränssnittet (HTML/CSS/JS) – samma i pluggen, appen och på webben
   app.js                flikar, rattar, reglage, ljudlistan, vågen, rullen, tangenterna
-  vaxter.js             växtritaren
+  blommor.js            blommorna (WebGL), blommor/*.webp bilderna
   bridge.js             pratar med C++ (JUCE) eller med WebAssembly (webben)
   data.js               GENERERAD: parametrar, ljud, växter, fraser
 plugin/                 JUCE-skalet: AU/VST3/AUv3/Standalone, gränssnittet i en WebView
 web/                    webben: bris_wasm.cpp (kärnan som WebAssembly), worklet.js, bygg.sh
 tools/kategorier.py     DEN ENDA SANNINGEN för växter, färger och fraser -> core/kategorier.h + ui/data.js
+tools/blommor.py        klipper ut blommorna ur designbilderna -> ui/blommor/
 External/blonda-motor/  kopia av motorerna ur blonda-motor (se VERSION där)
 tester/                 kärnan, wasm = C++, webben i Chrome, pluggens ljuddel
 ```
