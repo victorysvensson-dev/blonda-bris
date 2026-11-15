@@ -163,7 +163,7 @@ jobs:
         timeout-minutes: 20
         run: |
           T() { perl -e 'alarm shift; exec @ARGV' "$@"; }
-          APP=$(find build-ios dd -name "*.app" -path "*iphonesimulator*" -not -path "*/PlugIns/*" | head -1)
+          APP=$(find build-ios -name "*.app" -path "*Standalone*" -not -path "*/PlugIns/*" | head -1)
           echo "app: $APP"
           mkdir -p shots
           for DEV in "iPad Pro 13" "iPhone 16 Pro"; do
