@@ -1,7 +1,7 @@
 // BLONDA BRIS – blommorna. Varje kategori av ljud har sin blomma ur designen (ui/blommor/*.webp, utklippta med
-// tools/blommor.py). Blomman lever med ljudet: den vajar runt sin fot med LFO:n, andas med volymhöljet, öppnar sig
-// med filtret, fladdrar lätt i kronbladen och släpper pollen när toner spelas. Ritas med WebGL (böjning av bilden);
-// utan WebGL med vanlig 2D-canvas.
+// tools/blommor.py). Blomman lever stilla med ljudet: den andas med volymhöljet och vajar knappt märkbart, och
+// stoft stiger ur blommans mitt när toner spelas – en del bakom kronbladen, en del framför och några mjuka,
+// oskarpa korn närmast, så att det får djup. Ritas med WebGL; utan WebGL med vanlig 2D-canvas.
 "use strict";
 
 const Blommor = (() => {
@@ -46,7 +46,7 @@ void main() {
   float ca = cos(a), sa = sin(a);
   d = vec2(ca * d.x - sa * d.y, sa * d.x + ca * d.y);
   // fladder i kronbladen
-  d += vec2(sin(uT * 1.9 + uv.y * 11.0 + uv.x * 3.0), cos(uT * 1.5 + uv.x * 9.0)) * uFlut * hgt * uRect.w;
+  d += vec2(sin(uT * 0.9 + uv.y * 7.0 + uv.x * 3.0), cos(uT * 0.7 + uv.x * 6.0)) * uFlut * hgt * uRect.w;
   p = f + d;
   vec2 clip = p / uView * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
@@ -98,7 +98,34 @@ void main() {
     let accent = "#7a4bd4", acc = [122, 75, 212];
     const sig = { env: 0, lfo: 0, pk: 0, mask: 0, step: -1, nc: 0, cut: 0.5, res: 0.1, lrate: 0.45 };
     let envS = 0, pkS = 0, lph = 0, lastNc = -1, t0 = performance.now(), last = t0;
-    const pollen = [];
+    // stoft: lager 0 = bakom blomman, 1 = framför, 2 = oskarpt närmast
+    const dust = [];
+    let maskPts = null, maskCom = [0.5, 0.5], spawnAcc = 0;
+    const sprites = {};
+    function sprite(col) {
+      if (sprites[col]) return sprites[col];
+      const c = document.createElement("canvas"); c.width = c.height = 64;
+      const g = c.getContext("2d"), rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      rg.addColorStop(0, col); rg.addColorStop(0.18, col); rg.addColorStop(0.45, col.replace(/,1\)$/, ",0.35)")); rg.addColorStop(1, col.replace(/,1\)$/, ",0)"));
+      g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+      return (sprites[col] = c);
+    }
+    // var i bilden blomman finns (för att låta stoftet komma ur den)
+    function readMask(img) {
+      maskPts = null;
+      try {
+        const w = 90, h = Math.max(8, Math.round((img.naturalHeight / img.naturalWidth) * w));
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        const g = c.getContext("2d"); g.drawImage(img, 0, 0, w, h);
+        const d = g.getImageData(0, 0, w, h).data;
+        const pts = []; let sx = 0, sy = 0, sw = 0;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const a = d[(y * w + x) * 4 + 3];
+          if (a > 170) { const u = (x + 0.5) / w, v = (y + 0.5) / h; pts.push([u, v]); sx += u * a; sy += v * a; sw += a; }
+        }
+        if (pts.length > 20) { maskPts = pts; maskCom = [sx / sw, sy / sw]; }
+      } catch (e) { maskPts = null; }
+    }
 
     function resize() {
       const r = glCv.getBoundingClientRect();
@@ -141,16 +168,16 @@ void main() {
       const fx = cfg.flip ? 1 - cfg.foot[0] : cfg.foot[0];
       gl.uniform2f(u.uFoot, fx, cfg.foot[1]);
       gl.uniform1f(u.uT, t);
-      const sway = (Math.sin(t * 0.62 + cfg.ph) * 0.022 + Math.sin(t * 1.13) * 0.008 + sig.lfo * 0.02) * (0.7 + envS * 0.6);
+      const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006 + Math.sin(t * 0.13) * 0.003 + sig.lfo * 0.002;
       gl.uniform1f(u.uSway, cfg.flip ? -sway : sway);
-      gl.uniform1f(u.uBreath, envS * 0.035 + pkS * 0.01);
-      gl.uniform1f(u.uOpen, (sig.cut - 0.5) * 0.06 + envS * 0.05);
+      gl.uniform1f(u.uBreath, envS * 0.014 + Math.sin(t * 0.35) * 0.003);
+      gl.uniform1f(u.uOpen, (sig.cut - 0.5) * 0.02 + envS * 0.012);
       gl.uniform1f(u.uFlip, cfg.flip ? 1 : 0);
       gl.uniform1f(u.uRot, cfg.rot);
-      gl.uniform1f(u.uFlut, 0.0016 + envS * 0.0024);
+      gl.uniform1f(u.uFlut, 0.0004 + envS * 0.0006);
       gl.uniform1f(u.uHue, cfg.hue);
       gl.uniform1f(u.uSat, cfg.sat);
-      gl.uniform1f(u.uLift, envS * 0.05);
+      gl.uniform1f(u.uLift, envS * 0.03);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.drawElements(gl.TRIANGLES, nIdx, gl.UNSIGNED_SHORT, 0);
@@ -158,8 +185,8 @@ void main() {
     function draw2D(ctx, cfg, img, t, alpha) {
       const r = rect(cfg, img);
       const fx = r[0] + cfg.foot[0] * r[2], fy = r[1] + cfg.foot[1] * r[3];
-      const sway = Math.sin(t * 0.62 + cfg.ph) * 0.02 + sig.lfo * 0.015;
-      const b = 1 + envS * 0.03;
+      const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006;
+      const b = 1 + envS * 0.012;
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.translate(fx, fy); ctx.rotate(cfg.rot + sway * 0.5); ctx.scale(cfg.flip ? -b : b, b); ctx.translate(-fx, -fy);
       const f = (cfg.hue ? `hue-rotate(${(cfg.hue * 180 / Math.PI).toFixed(1)}deg) ` : "") + (cfg.sat !== 1 ? `saturate(${cfg.sat})` : "");
@@ -178,12 +205,12 @@ void main() {
         const w = want; const L = load(w.photo);
         if (L.img.complete && L.img.naturalWidth) {
           if (cur && curImg) { prevImg = curImg; prevCfg = cur; fade = 0; }
-          cur = w; curImg = L.img; upload(curImg);
+          cur = w; curImg = L.img; upload(curImg); readMask(curImg);
         } else L.p.then(() => { if (want === w) last = performance.now(); }).catch(() => {});
       }
       envS += (sig.env - envS) * (sig.env > envS ? 0.25 : 0.06);
       pkS += (sig.pk - pkS) * 0.15;
-      lph = (lph + Math.min(1.2, 0.1 * Math.pow(1000, sig.lrate)) * dt) % 1;
+      lph = (lph + dt / 75) % 1;   // ett varv på en dryg minut: ro, inte stress
       fade = Math.min(1, fade + dt * 2.4);
 
       // bakom: glöd och ring med LFO-punkt
@@ -211,25 +238,52 @@ void main() {
       if (gl) { fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H); }
       glCv.style.opacity = gl ? String(0.15 + 0.85 * fade) : "1";
 
-      // pollen när toner spelas
+      // stoft ur blomman
+      const r = curImg ? rect(cur, curImg) : [cx - R, cy - R, 2 * R, 2 * R];
+      const toPx = (u, v) => [r[0] + (cur && cur.flip ? 1 - u : u) * r[2], r[1] + v * r[3]];
       if (lastNc < 0) lastNc = sig.nc;
-      if (sig.nc !== lastNc) {
-        const n = Math.min(6, Math.abs(sig.nc - lastNc));
-        for (let k = 0; k < n * 3; k++) {
-          const a = Math.random() * TAU, sp = 0.05 + Math.random() * 0.16;
-          pollen.push({ x: (Math.random() - 0.5) * 0.35, y: (Math.random() - 0.65) * 0.4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.1, life: 1, r: 1 + Math.random() * 2 });
+      let burst = 0;
+      if (sig.nc !== lastNc) { burst = Math.min(6, Math.abs(sig.nc - lastNc)) * 4; lastNc = sig.nc; }
+      spawnAcc += dt * (0.5 + envS * 5);
+      const spawn = burst + Math.floor(spawnAcc);
+      spawnAcc -= Math.floor(spawnAcc);
+      const com = toPx(maskCom[0], maskCom[1]);
+      for (let k = 0; k < spawn && dust.length < 180; k++) {
+        let o;
+        if (maskPts) {   // tre kandidater i blomman, den närmast blommans mitt vinner
+          let best = null, bd = 1e9;
+          for (let j = 0; j < 3; j++) { const p = maskPts[(Math.random() * maskPts.length) | 0]; const q = toPx(p[0], p[1]); const dd = (q[0] - com[0]) ** 2 + (q[1] - com[1]) ** 2; if (dd < bd) { bd = dd; best = q; } }
+          o = best;
+        } else o = [cx + (Math.random() - 0.5) * R * 0.5, cy + (Math.random() - 0.5) * R * 0.5];
+        const dx = o[0] - com[0], dy = o[1] - com[1], dl = Math.hypot(dx, dy) || 1;
+        const sp = R * (0.025 + Math.random() * 0.055);
+        const z = Math.random();
+        const layer = z < 0.42 ? 0 : z < 0.88 ? 1 : 2;
+        const warm = Math.random() < 0.55;
+        dust.push({ x: o[0], y: o[1], vx: (dx / dl) * sp + (Math.random() - 0.5) * sp * 0.6, vy: (dy / dl) * sp * 0.6 - sp * 0.7,
+          ph: Math.random() * TAU, life: 0, max: 3.5 + Math.random() * 4, layer, warm,
+          s: layer === 2 ? 5 + Math.random() * 7 : layer === 0 ? 1.1 + Math.random() * 1.3 : 0.9 + Math.random() * 1.4 });
+      }
+      const warmCol = "rgba(224,168,84,1)", accCol = `rgba(${acc[0]},${acc[1]},${acc[2]},1)`;
+      for (let i = dust.length - 1; i >= 0; i--) {
+        const p = dust[i];
+        p.life += dt;
+        if (p.life >= p.max) { dust.splice(i, 1); continue; }
+        const k = p.life / p.max;
+        p.x += (p.vx + Math.sin(t * 0.7 + p.ph) * R * 0.006) * dt; p.y += p.vy * dt;
+        p.vx *= 1 - dt * 0.15; p.vy *= 1 - dt * 0.1;
+        const a = Math.min(1, p.life / 0.8) * (k > 0.55 ? (1 - k) / 0.45 : 1);
+        const ctx = p.layer === 0 ? bctx : fctx;
+        const spr = sprite(p.warm ? warmCol : accCol);
+        if (p.layer === 2) {
+          ctx.globalAlpha = a * 0.13;
+          ctx.drawImage(spr, p.x - p.s * 2, p.y - p.s * 2, p.s * 4, p.s * 4);
+        } else {
+          ctx.globalAlpha = a * (p.layer === 0 ? 0.55 : 0.85);
+          ctx.drawImage(spr, p.x - p.s * 3, p.y - p.s * 3, p.s * 6, p.s * 6);
         }
-        lastNc = sig.nc;
       }
-      fctx.fillStyle = accent;
-      for (let i = pollen.length - 1; i >= 0; i--) {
-        const p = pollen[i];
-        p.life -= dt * 0.55; p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 0.02 * dt;
-        if (p.life <= 0) { pollen.splice(i, 1); continue; }
-        fctx.globalAlpha = p.life * 0.7;
-        fctx.beginPath(); fctx.arc(cx + p.x * R, cy + p.y * R, p.r, 0, TAU); fctx.fill();
-      }
-      fctx.globalAlpha = 1;
+      bctx.globalAlpha = 1; fctx.globalAlpha = 1;
     }
     requestAnimationFrame(frame);
 

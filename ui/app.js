@@ -158,11 +158,11 @@
       let mx = 1e-6;
       for (let i = 0; i <= N; i++) {
         const x = (i / N) * cyc + ph; let y = 0;
-        for (let hN = 1; hN <= 24; hN++) {
+        for (let hN = 1; hN <= 14; hN++) {
           const saw = (hN % 2 ? 1 : -1) / hN;
           const pul = (2 / (hN * PI)) * Math.sin(hN * PI * v.pw);
           const a = v.vform === 0 ? saw : v.vform === 1 ? pul : 0.62 * (saw + pul);
-          const fg = 1 / (1 + Math.pow(hN / 9, 2)) / Math.sqrt(1 + Math.pow(hN / fc, 8)) + q * 2.2 * Math.exp(-Math.pow((hN - fc) / (0.18 * fc + 0.6), 2));
+          const fg = 1 / (1 + Math.pow(hN / 4.5, 2)) / Math.sqrt(1 + Math.pow(hN / fc, 8)) + q * 2.2 * Math.exp(-Math.pow((hN - fc) / (0.18 * fc + 0.6), 2));
           y += a * fg * Math.sin(TAU * hN * x);
         }
         if (v.sub > 0) y += v.sub * 0.6 * (Math.sin(TAU * 0.5 * x) + Math.sin(TAU * 1.5 * x) / 3) * (1 / Math.sqrt(1 + Math.pow(0.5 / fc, 8)));
@@ -402,16 +402,16 @@
   }
 
   // ---------------------------------------------------------------- tangenterna
-  const keys = { cv: null, down: new Map(), lit: new Set() };
+  const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map() };
   function keyLayout() {
     const w = keys.cv.clientWidth, h = keys.cv.clientHeight;
-    const nW = clamp(Math.floor(w / 46), 8, 29);
+    const nW = clamp(Math.floor(w / 52), 7, 26);
     const ww = w / nW, base = 48 + S.oct * 12;
     const whites = [], blacks = [];
     let n = base, i = 0;
     while (whites.length < nW) {
       const pc = n % 12;
-      if ([1, 3, 6, 8, 10].includes(pc)) { blacks.push({ n, x: whites.length * ww - ww * 0.31, w: ww * 0.62, h: h * 0.6 }); }
+      if ([1, 3, 6, 8, 10].includes(pc)) { blacks.push({ n, x: whites.length * ww - ww * 0.24, w: ww * 0.48, h: h * 0.56 }); }
       else whites.push({ n, x: whites.length * ww, w: ww, h });
       n++; i++;
     }
@@ -423,23 +423,39 @@
     for (const k of L.whites) if (x >= k.x && x < k.x + k.w) return { n: k.n, y: y / k.h };
     return null;
   }
+  // minimalistiska tangenter: en ljus yta med hårfina skiljelinjer, mjuka svarta tangenter, och en tryckt tangent
+  // som tänds underifrån i växtens färg och tonar ut lugnt när den släpps
   function drawKeys() {
     const cv = keys.cv; if (!cv || S.view !== "keys") return;
     const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), acc = cssVar("--a"), rgb = hexRgb(acc);
+    // nivåer: 1 medan tangenten hålls, tonar ut efter släpp
+    for (const n of keys.lit) keys.lvl.set(n, 1);
+    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * 0.88; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
+    const lv = (n) => keys.lvl.get(n) || 0;
+    const kw = L.whites.length * L.ww;
+    g.fillStyle = "rgba(255,255,255,0.34)"; roundRect(g, 0, 0, kw, h, 8); g.fill();
     for (const k of L.whites) {
-      const on = keys.lit.has(k.n);
-      g.fillStyle = on ? `rgba(${rgb},0.22)` : "rgba(255,255,255,0.62)";
-      roundRect(g, k.x + 2, 0, k.w - 4, k.h, 7); g.fill();
-      g.strokeStyle = on ? `rgba(${rgb},0.6)` : "rgba(43,37,33,0.08)"; g.lineWidth = 1; g.stroke();
-      if (k.n % 12 === 0) { g.fillStyle = "rgba(43,37,33,0.35)"; g.font = "500 9px 'BLONDA Mono'"; g.textAlign = "center"; g.fillText("C" + (Math.floor(k.n / 12) - 1), k.x + k.w / 2, k.h - 10); }
+      const v = lv(k.n);
+      if (v > 0) {
+        const gr = g.createLinearGradient(0, h, 0, h * 0.25);
+        gr.addColorStop(0, `rgba(${rgb},${0.30 * v})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+        g.fillStyle = gr; g.fillRect(k.x + 1, 0, k.w - 2, h);
+        g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, k.x + k.w * 0.3, h - 7, k.w * 0.4, 2, 1); g.fill();
+      }
+      if (k.x > 0) { g.fillStyle = "rgba(43,37,33,0.075)"; g.fillRect(Math.round(k.x), 10, 1, h - 20); }
+      if (k.n % 12 === 0) { g.fillStyle = "rgba(43,37,33,0.32)"; g.font = "500 9px 'BLONDA Mono'"; g.textAlign = "center"; g.fillText("C" + (Math.floor(k.n / 12) - 1), k.x + k.w / 2, h - 16); }
     }
     for (const b of L.blacks) {
-      const on = keys.lit.has(b.n);
-      g.fillStyle = on ? acc : "rgba(43,37,33,0.72)";
-      roundRect(g, b.x + 1, 0, b.w - 2, b.h, 6); g.fill();
+      const v = lv(b.n);
+      // hålet först, så att skiljelinjerna inte syns genom den svarta tangenten
+      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000"; roundRect(g, b.x - 1, 0, b.w + 2, b.h + 1, Math.min(6, b.w / 2)); g.fill();
+      g.globalCompositeOperation = "source-over";
+      g.fillStyle = "rgba(43,37,33,0.24)";
+      roundRect(g, b.x, 0, b.w, b.h, Math.min(6, b.w / 2)); g.fill();
+      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.85 * v})`; roundRect(g, b.x, 0, b.w, b.h, Math.min(6, b.w / 2)); g.fill(); }
     }
   }
   function keysInput() {
