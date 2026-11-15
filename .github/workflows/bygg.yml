@@ -160,7 +160,7 @@ jobs:
           find build-ios dd -name "*.appex" | head -3
       - name: Kör i simulatorn och ta skärmdumpar
         continue-on-error: true
-        timeout-minutes: 20
+        timeout-minutes: 28
         run: |
           T() { perl -e 'alarm shift; exec @ARGV' "$@"; }
           APP=$(find build-ios -name "*.app" -path "*Standalone*" -not -path "*/PlugIns/*" | head -1)
@@ -168,11 +168,12 @@ jobs:
           mkdir -p shots
           for DEV in "iPad Pro 13" "iPhone 16 Pro"; do
             UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('$DEV')))")
-            xcrun simctl boot $UDID; T 300 xcrun simctl bootstatus $UDID -b
-            T 120 xcrun simctl install $UDID "$APP"
-            T 60 xcrun simctl launch $UDID se.blonda.bris || true
-            sleep 12
-            T 60 xcrun simctl io $UDID screenshot "shots/$(echo $DEV | tr ' ' '_').png" || true
+            xcrun simctl boot $UDID; T 400 xcrun simctl bootstatus $UDID -b
+            sleep 20
+            T 180 xcrun simctl install $UDID "$APP"
+            T 180 xcrun simctl launch $UDID se.blonda.bris || true
+            sleep 30
+            T 180 xcrun simctl io $UDID screenshot "shots/$(echo $DEV | tr ' ' '_').png" || true
             xcrun simctl shutdown $UDID || true
           done
       - name: Skärmdumpar till grenen ci-bilder-ios
