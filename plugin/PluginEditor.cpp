@@ -33,6 +33,10 @@ juce::WebBrowserComponent::Options webOptions(BrisEditor* self, std::function<vo
 }
 }  // namespace
 
+#if JUCE_IOS
+void brisJusteraWebbvy(void* nativeView);   // ios_webbvy.mm
+#endif
+
 BrisEditor::BrisEditor(BrisProcessor& p)
     : AudioProcessorEditor(&p), proc(p),
       web(webOptions(this, [this](const juce::var& m) { onMessage(m); }, [this](const juce::String& u) { return getResource(u); })) {
@@ -65,7 +69,16 @@ BrisEditor::BrisEditor(BrisProcessor& p)
 BrisEditor::~BrisEditor() { stopTimer(); }
 
 void BrisEditor::paint(juce::Graphics& g) { g.fillAll(juce::Colour(0xfff6f1f4)); }
-void BrisEditor::resized() { web.setBounds(getLocalBounds()); }
+void BrisEditor::resized() {
+    web.setBounds(getLocalBounds());
+   #if JUCE_IOS
+    // WKWebView skapas när komponenten får ett fönster: justera den då och vid varje storleksändring
+    juce::MessageManager::callAsync([safe = juce::Component::SafePointer<BrisEditor>(this)] {
+        if (safe != nullptr)
+            if (auto* peer = safe->getPeer()) brisJusteraWebbvy(peer->getNativeHandle());
+    });
+   #endif
+}
 
 std::optional<juce::WebBrowserComponent::Resource> BrisEditor::getResource(const juce::String& url) {
     auto path = url.fromFirstOccurrenceOf(juce::WebBrowserComponent::getResourceProviderRoot(), false, false);

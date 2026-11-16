@@ -61,6 +61,10 @@ juce_add_plugin(BlondaBris
     COPY_PLUGIN_AFTER_BUILD FALSE)
 
 target_sources(BlondaBris PRIVATE plugin/PluginProcessor.cpp plugin/PluginEditor.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    enable_language(OBJCXX)
+    target_sources(BlondaBris PRIVATE plugin/ios_webbvy.mm)
+endif()
 
 juce_add_binary_data(BrisUi SOURCES
     ui/index.html ui/style.css ui/app.js ui/bridge.js ui/blommor.js ui/data.js
