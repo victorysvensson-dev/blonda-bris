@@ -65,6 +65,19 @@ int main() {
     KRAV(q.uiState == p.uiState, "tillstånd: gränssnitt");
     KRAV(q.getGlidMode() == 3, "tillstånd: glidläget (%d)", q.getGlidMode());
     KRAV(q.supportsMPE(), "pluggen anmäler MPE till värdprogrammet");
+    // egna ljud: sparas i en fil och läses tillbaka (filen återställs efteråt)
+    {
+        const auto f = BrisProcessor::userPresetFile();
+        const bool fanns = f.existsAsFile(); const auto gammal = fanns ? f.loadFileAsString() : juce::String();
+        juce::DynamicObject::Ptr e = new juce::DynamicObject(); e->setProperty("name", "TESTLJUD"); e->setProperty("base", 12);
+        juce::DynamicObject::Ptr vals = new juce::DynamicObject(); vals->setProperty("cut", 0.3); e->setProperty("values", juce::var(vals.get()));
+        juce::Array<juce::var> lista; lista.add(juce::var(e.get()));
+        p.saveUserPresets(lista);
+        const auto tillbaka = q.loadUserPresets();
+        KRAV(tillbaka.isArray() && tillbaka.size() == 1 && tillbaka[0]["name"].toString() == "TESTLJUD" && (double)tillbaka[0]["values"]["cut"] == 0.3,
+             "egna ljud sparas och läses tillbaka (%s)", f.getFullPathName().toRawUTF8());
+        if (fanns) f.replaceWithText(gammal); else f.deleteFile();
+    }
     p.uiGlid(1, 0.0f);
     KRAV(q.getPattern().getProperty("notes", {}).size() == 4, "tillstånd: rullen (%d toner)", q.getPattern().getProperty("notes", {}).size());
 

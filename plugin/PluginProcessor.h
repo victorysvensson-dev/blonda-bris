@@ -53,6 +53,10 @@ public:
     void uiNote(bool on, int note, int vel);      // tangenter i gränssnittet -> ljudtråden
     void uiGlid(int mode, float amount);   // glidets läge (och i BRIS mängden från skärmens tangenter)
     int getGlidMode() const;               // BRIS MPE: motorns slide-mål (parametern slm)
+    // egna ljud: sparas i en fil per produkt (BLONDA BRIS / BLONDA BRIS MPE), gemensam för alla projekt
+    static juce::File userPresetFile();
+    juce::var loadUserPresets() const;
+    void saveUserPresets(const juce::var& list) const;
     void uiSlide(int note, float v);       // BRIS MPE: ett fingers slide på sin ton (gränssnittet -> ljudtråden)
     void allNotesOff() { panic.store(true); }
     void setPattern(const juce::var& pattern);    // rullen

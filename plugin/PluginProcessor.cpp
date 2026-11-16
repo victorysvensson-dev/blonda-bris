@@ -125,6 +125,25 @@ int BrisProcessor::getGlidMode() const {
 #endif
 }
 
+juce::File BrisProcessor::userPresetFile() {
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+        .getChildFile("BLONDA").getChildFile(JucePlugin_Name).getChildFile("egna-ljud.json");
+}
+
+juce::var BrisProcessor::loadUserPresets() const {
+    const auto f = userPresetFile();
+    if (!f.existsAsFile()) return juce::Array<juce::var>();
+    const auto v = juce::JSON::parse(f.loadFileAsString());
+    return v.isArray() ? v : juce::var(juce::Array<juce::var>());
+}
+
+void BrisProcessor::saveUserPresets(const juce::var& list) const {
+    if (!list.isArray()) return;
+    const auto f = userPresetFile();
+    f.getParentDirectory().createDirectory();
+    f.replaceWithText(juce::JSON::toString(list, false));
+}
+
 void BrisProcessor::uiSlide(int note, float v) {
     const auto w = noteFifo.write(1);
     if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)2, (uint8_t)juce::jlimit(0, 127, note), (uint8_t)juce::roundToInt(juce::jlimit(0.0f, 1.0f, v) * 255.0f) };

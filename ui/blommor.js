@@ -212,16 +212,17 @@ void main() {
       const fx = cfg.flip ? 1 - cfg.foot[0] : cfg.foot[0];
       gl.uniform2f(u.uFoot, fx, cfg.foot[1]);
       gl.uniform1f(u.uT, t);
-      const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006 + Math.sin(t * 0.13) * 0.003 + sig.lfo * 0.002;
+      // rörelsen följer aktiviteten (act): helt stilla när inget låter, mjukt levande medan toner klingar
+      const sway = (Math.sin(t * 0.21 + cfg.ph) * 0.006 + Math.sin(t * 0.13) * 0.003 + sig.lfo * 0.002) * act;
       gl.uniform1f(u.uSway, cfg.flip ? -sway : sway);
-      gl.uniform1f(u.uBreath, envS * 0.014 + Math.sin(t * 0.35) * 0.003);
+      gl.uniform1f(u.uBreath, (envS * 0.014 + Math.sin(t * 0.35) * 0.003) * act);
       gl.uniform1f(u.uOpen, (sig.cut - 0.5) * 0.02 + envS * 0.012);
       gl.uniform1f(u.uFlip, cfg.flip ? 1 : 0);
       gl.uniform1f(u.uRot, cfg.rot);
-      gl.uniform1f(u.uFlut, 0.0004 + envS * 0.0006);
+      gl.uniform1f(u.uFlut, (0.0004 + envS * 0.0006) * act);
       gl.uniform1f(u.uHue, cfg.hue);
       gl.uniform1f(u.uSat, cfg.sat);
-      gl.uniform1f(u.uLift, envS * 0.03);
+      gl.uniform1f(u.uLift, envS * 0.03 * act);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
       gl.uniform1f(u.uUseMask, masked === "fram" ? 1 : masked === "bak" ? 2 : 0);
       if (masked) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, mtex); gl.uniform1i(u.uMask, 1); gl.activeTexture(gl.TEXTURE0); }
@@ -253,8 +254,8 @@ void main() {
     function draw2D(ctx, cfg, img, t, alpha) {
       const r = rect(cfg, img);
       const fx = r[0] + cfg.foot[0] * r[2], fy = r[1] + cfg.foot[1] * r[3];
-      const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006;
-      const b = 1 + envS * 0.012;
+      const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006 * act;
+      const b = 1 + envS * 0.012 * act;
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";   // samma nedskalning för bild och lager
       ctx.translate(fx, fy); ctx.rotate(cfg.rot + sway * 0.5); ctx.scale(cfg.flip ? -b : b, b); ctx.translate(-fx, -fy);
@@ -289,11 +290,12 @@ void main() {
     }
 
     let frys = null;   // tester: fast tid, inget stoft, prickarna på plats (blomman ritas likadant varje gång)
+    let act = 0, rorelse = true;   // aktivitet 0..1 och MOTION (av = inga animationer)
     function frame(now) {
       requestAnimationFrame(frame);
       let dt = Math.min(0.05, (now - last) / 1000); last = now;
       let t = (now - t0) / 1000;
-      if (frys !== null && curImg && fade >= 1) { dt = 0; t = frys; lph = 0; envS = 0; pkS = 0; dust.length = 0; spawnAcc = 0; lastNc = sig.nc; }
+      if (frys !== null && curImg && fade >= 1) { dt = 0; t = frys; lph = 0; envS = 0; pkS = 0; act = 0; dust.length = 0; spawnAcc = 0; lastNc = sig.nc; }
       resize();
       if (!W) return;
       if (want && want !== cur) {
@@ -309,9 +311,14 @@ void main() {
         } else Promise.all([L.p, LM ? LM.p : null]).then(() => { if (want === w) last = performance.now(); }).catch(() => {});
       }
       envS += (sig.env - envS) * (sig.env > envS ? 0.25 : 0.06);
+      // aktivitet: upp på en halv sekund när något låter, ned till noll på några sekunder när det är tyst.
+      // MOTION OFF: alltid noll (blomman, glöden, stoftet och prickens varv står still).
+      const spelar = sig.mask !== 0 || envS > 0.004;
+      act = !rorelse ? 0 : Math.min(1, Math.max(0, act + (spelar ? dt * 2.2 : -dt * 0.45)));
+      if (!rorelse) { envS = 0; pkS = 0; dust.length = 0; spawnAcc = 0; lastNc = sig.nc; }
       pkS += (sig.pk - pkS) * 0.15;
-      lph = (lph + dt / 75) % 1;   // ett varv på en dryg minut: ro, inte stress
-      fade = Math.min(1, fade + dt * 2.4);
+      if (rorelse) lph = (lph + dt / 75) % 1;   // ett varv på en dryg minut: ro, inte stress
+      fade = rorelse ? Math.min(1, fade + dt * 2.4) : 1;   // MOTION OFF: byte av växt utan övertoning
 
       // bakom: glöd och ring med LFO-punkt
       bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, W, H);
@@ -348,8 +355,8 @@ void main() {
       const toPx = (u, v) => [r[0] + (cur && cur.flip ? 1 - u : u) * r[2], r[1] + v * r[3]];
       if (lastNc < 0) lastNc = sig.nc;
       let burst = 0;
-      if (frys === null && sig.nc !== lastNc) { burst = Math.min(6, Math.abs(sig.nc - lastNc)) * 4; lastNc = sig.nc; }
-      if (frys === null) spawnAcc += dt * (0.5 + envS * 5);
+      if (frys === null && rorelse && sig.nc !== lastNc) { burst = Math.min(6, Math.abs(sig.nc - lastNc)) * 4; lastNc = sig.nc; }
+      if (frys === null && rorelse) spawnAcc += dt * envS * 5.5;   // stoft bara när det låter
       const spawn = burst + Math.floor(spawnAcc);
       spawnAcc -= Math.floor(spawnAcc);
       const com = toPx(maskCom[0], maskCom[1]);
@@ -430,6 +437,7 @@ void main() {
       signals(s) { Object.assign(sig, s); },
       preload(list) { list.forEach((p) => load(p)); },
       frys(tSek) { frys = tSek; },     // tester
+      rorelse(pa) { rorelse = !!pa; },  // MOTION på/av
       klar() { return !!curImg && fade >= 1 && (!cur || !cur.lager || (!!curMask && (!!gl || !!(lagerCache && lagerCache.klar)))); },
     };
   }

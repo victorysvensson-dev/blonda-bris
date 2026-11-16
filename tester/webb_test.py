@@ -138,6 +138,51 @@ with sync_playwright() as p:
     # partier där lagren möts). Klockan och slumpen fryses, så att stoftet och rörelsen är lika i båda bilderna.
     import numpy as np, io
     from PIL import Image
+    # Stilla när inget spelas, MOTION OFF och egna ljud
+    bl = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
+    pg = bl.new_page(viewport={"width": 1000, "height": 760})
+    pg.goto(URL); pg.evaluate("document.fonts.ready"); pg.wait_for_timeout(900); pg.click("#start"); pg.wait_for_timeout(500)
+    pg.evaluate("localStorage.removeItem('blonda-bris-v1-egna')")
+    def mitt():   # blommans mitt (utan ringen och dess prick)
+        bb = pg.locator("#stage").bounding_box()
+        return np.asarray(Image.open(io.BytesIO(pg.screenshot(clip={"x": bb["x"] + bb["width"] * 0.25, "y": bb["y"] + bb["height"] * 0.25,
+                                                                    "width": bb["width"] * 0.5, "height": bb["height"] * 0.5}))).convert("RGB"), np.int16)
+    pg.wait_for_function("__bris.flower.klar()"); pg.wait_for_timeout(1500)
+    a1 = mitt(); pg.wait_for_timeout(900); a2 = mitt()
+    krav(int(np.abs(a1 - a2).max()) <= 1, f"blomman står still när inget spelas (skillnad {int(np.abs(a1 - a2).max())})")
+    pg.evaluate("__bris.note(60, 110); __bris.note(64, 100)"); pg.wait_for_timeout(1800)
+    b1 = mitt(); pg.wait_for_timeout(700); b2 = mitt()
+    krav(int(np.abs(b1 - b2).max()) > 3, "blomman lever medan toner klingar")
+    pg.evaluate("__bris.off(60); __bris.off(64)")
+    pg.click("#menuBtn"); pg.wait_for_timeout(400)
+    pg.click("#mfoot button:has-text('MOTION ON')"); pg.wait_for_timeout(200)
+    krav(pg.evaluate("document.documentElement.classList.contains('still') && !__bris.S.motion"), "MOTION OFF i menyn")
+    pg.click("#menuClose"); pg.wait_for_timeout(500)
+    pg.evaluate("__bris.note(60, 110); __bris.note(67, 100)"); pg.wait_for_timeout(1500)
+    c1 = mitt(); pg.wait_for_timeout(700); c2 = mitt()
+    krav(int(np.abs(c1 - c2).max()) <= 1, f"MOTION OFF: inget rör sig medan man spelar (skillnad {int(np.abs(c1 - c2).max())})")
+    pg.evaluate("__bris.off(60); __bris.off(67)")
+    # egna ljud: spara, ändra, ladda, efter omladdning, ta bort
+    pg.evaluate("__bris.setParam('cut', 0.234, true); __bris.setParam('res', 0.61, true)")
+    pg.click("#menuBtn"); pg.wait_for_timeout(400)
+    pg.click("#mfoot button:has-text('SAVE SOUND')"); pg.fill("#mfoot input.namn", "kvällsljus"); pg.click("#mfoot button:has-text('SAVE')")
+    pg.wait_for_timeout(200)
+    krav(pg.evaluate("__bris.S.egna.length === 1 && __bris.S.egna[0].name === 'KVÄLLSLJUS' && document.querySelector('#list .egna .it').textContent === 'KVÄLLSLJUS'"),
+         "spara ett eget ljud (syns under MY SOUNDS)")
+    krav(pg.evaluate("document.querySelector('.browser .nm').textContent") == "KVÄLLSLJUS", "ljudväljaren visar det egna ljudet")
+    pg.click("#menuClose"); pg.evaluate("__bris.selectPreset(3)"); pg.wait_for_timeout(300)
+    pg.click("#menuBtn"); pg.wait_for_timeout(300); pg.click("#list .egna .it"); pg.wait_for_timeout(400)
+    v = pg.evaluate("[__bris.S.v.cut, __bris.S.v.res]")
+    krav(abs(v[0] - 0.234) < 1e-6 and abs(v[1] - 0.61) < 1e-6, f"ladda det egna ljudet ({v})")
+    pg.reload(); pg.wait_for_timeout(1200); pg.click("#start"); pg.wait_for_timeout(400)
+    krav(pg.evaluate("__bris.S.egna.length === 1 && __bris.S.eget === 'KVÄLLSLJUS' && !__bris.S.motion"), "egna ljud, valt ljud och MOTION OFF finns kvar efter omladdning")
+    pg.click("#menuBtn"); pg.wait_for_timeout(300)
+    pg.click("#list .egna .bort"); pg.click("#list .egna .bort"); pg.wait_for_timeout(200)
+    krav(pg.evaluate("__bris.S.egna.length === 0 && !document.querySelector('#list .egna') && JSON.parse(localStorage.getItem('blonda-bris-v1-egna')).length === 0"),
+         "ta bort ett eget ljud (två tryck)")
+    pg.click("#mfoot button:has-text('MOTION OFF')")
+    pg.close(); bl.close()
+
     def blomma(bl, foto, med):
         pg = bl.new_page(viewport={"width": 900, "height": 700})
         pg.goto(URL); pg.evaluate("document.fonts.ready"); pg.wait_for_timeout(900)   # typsnittet ändrar scenens storlek

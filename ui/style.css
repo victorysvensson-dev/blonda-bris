@@ -122,6 +122,17 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
 #menu .it.on { color: var(--a); opacity: 1; }
 #menu .foot { border-top: 1px solid var(--faint); padding-top: 16px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; font-size: 10px; letter-spacing: .18em; color: var(--mute); }
 #menu .foot button { letter-spacing: .24em; color: var(--ink); font-weight: 500; }
+#menu .foot button.mute { color: var(--mute); }
+#menu .foot input.namn { flex: 1 1 180px; min-width: 0; font: inherit; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink);
+  background: none; border: 0; border-bottom: 1px solid var(--a2); padding: 8px 0 6px; outline: none; -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+#menu .foot input.namn:focus { border-bottom-color: var(--a); }
+#menu .eg { display: flex; align-items: center; min-width: 0; }
+#menu .eg .it { flex: 1; min-width: 0; }
+#menu .eg .bort { flex: none; height: 30px; min-width: 30px; display: grid; place-items: center; opacity: .35; font-size: 9px; letter-spacing: .2em; font-weight: 500; }
+#menu .eg .bort .ic { width: 13px; height: 13px; }
+#menu .eg .bort:hover, #menu .eg .bort.fraga { opacity: 1; color: var(--a); }
+/* MOTION OFF: inga övergångar eller animationer någonstans */
+.still *, .still *::before, .still *::after { transition: none !important; animation: none !important; }
 
 #start { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(246, 241, 238, .35); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); cursor: pointer; }
 #start.show { display: grid; }

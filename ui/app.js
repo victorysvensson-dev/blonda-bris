@@ -14,7 +14,9 @@
   const S = {
     v: {}, preset: 65, tab: "play", oct: 0, standalone: false, web: Bridge.mode === "web", midi: [],
     m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null }, mod: {},
-    kz: 1, kh: null,   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
+    kz: 1, kh: null,
+    motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
+    egna: [], eget: null,   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
   const plantOf = (i) => D.plants[D.presets[i].plant];
@@ -266,7 +268,11 @@
     prev.onclick = () => step(-1); next.onclick = () => step(1); cur.onclick = openMenu;
     const mid = el("div", "mid"); mid.append(cur, nm);
     row.append(prev, mid, next); br.append(row);
-    br._upd = () => { const pr = D.presets[S.preset], pl = plantOf(S.preset); cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase(); };
+    br._upd = () => {
+      const pr = D.presets[S.preset], pl = plantOf(S.preset);
+      if (S.eget) { cur.textContent = "MY SOUND"; nm.textContent = S.eget; return; }
+      cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase();
+    };
     browserEl = br; br._upd();
     L.append(br);
     waveCv = null;
@@ -301,21 +307,40 @@
     flower.set(pl, pl.color);
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
-    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", +b.dataset.i === S.preset));
+    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.dataset.i !== undefined && !S.eget && +b.dataset.i === S.preset));
   }
-  function selectPreset(i) { Bridge.send({ t: "preset", i }); onPreset(i); }
+  function selectPreset(i) { S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
   function onPreset(i) { S.preset = i; applyTheme(); }
   function step(d) { const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]); }
 
   // ---------------------------------------------------------------- menyn
+  const KRYSS = '<svg class="ic" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>';
   function buildMenu() {
     const list = $("#list"); list.innerHTML = "";
+    if (S.egna.length) {   // egna ljud överst
+      const g = el("div", "grp egna");
+      g.append(el("div", "gh", `<i style="background:var(--a)"></i>MY SOUNDS <span>· ${S.egna.length}</span>`));
+      const it = el("div", "items");
+      S.egna.forEach((e, k) => {
+        const rad = el("div", "eg");
+        const b = el("button", "it" + (S.eget === e.name ? " on" : ""), "");
+        b.textContent = e.name; b.onclick = () => laddaEget(k);
+        const x = el("button", "bort", KRYSS); x.setAttribute("aria-label", "Delete");
+        x.onclick = () => {   // två tryck: först frågar den, sedan tas ljudet bort
+          if (!x.classList.contains("fraga")) { x.classList.add("fraga"); x.innerHTML = "DELETE"; setTimeout(() => { x.classList.remove("fraga"); x.innerHTML = KRYSS; }, 2500); return; }
+          S.egna.splice(k, 1); if (S.eget === e.name) S.eget = null;
+          Bridge.send({ t: "user", list: S.egna }); buildMenu(); browserEl && browserEl._upd(); saveUi();
+        };
+        rad.append(b, x); it.append(rad);
+      });
+      g.append(it); list.append(g);
+    }
     D.plants.forEach((pl, pi) => {
       const g = el("div", "grp");
       g.append(el("div", "gh", `<i style="background:${pl.color}"></i>${pl.cat} <span>· ${pl.name}</span>`));
       const it = el("div", "items");
       D.order.filter((i) => D.presets[i].plant === pi).forEach((i) => {
-        const b = el("button", "it", D.presets[i].name); b.dataset.i = i;
+        const b = el("button", "it" + (!S.eget && i === S.preset ? " on" : ""), D.presets[i].name); b.dataset.i = i;
         b.onclick = () => { selectPreset(i); };
         it.append(b);
       });
@@ -323,8 +348,48 @@
     });
     buildFoot();
   }
+  const BEHALL = ["vol", "bendr", "slm"];   // som fabriksljuden: volym, böjomfång och slide-mål följer inte med ljudet
+  function sparaEget(namn) {
+    namn = namn.replace(/\s+/g, " ").trim().toUpperCase().slice(0, 28);
+    if (!namn) return;
+    const values = {};
+    D.params.forEach((p) => { if (!BEHALL.includes(p.id)) values[p.id] = S.v[p.id]; });
+    const e = { name: namn, base: S.preset, values };
+    const k = S.egna.findIndex((x) => x.name === namn);
+    if (k >= 0) S.egna[k] = e; else S.egna.push(e);
+    S.eget = namn;
+    Bridge.send({ t: "user", list: S.egna });
+    buildMenu(); browserEl && browserEl._upd(); saveUi();
+  }
+  function laddaEget(k) {
+    const e = S.egna[k]; if (!e) return;
+    selectPreset(e.base | 0);   // växten och allt ljudet inte nämner
+    for (const id in e.values) if (P[id]) setParam(id, e.values[id], true);
+    S.eget = e.name;
+    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.textContent === e.name && b.closest(".egna")));
+    browserEl && browserEl._upd(); saveUi();
+  }
+  function setMotion(pa) {
+    S.motion = !!pa; flower.rorelse(S.motion);
+    document.documentElement.classList.toggle("still", !S.motion);
+  }
   function buildFoot() {
     const f = $("#mfoot"); f.innerHTML = "";
+    const spara = el("button", "", "SAVE SOUND");
+    spara.onclick = () => {   // en rad med namn i menyns nederkant
+      f.innerHTML = "";
+      const inp = el("input", "namn"); inp.type = "text"; inp.maxLength = 28; inp.placeholder = "NAME";
+      inp.value = S.eget || D.presets[S.preset].name.toUpperCase() + " 2";
+      const ok = el("button", "", "SAVE"), av = el("button", "mute", "CANCEL");
+      ok.onclick = () => { sparaEget(inp.value); buildFoot(); };
+      av.onclick = () => buildFoot();
+      inp.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") ok.click(); if (e.key === "Escape") av.click(); });
+      f.append(inp, ok, av); inp.focus(); inp.select();
+    };
+    f.append(spara);
+    const mo = el("button", "", S.motion ? "MOTION ON" : "MOTION OFF");
+    mo.onclick = () => { setMotion(!S.motion); saveUi(); buildFoot(); };
+    f.append(mo);
     if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => Bridge.send({ t: "settings" }); f.append(b); }
     if (S.web) f.append(el("span", "", S.midi.length ? "MIDI IN · " + S.midi.join(", ").toUpperCase() : "MIDI IN · CONNECT A KEYBOARD"));
     const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => Bridge.send({ t: "panic" }); f.append(pan);
@@ -368,7 +433,7 @@
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), rgb = hexRgb(cssVar("--a"));
     for (const n of keys.lit) keys.lvl.set(n, 1);
-    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * 0.88; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
+    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = S.motion ? v * 0.88 : 0; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
     // glid per ton (för att rita linjen där fingret glider)
     const gl = new Map();
@@ -539,7 +604,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh }) }); }
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
   function ensureAudio() { if (Bridge.mode === "web" && !Bridge.running) Bridge.startAudio().then(() => $("#start").classList.remove("show")); }
@@ -569,9 +634,13 @@
     S.name = S.mpe ? "BRIS MPE" : "BRIS";
     $("#ver").textContent = S.name + " " + D.version; document.title = "BLONDA " + S.name;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
-    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh; } catch (e) { /* */ } }
+    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
+      if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null; } catch (e) { /* */ } }
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
+    S.egna = Array.isArray(st.user) ? st.user.filter((e) => e && e.name && e.values) : [];
+    if (S.eget && !S.egna.some((e) => e.name === S.eget)) S.eget = null;
+    setMotion(S.motion); buildMenu();
     buildPanels();
     onPreset(S.preset);
     buildFoot();

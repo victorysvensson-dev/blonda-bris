@@ -108,6 +108,7 @@ void BrisEditor::sendState() {
     o->setProperty("preset", proc.currentPreset());
     o->setProperty("glid", proc.getGlidMode());
     o->setProperty("mpe", (bool)BRIS_MPE);   // BRIS MPE: varje finger får egen slide
+    o->setProperty("user", proc.loadUserPresets());
     o->setProperty("pattern", proc.getPattern());
     const double ht = proc.getHostTempo();
     o->setProperty("tempo", ht > 0.0 ? ht : proc.getUiTempo());
@@ -149,6 +150,8 @@ void BrisEditor::onMessage(const juce::var& m) {
         proc.uiNote(false, (int)m.getProperty("n", 60), 0);
     } else if (t == "pattern") {
         proc.setPattern(m);
+    } else if (t == "user") {
+        proc.saveUserPresets(m.getProperty("list", {}));
     } else if (t == "slide") {
         proc.uiSlide((int)m.getProperty("n", 60), (float)(double)m.getProperty("v", 0.0));
     } else if (t == "glid") {

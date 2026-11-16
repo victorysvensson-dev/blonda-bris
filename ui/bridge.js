@@ -42,6 +42,7 @@ const Bridge = (() => {
     clearTimeout(saveT);
     saveT = setTimeout(() => { try { localStorage.setItem(SPAR, JSON.stringify(st)); } catch (e) { /* privat läge */ } }, 400);
   }
+  function egna() { try { const v = JSON.parse(localStorage.getItem(SPAR + "-egna") || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
   function post(m) { if (node) node.port.postMessage(m); else pending.push(m); }
   function postAllParams() { D.params.forEach((p, i) => post({ t: "param", i, v: st.params[p.id] ?? p.def })); }
 
@@ -108,6 +109,7 @@ const Bridge = (() => {
       case "tempo": st.tempo = m.bpm; post({ t: "tempo", bpm: m.bpm }); save(); break;
       case "glid": post({ t: "glid", m: m.m, v: m.v }); break;
       case "ui": st.ui = m.s; save(); break;
+      case "user": try { localStorage.setItem(SPAR + "-egna", JSON.stringify(m.list || [])); } catch (e) { /* privat läge */ } break;
       case "panic": post({ t: "alloff" }); break;
     }
   }
@@ -120,7 +122,7 @@ const Bridge = (() => {
     if (fresh) st.params = presetValues(st.preset);
     post({ t: "tempo", bpm: st.tempo || 120 });
     if (st.pattern) post({ t: "pattern", rate: st.pattern.rate, notes: st.pattern.notes });
-    on.state && on.state({ t: "state", params: vals(), preset: st.preset, pattern: st.pattern, tempo: st.tempo || 120, hostTempo: false, playing: false, ui: st.ui, standalone: false, web: true });
+    on.state && on.state({ t: "state", params: vals(), preset: st.preset, pattern: st.pattern, tempo: st.tempo || 120, hostTempo: false, playing: false, ui: st.ui, standalone: false, web: true, user: egna() });
   }
 
   return { mode: "web", on, send, start, startAudio, needsGesture: true, get running() { return !!(ctx && ctx.state === "running"); } };
