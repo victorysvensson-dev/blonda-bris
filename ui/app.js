@@ -505,6 +505,11 @@
     buildFoot();
     buildKbar(); S.glid.sent = -1; updGlid(); sendGlid();
     Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
+    // layoutens mätvärden till appen (iOS skriver dem till en fil som CI läser); efter en stund och igen senare
+    const diag = () => { const pr = document.createElement("div"); pr.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
+      document.body.append(pr); const c = getComputedStyle(pr); const kb = $("#keys").getBoundingClientRect();
+      Bridge.send({ t: "diag", s: `sida ${innerWidth}x${innerHeight} skärm ${screen.width}x${screen.height} visual ${visualViewport ? Math.round(visualViewport.height) : "-"} env ${c.paddingTop} ${c.paddingRight} ${c.paddingBottom} ${c.paddingLeft} tangenter ${Math.round(kb.top)}-${Math.round(kb.bottom)} dpr ${devicePixelRatio}` }); pr.remove(); };
+    if (!S.web) { setTimeout(diag, 4000); setTimeout(diag, 20000); }
     if (Bridge.needsGesture) $("#start").classList.add("show");
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };

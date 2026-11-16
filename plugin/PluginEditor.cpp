@@ -35,6 +35,7 @@ juce::WebBrowserComponent::Options webOptions(BrisEditor* self, std::function<vo
 
 #if JUCE_IOS
 bool brisJusteraWebbvy(void* nativeView);   // ios_webbvy.mm
+std::string brisWebbvyInfo(void* nativeView);
 #endif
 
 BrisEditor::BrisEditor(BrisProcessor& p)
@@ -122,6 +123,16 @@ void BrisEditor::sendState() {
 void BrisEditor::onMessage(const juce::var& m) {
     const auto t = m.getProperty("t", "").toString();
     if (t == "hello") { sendState(); return; }
+    if (t == "diag") {
+       #if JUCE_IOS
+        // layoutens mätvärden (sidan + webbvyn) till appens tmp-mapp; CI läser filen i simulatorn
+        juce::String txt = m.getProperty("s", "").toString() + "\n";
+        if (auto* peer = getPeer()) txt << juce::String(brisWebbvyInfo(peer->getNativeHandle())) << "\n";
+        txt << "editor " << getWidth() << "x" << getHeight() << ", justerad " << (webbvyJusterad ? "ja" : "nej") << "\n";
+        juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("bris-layout.txt").appendText(txt);
+       #endif
+        return;
+    }
     if (t == "param") {
         const int i = proc.findParam(m.getProperty("id", "").toString());
         if (i >= 0) { const double v = (double)m.getProperty("v", 0.0); proc.setParamFromUi(i, v); sentValues[(size_t)i] = proc.paramValue(i); }
