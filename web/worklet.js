@@ -25,6 +25,7 @@ class BrisProcessor extends AudioWorkletProcessor {
       case "alloff": e.bris_all_off(); break;
       case "tempo": e.bris_set_tempo(m.bpm); break;
       case "play": e.bris_set_playing(m.on ? 1 : 0); break;
+      case "glid": e.bris_set_glid(m.m | 0, +m.v || 0); break;
       case "pattern":
         e.bris_pattern_begin(m.rate);
         for (const n of m.notes) e.bris_pattern_add(n[0], n[1], n[2], n[3]);

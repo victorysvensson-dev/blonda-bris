@@ -69,6 +69,21 @@ with sync_playwright() as p:
             pg.mouse.move(kb["x"] + 90, kb["y"] + kb["height"] * 0.8); pg.mouse.down(); pg.wait_for_timeout(500)
             s = pg.evaluate("__bris.S.m"); pg.screenshot(path=f"{UT}/tangenter.png"); pg.mouse.up()
             krav(s["mask"] != 0, f"tangent spelar en röst (mask {s['mask']})")
+            # glid: håll en vit tangent nertill och dra rakt upp (förbi de svarta tangenterna) -> samma ton, glidet stiger
+            pg.evaluate("__bris.glidMode(1)")
+            gx = kb["x"] + 34 + (kb["width"] - 34) / round((kb["width"] - 34) / 56) * 1.5   # mitt på andra vita tangenten (D)
+            pg.mouse.move(gx, kb["y"] + kb["height"] * 0.9); pg.mouse.down(); pg.wait_for_timeout(150)
+            n0 = pg.evaluate("[...__bris.keys.down.values()][0].n")
+            for f in range(1, 11): pg.mouse.move(gx, kb["y"] + kb["height"] * (0.9 - 0.08 * f)); pg.wait_for_timeout(30)
+            pg.wait_for_timeout(300)
+            g = pg.evaluate("({ n: [...__bris.keys.down.values()][0].n, v: __bris.S.glid.v, sent: __bris.S.glid.sent })")
+            pg.screenshot(path=f"{UT}/glid.png")
+            krav(g["n"] == n0, f"tonen ligger kvar när fingret glider upp bland de svarta tangenterna ({n0} -> {g['n']})")
+            krav(g["v"] > 0.9 and abs(g["sent"] - g["v"]) < 0.01, f"glidet stiger och skickas ({g})")
+            pg.mouse.up(); pg.wait_for_timeout(100)
+            krav(pg.evaluate("__bris.S.glid.v") == 0 and pg.evaluate("__bris.S.glid.sent") == 0, "glidet går tillbaka när tangenten släpps")
+            pg.click("#kbar .opt[data-m='2']")
+            krav(pg.evaluate("__bris.S.glid.m") == 2, "välja VIBRATO i raden ovanför tangenterna")
             o0 = pg.evaluate("__bris.S.oct"); pg.mouse.click(kb["x"] + 10, kb["y"] + kb["height"] * 0.12)
             krav(pg.evaluate("__bris.S.oct") == o0 + 1, "oktav upp med + vid tangenterna")
         else:
@@ -78,7 +93,7 @@ with sync_playwright() as p:
             for t in ["play", "osc", "filter", "amp", "mod", "fx"]:
                 pg.evaluate(f"__bris.tab('{t}')"); pg.wait_for_timeout(150)
                 ut = pg.evaluate("""(() => { const H = innerHeight, W = innerWidth; const bad = [];
-                    for (const e of document.querySelectorAll('#app header, #tabs2, .panel *, #keys')) { if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
+                    for (const e of document.querySelectorAll('#app header, #tabs2, .panel *, #keys, #kbar *')) { if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
                       const r = e.getBoundingClientRect(); if (r.width && r.height && (r.bottom > H + 1 || r.right > W + 1 || r.top < -1)) bad.push((e.className || e.id || e.tagName) + ':' + Math.round(r.bottom)); }
                     const st = document.querySelector('#stage').getBoundingClientRect();
                     return { bad: bad.slice(0, 4), stage: Math.round(st.height) }; })()""")

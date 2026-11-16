@@ -80,6 +80,40 @@ int main() {
                 KRAV(rr[1] / rr[0] > 0.5 && rr[1] / rr[0] < 2.5 && pk < 2.0, "effektnivå orimlig"); }
         }
     }
+    // glid på tangenterna: varje mål ändrar ljudet, men parametrarnas värden är oförändrade och motorn
+    // får tillbaka exakt sina värden när glidet släpps eller målet byts
+    {
+        const char* namn[] = {"FILTER", "VIBRATO", "TREMOLO", "PWM", "WAH"};
+        const CoreParams& cp = coreParams();
+        for (int mode = 1; mode <= 5; ++mode) {
+            Core a, b;
+            for (Core* c : {&a, &b}) { c->prepare(sr); c->setParam(cp.find("rvb"), 0); c->setParam(cp.find("drive"), 0);
+                c->setParam(cp.find("cut"), 0.35); c->setParam(cp.find("vform"), 1); c->noteOn(57, 100); }
+            double before[64]; for (int i = 0; i < Core::numParams(); ++i) before[i] = a.getParam(i);
+            std::vector<float> L2(B), R2(B); double diff = 0, ea = 0, eb = 0;
+            for (int k = 0; k < (int)(0.8 * sr / B); ++k) {
+                a.setGlid(mode, std::min(1.0, k / 40.0));
+                a.process(L.data(), R.data(), B); b.process(L2.data(), R2.data(), B);
+                for (int s = 1; s < B; ++s) { diff += std::fabs(L[s] - L2[s]); ea += std::fabs(L[s] - L[s - 1]); eb += std::fabs(L2[s] - L2[s - 1]); }
+            }
+            bool same = true;
+            for (int i = 0; i < Core::numParams(); ++i) if (a.getParam(i) != before[i]) same = false;
+            a.setGlid(mode, 0.0);
+            for (int k = 0; k < (int)(0.5 * sr / B); ++k) a.process(L.data(), R.data(), B);
+            bool back = true;
+            for (int i = 0; i < Core::numParams(); ++i) if (cp.brisIdx[i] >= 0 && a.synth().getParam(cp.brisIdx[i]) != a.getParam(i)) back = false;
+            a.setGlid(mode, 1.0); for (int k = 0; k < 20; ++k) a.process(L.data(), R.data(), B);
+            a.setGlid(0, 0.0); a.process(L.data(), R.data(), B);
+            bool off = true;
+            for (int i = 0; i < Core::numParams(); ++i) if (cp.brisIdx[i] >= 0 && a.synth().getParam(cp.brisIdx[i]) != a.getParam(i)) off = false;
+            std::printf("glid %-8s skillnad %.1f, ljusare %.2fx\n", namn[mode - 1], diff, ea / eb);
+            KRAV(diff > 50.0, "glid %s ändrar inte ljudet", namn[mode - 1]);
+            KRAV(same, "glid %s ändrade parametrarnas värden", namn[mode - 1]);
+            KRAV(back, "glid %s: motorn fick inte tillbaka sina värden när glidet släpptes", namn[mode - 1]);
+            KRAV(off, "glid %s: motorn fick inte tillbaka sina värden när glidet stängdes av", namn[mode - 1]);
+            if (mode == 1) KRAV(ea / eb > 1.3, "glid FILTER öppnar inte filtret (%.2fx)", ea / eb);
+        }
+    }
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;

@@ -81,8 +81,14 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
 .tab-play .panel { gap: 0; }
 
 /* ---------------------------------------------------------------- tangenter */
-#keys { flex: none; height: clamp(90px, 18vh, 160px); margin-top: 16px; position: relative; z-index: 1; }
-#keys canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+#keys { flex: none; height: clamp(118px, 22vh, 196px); margin-top: 14px; position: relative; z-index: 1; display: flex; flex-direction: column; }
+#keys canvas { width: 100%; flex: 1; min-height: 0; display: block; touch-action: none; }
+#kbar { flex: none; display: flex; align-items: center; gap: 22px; height: 28px; margin: 0 0 8px 34px; }
+#kbar .ttl { margin: 0; font-size: 10px; white-space: nowrap; }
+#kbar .choice { flex-wrap: nowrap; gap: 0 18px; }
+#kbar .opt { font-size: 10px; letter-spacing: .22em; gap: 8px; padding: 6px 0; }
+#kbar .opt i { width: 5px; height: 5px; }
+#kbar .s { display: none; }
 
 /* ---------------------------------------------------------------- menyn (ljudlistan) */
 #menu { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
@@ -127,11 +133,11 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
   .ttl { margin-bottom: 12px; }
   .sliders { gap: 12px; }
   .slider .tr { height: 30px; }
-  #keys { height: clamp(100px, 16vh, 190px); margin-top: 14px; }
+  #keys { height: clamp(128px, 20vh, 224px); margin-top: 12px; }
   /* PLAY: blomman stort, ljudväljaren, tangenter */
   .tab-play #right { display: none; }
   .tab-play .browser .ttl { display: none; }
-  .tab-play #keys { height: clamp(120px, 21vh, 230px); }
+  .tab-play #keys { height: clamp(150px, 25vh, 264px); }
   /* inställningsflikarna: ljudväljaren finns i menyn, blomman tar resten */
   #app:not(.tab-play) #left .browser { display: none; }
   #app:not(.tab-play) #left { gap: 0; }
@@ -155,6 +161,14 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
   .wave-wrap { display: none; }
   .knob { gap: 6px; }
   .knob canvas { width: 28px; height: 28px; }
-  #keys { height: clamp(64px, 22vh, 110px); margin-top: 8px; }
+  #keys { height: clamp(92px, 30vh, 146px); margin-top: 6px; }
+  #kbar { height: 22px; margin-bottom: 4px; }
+}
+/* smalt: korta namn och ingen rubrik */
+@media (max-width: 600px) {
+  #kbar { gap: 16px; margin-left: 0; }
+  #kbar .choice { flex: 1; justify-content: space-between; gap: 0; }
+  #kbar .l { display: none; }
+  #kbar .s { display: inline; }
 }
 @media (max-height: 330px) { #keys { display: none; } }

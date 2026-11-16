@@ -77,6 +77,8 @@ public:
         rum_.setParam(rum_.findParam("lowc"), 0.2);
         iWet_ = rum_.findParam("wet"); iSize_ = rum_.findParam("size"); iDecay_ = rum_.findParam("decay");
         iDrive_ = vibe_.findParam("drive"); iOut_ = vibe_.findParam("outdb");
+        for (int k = 0; k < kNumGlidTarget; ++k) glidIdx_[k] = cp.find(kGlid[k].id);
+        iRate_ = cp.find("lrate");
         applyExtra();
     }
 
@@ -110,7 +112,19 @@ public:
         val_[i] = v;
         if (cp.brisIdx[i] >= 0) synth_.setParam(cp.brisIdx[i], v);
         else applyExtra();
+        if (glidMode_ > 0 && glidApplied_ > 0.0) applyGlid();   // parametern som glider får glidet ovanpå
     }
+
+    // ---------------------------------------------------------------- glid på tangenterna
+    // Fingret glider uppåt på en tangent som hålls -> amount 0..1. Läggs ovanpå målparametern i ljudtråden,
+    // utan att ändra parameterns sparade värde (getParam, automation och ljudets värden är oförändrade).
+    // mode: 0 av, 1 FILTER, 2 VIBRATO, 3 TREMOLO, 4 PWM, 5 WAH
+    void setGlid(int mode, double amount) {
+        mode = std::max(0, std::min(kNumGlidTarget, mode));
+        if (mode != glidMode_) { glidRestore(); glidMode_ = mode; glidApplied_ = 0.0; glidSm_ = 0.0; }
+        glidTarget_ = mode > 0 ? std::min(1.0, std::max(0.0, amount)) : 0.0;
+    }
+    int glidMode() const { return glidMode_; }
 
     // Räknar ut alla parametrars värden efter att fabriksljud `index` valts, utgående från `current`
     // (samma regler som Max-pluggen: allt som ljudet inte nämner får standardvärdet, utom volym/böjomfång).
@@ -164,6 +178,14 @@ public:
         int done = 0;
         while (done < n) {
             int chunk = n - done;
+            // glidet utjämnas och läggs på i bitar om 32 sampel (ingen hackig filtersvepning)
+            const bool glid = glidMode_ > 0 && (glidSm_ > 1e-5 || glidTarget_ > 0.0);
+            if (glid) {
+                chunk = std::min(chunk, 32);
+                glidSm_ += (glidTarget_ - glidSm_) * (1.0 - std::exp(-chunk / (sr_ * 0.025)));
+                if (glidTarget_ <= 0.0 && glidSm_ < 1e-4) glidSm_ = 0.0;
+                applyGlid();
+            }
             if (playing_) {
                 const double stepLen = sr_ * 60.0 / bpm_ / pattern_.rate;
                 if (seqPos_ <= 0.0) { advanceStep(); seqPos_ += stepLen; }
@@ -192,6 +214,38 @@ public:
     bris::Bris& synth() { return synth_; }
 
 private:
+    struct GlidTarget { const char* id; double depth; bool rate; };
+    static constexpr int kNumGlidTarget = 5;
+    static constexpr GlidTarget kGlid[kNumGlidTarget] = {
+        {"cut", 0.42, false},      // FILTER: öppnar filtret (ca 4 oktaver vid fullt glid)
+        {"lfoosc", 0.28, true},    // VIBRATO: tonhöjd, upp till knappt en halvton
+        {"lfoamp", 0.70, true},    // TREMOLO: volymen pulserar
+        {"lfopwm", 0.80, false},   // PWM: pulsbredden svävar
+        {"lfocut", 0.60, false},   // WAH: LFO:n på filtret
+    };
+    static constexpr double kGlidRate = 0.6;  // vibrato/tremolo: LFO minst ca 6 Hz medan man glider
+
+    void applyGlid() {
+        const CoreParams& cp = coreParams();
+        const GlidTarget& g = kGlid[glidMode_ - 1];
+        const int i = glidIdx_[glidMode_ - 1];
+        if (i < 0) return;
+        const ParamInfo& p = cp.info[i];
+        synth_.setParam(cp.brisIdx[i], std::min(p.max, std::max(p.min, val_[i] + glidSm_ * g.depth * (p.max - p.min))));
+        if (g.rate && iRate_ >= 0) {
+            const double base = val_[iRate_], to = std::max(base, kGlidRate);
+            synth_.setParam(cp.brisIdx[iRate_], base + (to - base) * std::min(1.0, glidSm_ * 4.0));
+        }
+        glidApplied_ = glidSm_;
+    }
+    void glidRestore() {
+        if (glidMode_ <= 0) return;
+        const CoreParams& cp = coreParams();
+        const int i = glidIdx_[glidMode_ - 1];
+        if (i >= 0) synth_.setParam(cp.brisIdx[i], val_[i]);
+        if (iRate_ >= 0) synth_.setParam(cp.brisIdx[iRate_], val_[iRate_]);
+    }
+
     void applyExtra() {
         const CoreParams& cp = coreParams();
         double rvb = val_[cp.find("rvb")], rsize = val_[cp.find("rsize")], drive = val_[cp.find("drive")];
@@ -231,6 +285,8 @@ private:
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
+    int glidIdx_[5]{-1, -1, -1, -1, -1}, iRate_ = -1, glidMode_ = 0;
+    double glidTarget_ = 0.0, glidSm_ = 0.0, glidApplied_ = 0.0;
     bool rvbOn_ = false, driveOn_ = false;
     double val_[64]{};
     double sr_ = 48000.0, bpm_ = 120.0;

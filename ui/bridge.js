@@ -106,6 +106,7 @@ const Bridge = (() => {
       case "pattern": st.pattern = { rate: m.rate, low: m.low, rows: m.rows, notes: m.notes, plant: m.plant, edited: m.edited }; post({ t: "pattern", rate: m.rate, notes: m.notes }); save(); break;
       case "play": post({ t: "play", on: m.on }); break;
       case "tempo": st.tempo = m.bpm; post({ t: "tempo", bpm: m.bpm }); save(); break;
+      case "glid": post({ t: "glid", m: m.m, v: m.v }); break;
       case "ui": st.ui = m.s; save(); break;
       case "panic": post({ t: "alloff" }); break;
     }

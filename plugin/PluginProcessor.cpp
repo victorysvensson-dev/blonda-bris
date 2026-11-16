@@ -149,6 +149,7 @@ void BrisProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuf
     if (const int pr = playReq.exchange(-1); pr >= 0) core.setPlaying(pr == 1);
     seqPlaying.store(core.playing());
     if (panic.exchange(false)) core.allNotesOff();
+    core.setGlid(glidMode.load(), glidAmount.load());
     // toner från gränssnittet
     {
         const auto r = noteFifo.read(noteFifo.getNumReady());

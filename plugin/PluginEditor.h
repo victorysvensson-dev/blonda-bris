@@ -24,6 +24,9 @@ private:
     uint32_t lastNc = 0;
     double sentHostTempo = -1.0;
     bool sentPlaying = false;
+   #if JUCE_IOS
+    bool webbvyJusterad = false;   // WKWebView justerad så att den täcker hela skärmen
+   #endif
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BrisEditor)
 };

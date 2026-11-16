@@ -5,16 +5,18 @@
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
 
-static void justera(UIView* v) {
+static bool justera(UIView* v) {
     if ([v isKindOfClass:[WKWebView class]]) {
         UIScrollView* sv = ((WKWebView*) v).scrollView;
         sv.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
         sv.bounces = NO;            // sidan skrollar aldrig; inget gummiband när man drar på tangenterna
-        return;
+        return true;
     }
-    for (UIView* s in v.subviews) justera(s);
+    for (UIView* s in v.subviews) if (justera(s)) return true;
+    return false;
 }
 
-void brisJusteraWebbvy(void* nativeView) {
-    if (nativeView != nullptr) justera((__bridge UIView*) nativeView);
+// true när webbvyn hittades och justerades (den skapas av JUCE en stund efter fönstret)
+bool brisJusteraWebbvy(void* nativeView) {
+    return nativeView != nullptr && justera((__bridge UIView*) nativeView);
 }

@@ -44,6 +44,7 @@ EXPORT(bris_get_param) double bris_get_param(int i) { return core->getParam(i); 
 EXPORT(bris_load_preset) void bris_load_preset(int i) { core->loadPreset(i); }
 
 EXPORT(bris_set_tempo) void bris_set_tempo(double bpm) { core->setTempo(bpm); }
+EXPORT(bris_set_glid) void bris_set_glid(int mode, double amount) { core->setGlid(mode, amount); }
 EXPORT(bris_set_playing) void bris_set_playing(int on) { core->setPlaying(on != 0); }
 EXPORT(bris_pattern_begin) void bris_pattern_begin(int rate) { pend = Pattern{}; pend.rate = rate; }
 EXPORT(bris_pattern_add) void bris_pattern_add(int step, int len, int note, int vel) {

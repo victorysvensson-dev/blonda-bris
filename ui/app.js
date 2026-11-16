@@ -313,19 +313,22 @@
   function closeMenu() { $("#menu").classList.remove("open"); }
 
   // ---------------------------------------------------------------- tangenterna
-  // Minimalistiska: en ljus yta med hårfina skiljelinjer och mjuka svarta tangenter. En tryckt tangent tänds
-  // underifrån i växtens färg och tonar ut lugnt. Till vänster en smal kant med oktav: + / C3 / −.
+  // Lugna, ljusa tangenter som egna mjuka plattor, svarta tangenter i bläckfärg. En tryckt tangent tänds underifrån
+  // i växtens färg. Glid: håll tangenter och för fingrarna rakt uppåt -> ljudet moduleras (målet väljs i raden
+  // ovanför: FILTER, VIBRATO, TREMOLO, PWM, WAH). Till vänster oktaven: + / C3 / −.
+  const GLID = [["OFF", "OFF"], ["FILTER", "FILT"], ["VIBRATO", "VIB"], ["TREMOLO", "TREM"], ["PWM", "PWM"], ["WAH", "WAH"]];
+  S.glid = { m: 1, v: 0, sent: -1 };
   const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map() };
-  const GUT = 34;
+  const GUT = 34, GAP = 3;
   function keyLayout() {
     const w = keys.cv.clientWidth - GUT, h = keys.cv.clientHeight;
-    const nW = clamp(Math.round(w / 54), 7, 26);
+    const nW = clamp(Math.round(w / 56), 7, 26);
     const ww = w / nW, base = 48 + S.oct * 12;
     const whites = [], blacks = [];
     let n = base;
     while (whites.length < nW) {
       const pc = n % 12;
-      if ([1, 3, 6, 8, 10].includes(pc)) blacks.push({ n, x: GUT + whites.length * ww - ww * 0.24, w: ww * 0.48, h: h * 0.58 });
+      if ([1, 3, 6, 8, 10].includes(pc)) blacks.push({ n, x: GUT + whites.length * ww - ww * 0.27, w: ww * 0.54, h: h * 0.6, black: true });
       else whites.push({ n, x: GUT + whites.length * ww, w: ww, h });
       n++;
     }
@@ -333,8 +336,8 @@
   }
   function keyAt(x, y) {
     const L = keyLayout();
-    for (const b of L.blacks) if (x >= b.x && x < b.x + b.w && y < b.h) return { n: b.n, y: y / b.h };
-    for (const k of L.whites) if (x >= k.x && x < k.x + k.w) return { n: k.n, y: y / k.h };
+    for (const b of L.blacks) if (x >= b.x && x < b.x + b.w && y < b.h) return { ...b, y: y / b.h };
+    for (const k of L.whites) if (x >= k.x && x < k.x + k.w) return { ...k, y: y / k.h };
     return null;
   }
   function drawKeys() {
@@ -342,53 +345,113 @@
     const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const L = keyLayout(), acc = cssVar("--a"), rgb = hexRgb(acc);
+    const L = keyLayout(), rgb = hexRgb(cssVar("--a"));
     for (const n of keys.lit) keys.lvl.set(n, 1);
     for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * 0.88; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
-    // oktavkanten
-    g.fillStyle = "rgba(43,37,33,0.45)"; g.font = "500 13px 'BLONDA Mono'"; g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText("+", GUT / 2 - 4, h * 0.2); g.fillText("−", GUT / 2 - 4, h * 0.8);
-    g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.35)"; g.fillText("C" + (3 + S.oct), GUT / 2 - 4, h * 0.5);
-    g.fillStyle = "rgba(255,255,255,0.34)"; roundRect(g, GUT, 0, L.w, h, 8); g.fill();
+    // glid per ton (för att rita linjen där fingret glider)
+    const gl = new Map();
+    for (const d of keys.down.values()) gl.set(d.n, d);
+    // oktaven
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "rgba(43,37,33,0.42)"; g.font = "400 15px 'BLONDA Mono'";
+    g.fillText("+", GUT / 2 - 5, h * 0.2); g.fillText("−", GUT / 2 - 5, h * 0.8);
+    g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.34)"; g.fillText("C" + (3 + S.oct), GUT / 2 - 5, h * 0.5);
+    // vita tangenter: egna plattor
     for (const k of L.whites) {
-      const v = lv(k.n);
+      const v = lv(k.n), x = k.x + GAP / 2, kw = k.w - GAP;
+      g.fillStyle = "rgba(255,255,255,0.66)"; roundRect(g, x, 0.5, kw, h - 1, 7); g.fill();
+      g.strokeStyle = "rgba(43,37,33,0.07)"; g.lineWidth = 1; roundRect(g, x + 0.5, 0.5, kw - 1, h - 1, 7); g.stroke();
       if (v > 0) {
-        const gr = g.createLinearGradient(0, h, 0, h * 0.25);
-        gr.addColorStop(0, `rgba(${rgb},${0.30 * v})`); gr.addColorStop(1, `rgba(${rgb},0)`);
-        g.fillStyle = gr; g.fillRect(k.x + 1, 0, k.w - 2, h);
-        g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, k.x + k.w * 0.3, h - 7, k.w * 0.4, 2, 1); g.fill();
+        const gr = g.createLinearGradient(0, h, 0, h * 0.2);
+        gr.addColorStop(0, `rgba(${rgb},${0.34 * v})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+        g.save(); roundRect(g, x, 0, kw, h, 7); g.clip(); g.fillStyle = gr; g.fillRect(x, 0, kw, h); g.restore();
+        g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, x + kw * 0.32, h - 9, kw * 0.36, 2, 1); g.fill();
       }
-      if (k.x > GUT + 1) { g.fillStyle = "rgba(43,37,33,0.075)"; g.fillRect(Math.round(k.x), 10, 1, h - 20); }
     }
+    // svarta tangenter: bläck, rundade nertill, med luft runt sig
     for (const b of L.blacks) {
-      const v = lv(b.n), rr = Math.min(6, b.w / 2);
-      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000"; roundRect(g, b.x - 1, 0, b.w + 2, b.h + 1, rr); g.fill();
+      const v = lv(b.n), rr = Math.min(6, b.w / 2.4);
+      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
+      roundRect(g, b.x - GAP, -1, b.w + GAP * 2, b.h + GAP + 1, rr + GAP); g.fill();
       g.globalCompositeOperation = "source-over";
-      g.fillStyle = "rgba(43,37,33,0.24)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();
-      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.85 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
+      const gr = g.createLinearGradient(0, 0, 0, b.h);
+      gr.addColorStop(0, "rgba(43,37,33,0.70)"); gr.addColorStop(1, "rgba(43,37,33,0.56)");
+      g.fillStyle = gr; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();
+      g.fillStyle = "rgba(255,255,255,0.10)"; roundRect(g, b.x + b.w * 0.2, b.h - 7, b.w * 0.6, 2, 1); g.fill();
+      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.9 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
+    }
+    // glidet: en tunn linje från där fingret tryckte till där det är nu, och en prick som lyser starkare ju högre
+    if (S.glid.m > 0) for (const d of gl.values()) {
+      if (d.up <= 0.01) continue;
+      const cx = d.x + d.w / 2, y0 = d.y0, y1 = Math.max(4, d.y);
+      const gr = g.createLinearGradient(0, y0, 0, y1);
+      gr.addColorStop(0, `rgba(${rgb},0)`); gr.addColorStop(1, `rgba(${rgb},${0.35 + 0.6 * d.up})`);
+      g.strokeStyle = gr; g.lineWidth = 2; g.lineCap = "round";
+      g.beginPath(); g.moveTo(cx, y0); g.lineTo(cx, y1); g.stroke();
+      g.fillStyle = `rgba(${rgb},${0.18 * d.up})`; g.beginPath(); g.arc(cx, y1, 9 + 7 * d.up, 0, TAU); g.fill();
+      g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(cx, y1, 3, 0, TAU); g.fill();
     }
   }
   function setOct(o) {
     o = clamp(o, -3, 3); if (o === S.oct) return;
-    for (const n of keys.down.values()) Bridge.send({ t: "off", n });
-    keys.down.clear(); keys.lit.clear(); S.oct = o; saveUi();
+    for (const d of keys.down.values()) Bridge.send({ t: "off", n: d.n });
+    keys.down.clear(); keys.lit.clear(); S.oct = o; updGlid(); saveUi();
+  }
+  // glidets värde = det högsta av fingrarna som hålls; skickas högst en gång per bildruta
+  function updGlid() {
+    let v = 0;
+    for (const d of keys.down.values()) v = Math.max(v, d.up);
+    S.glid.v = S.glid.m > 0 ? v : 0;
+  }
+  function sendGlid() {
+    if (Math.abs(S.glid.v - S.glid.sent) < 0.004 && !(S.glid.v === 0 && S.glid.sent !== 0)) return;
+    S.glid.sent = S.glid.v; Bridge.send({ t: "glid", m: S.glid.m, v: +S.glid.v.toFixed(4) });
+  }
+  function setGlidMode(m) {
+    S.glid.m = m; S.glid.sent = -1; updGlid();
+    document.querySelectorAll("#kbar .opt").forEach((o) => o.classList.toggle("on", +o.dataset.m === m));
+    Bridge.send({ t: "glid", m, v: S.glid.v }); saveUi();
+  }
+  function buildKbar() {
+    const bar = $("#kbar"); bar.innerHTML = "";
+    bar.append(el("span", "ttl", '<span class="l">SLIDE UP</span><span class="s">SLIDE</span>'));
+    const row = el("div", "choice");
+    GLID.forEach(([lang, kort], m) => {
+      const o = el("button", "opt" + (m === S.glid.m ? " on" : ""), `<i></i><span class="l">${lang}</span><span class="s">${kort}</span>`);
+      o.dataset.m = m; o.onclick = () => setGlidMode(m); row.append(o);
+    });
+    bar.append(row);
   }
   function keysInput() {
     const cv = keys.cv;
-    const press = (pid, x, y) => {
-      const k = keyAt(x, y); const old = keys.down.get(pid);
-      if (k && old === k.n) return;
-      if (old !== undefined) { Bridge.send({ t: "off", n: old }); keys.lit.delete(old); keys.down.delete(pid); }
-      if (k) { const v = Math.round(clamp(50 + k.y * 77, 1, 127)); Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); keys.down.set(pid, k.n); }
+    const kh = () => cv.clientHeight;
+    const release = (pid) => { const d = keys.down.get(pid); if (!d) return; Bridge.send({ t: "off", n: d.n }); keys.lit.delete(d.n); keys.down.delete(pid); };
+    const start = (pid, k, y) => {
+      const v = Math.round(clamp(50 + k.y * 77, 1, 127));
+      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n);
+      keys.down.set(pid, { n: k.n, x: k.x, w: k.w, black: !!k.black, y0: y, y, up: 0 });
     };
     cv.addEventListener("pointerdown", (e) => {
       const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       if (x < GUT) { if (y < r.height * 0.4) setOct(S.oct + 1); else if (y > r.height * 0.6) setOct(S.oct - 1); return; }
-      cv.setPointerCapture(e.pointerId); press(e.pointerId, x, y); e.preventDefault();
+      const k = keyAt(x, y); if (!k) return;
+      cv.setPointerCapture(e.pointerId); release(e.pointerId); start(e.pointerId, k, y); e.preventDefault();
     });
-    cv.addEventListener("pointermove", (e) => { if (!keys.down.has(e.pointerId)) return; const r = cv.getBoundingClientRect(); press(e.pointerId, e.clientX - r.left, e.clientY - r.top); });
-    const up = (e) => { const old = keys.down.get(e.pointerId); if (old !== undefined) { Bridge.send({ t: "off", n: old }); keys.lit.delete(old); keys.down.delete(e.pointerId); } };
+    cv.addEventListener("pointermove", (e) => {
+      const d = keys.down.get(e.pointerId); if (!d) return;
+      const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      // fingret stannar på sin tangent så länge det är inom tangentens bredd (glider man uppåt in bland de svarta
+      // tangenterna byts inte tonen); går det åt sidan till en annan tangent spelas den (glissando) och glidet börjar om
+      if (x < d.x - 2 || x > d.x + d.w + 2) {
+        const k = keyAt(x, y);
+        if (k && k.n !== d.n) { release(e.pointerId); start(e.pointerId, k, y); updGlid(); }
+        return;
+      }
+      d.y = y; d.up = clamp((d.y0 - y) / (kh() * 0.55), 0, 1);
+      updGlid();
+    });
+    const up = (e) => { release(e.pointerId); updGlid(); };
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   }
   const KB = "awsedftgyhujkolp";
@@ -408,7 +471,7 @@
   });
 
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct }) }); }
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
   function ensureAudio() { if (Bridge.mode === "web" && !Bridge.running) Bridge.startAudio().then(() => $("#start").classList.remove("show")); }
@@ -427,6 +490,7 @@
   buildPanels();
   buildMenu();
   keys.cv = $("#keys canvas");
+  buildKbar();
   keysInput();
   $("#menuBtn").onclick = openMenu; $("#menuClose").onclick = closeMenu; $("#menu .shade").onclick = closeMenu;
   document.addEventListener("pointerdown", () => ensureAudio(), { capture: true });
@@ -434,11 +498,12 @@
   Bridge.on.state = (st) => {
     S.standalone = !!st.standalone; S.web = !!st.web;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
-    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; } catch (e) { /* */ } }
+    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; } catch (e) { /* */ } }
     S.preset = st.preset ?? S.preset;
     buildPanels();
     onPreset(S.preset);
     buildFoot();
+    buildKbar(); S.glid.sent = -1; updGlid(); sendGlid();
     Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
     if (Bridge.needsGesture) $("#start").classList.add("show");
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
@@ -458,10 +523,11 @@
     envSm += (S.m.env - envSm) * 0.12;
     drawWave(now / 1000);
     drawKeys();
+    sendGlid();
   }
   requestAnimationFrame(loop);
   window.addEventListener("resize", () => knobEls.forEach((k) => k._draw()));
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
-  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); } };   // för tester
+  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode };   // för tester
 })();

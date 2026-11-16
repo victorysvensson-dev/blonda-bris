@@ -34,7 +34,7 @@ juce::WebBrowserComponent::Options webOptions(BrisEditor* self, std::function<vo
 }  // namespace
 
 #if JUCE_IOS
-void brisJusteraWebbvy(void* nativeView);   // ios_webbvy.mm
+bool brisJusteraWebbvy(void* nativeView);   // ios_webbvy.mm
 #endif
 
 BrisEditor::BrisEditor(BrisProcessor& p)
@@ -72,11 +72,7 @@ void BrisEditor::paint(juce::Graphics& g) { g.fillAll(juce::Colour(0xfff6f1f4));
 void BrisEditor::resized() {
     web.setBounds(getLocalBounds());
    #if JUCE_IOS
-    // WKWebView skapas när komponenten får ett fönster: justera den då och vid varje storleksändring
-    juce::MessageManager::callAsync([safe = juce::Component::SafePointer<BrisEditor>(this)] {
-        if (safe != nullptr)
-            if (auto* peer = safe->getPeer()) brisJusteraWebbvy(peer->getNativeHandle());
-    });
+    webbvyJusterad = false;   // timern justerar webbvyn igen (iOS kan ha bytt ut den vid storleksändringen)
    #endif
 }
 
@@ -141,6 +137,8 @@ void BrisEditor::onMessage(const juce::var& m) {
         proc.uiNote(false, (int)m.getProperty("n", 60), 0);
     } else if (t == "pattern") {
         proc.setPattern(m);
+    } else if (t == "glid") {
+        proc.uiGlid((int)m.getProperty("m", 0), (float)(double)m.getProperty("v", 0.0));
     } else if (t == "play") {
         proc.setPlaying((bool)m.getProperty("on", false));
         sentPlaying = (bool)m.getProperty("on", false);
@@ -157,6 +155,10 @@ void BrisEditor::onMessage(const juce::var& m) {
 }
 
 void BrisEditor::timerCallback() {
+   #if JUCE_IOS
+    if (!webbvyJusterad)
+        if (auto* peer = getPeer()) webbvyJusterad = brisJusteraWebbvy(peer->getNativeHandle());
+   #endif
     if (!ready) return;
     // parametrar som ändrats av värden (automation, program) eller av ett ljudbyte
     juce::DynamicObject::Ptr changed;
