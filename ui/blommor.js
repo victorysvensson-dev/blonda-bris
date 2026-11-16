@@ -148,14 +148,17 @@ void main() {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
 
-    // blommans ruta i canvasen: så stor som möjligt, centrerad (som i designen)
+    // scenen (blommans plats) inne i canvasen, som kan vara större än scenen så att blomman får gå lite utanför
+    function stageBox() {
+      const st = glCv.parentElement.getBoundingClientRect(), c = glCv.getBoundingClientRect();
+      return { x: st.left - c.left, y: st.top - c.top, w: st.width, h: st.height };
+    }
+    // blommans ruta: så stor som scenen tillåter, centrerad (som i designen)
     function rect(cfg, img) {
-      const iw = img.naturalWidth, ih = img.naturalHeight;
-      // canvasen är scenen + 70 px åt sidorna (blomman får gå lite utanför), men panelerna ska aldrig täckas
-      const sw = Math.max(100, W - 175), sh = Math.max(100, H - 40);
-      const sc = Math.min((sw * 1.0) / iw, (sh * 0.95) / ih) * cfg.scale;
+      const iw = img.naturalWidth, ih = img.naturalHeight, b = stageBox();
+      const sc = Math.min((b.w * 1.02) / iw, (b.h * 0.98) / ih);
       const w = iw * sc, h = ih * sc;
-      return [W / 2 - w / 2 + cfg.dx * W, H * 0.5 - h / 2, w, h];
+      return [b.x + b.w / 2 - w / 2, b.y + b.h / 2 - h / 2, w, h];
     }
 
     function drawGL(cfg, img, t, alpha) {
@@ -215,8 +218,11 @@ void main() {
 
       // bakom: glöd och ring med LFO-punkt
       bctx.setTransform(dpr, 0, 0, dpr, 0, 0); bctx.clearRect(0, 0, W, H);
-      const R = Math.min(W * 0.36, H * 0.46), cx = W / 2, cy = H * 0.5;
-      const g = bctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.4);
+      const sb = stageBox();
+      const R = Math.max(10, Math.min(sb.w * 0.43, sb.h * 0.47)), cx = sb.x + sb.w / 2, cy = sb.y + sb.h / 2;
+      // glöden tonar ut helt innan canvasens kant, annars syns en rak skarv där den klipps
+      const gR = Math.max(10, Math.min(R * 1.4, cx, W - cx, cy, H - cy));
+      const g = bctx.createRadialGradient(cx, cy, 0, cx, cy, gR);
       g.addColorStop(0, `rgba(255,255,255,${0.35 + envS * 0.25})`);
       g.addColorStop(0.55, `rgba(${acc[0]},${acc[1]},${acc[2]},${0.03 + envS * 0.08 + pkS * 0.04})`);
       g.addColorStop(1, `rgba(${acc[0]},${acc[1]},${acc[2]},0)`);
@@ -289,17 +295,12 @@ void main() {
 
     return {
       webgl: !!gl,
-      // plant: { photo, hue (grader), sat }, preset: ljudets nummer (ger variant), nr: nummer inom växten
-      set(plant, preset, nr, col) {
-        const rnd = rng(preset * 2654435761 + 7);
+      // plant: { id, photo, hue (grader), sat }. Samma bild för alla ljud i växten (vänds eller färgas inte om).
+      set(plant, col) {
         const meta = (info && info[plant.photo]) || { fot: [0.5, 1] };
-        want = {
-          key: plant.id + ":" + preset, photo: plant.photo, foot: meta.fot,
-          hue: ((plant.hue || 0) + (nr > 1 ? (rnd() - 0.5) * 12 : 0)) * Math.PI / 180,
-          sat: plant.sat ?? 1, flip: nr % 2 === 0, rot: nr > 1 ? (rnd() - 0.5) * 0.06 : 0,
-          scale: nr > 1 ? 0.96 + rnd() * 0.06 : 1, dx: 0, ph: rnd() * TAU,
-        };
-        if (cur && cur.key === want.key) want = cur;
+        if (!cur || cur.key !== plant.id) {
+          want = { key: plant.id, photo: plant.photo, foot: meta.fot, hue: (plant.hue || 0) * Math.PI / 180, sat: plant.sat ?? 1, flip: false, rot: 0, scale: 1, dx: 0, ph: 0 };
+        }
         accent = col; acc = hexRgb(col);
         load(plant.photo);
       },

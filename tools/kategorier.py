@@ -157,7 +157,8 @@ def main():
                 plants=[dict(id=v["id"], cat=v["kat"], name=v["namn"], color=v["farg"], bg=v["bg"], photo=v["foto"],
                              hue=v.get("ton", 0), sat=v.get("mattnad", 1), fx=list(v["fx"])) for v in VAXTER],
                 blommor=blom,
-                phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip())
+                phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip(),
+                version=open(os.path.join(ROT, "VERSION")).read().strip())
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
           "window.BRIS_DATA = " + json.dumps(data, ensure_ascii=True, separators=(",", ":")) + ";\n")
     open(os.path.join(ROT, "ui/data.js"), "w", encoding="utf-8").write(js)

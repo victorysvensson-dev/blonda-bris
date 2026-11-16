@@ -24,7 +24,7 @@ def krav(c, msg):
 
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
-    for namn, vp, mobil in [("dator", (1670, 940), False), ("ipad_staende", (820, 1180), True), ("iphone", (393, 852), True), ("auv3_lag", (1024, 360), False)]:
+    for namn, vp, mobil in [("dator", (1670, 940), False), ("ipad_staende", (820, 1180), True), ("ipad13_staende", (1032, 1376), True), ("ipad_liggande", (1180, 820), True), ("iphone", (393, 852), True), ("iphone_se", (375, 667), True), ("iphone_liggande", (852, 393), True), ("auv3_lag", (1024, 360), False)]:
         ctx = b.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=2, has_touch=mobil)
         pg = ctx.new_page()
         logs = []
@@ -34,24 +34,25 @@ with sync_playwright() as p:
         pg.click("#start"); pg.wait_for_timeout(600)
         if namn == "dator":
             krav(pg.evaluate("Bridge.running"), "ljudet startar efter tryck")
-            pg.evaluate("__bris.setPlaying(true)"); pg.wait_for_timeout(2500)
+            pg.evaluate("__bris.note(60, 100); __bris.note(67, 90)"); pg.wait_for_timeout(2000)
             s = pg.evaluate("__bris.S.m")
-            krav(s["step"] >= 0, f"frasen spelar (steg {s['step']})")
             krav(s["nc"] > 0, f"toner räknas ({s['nc']})")
+            krav(pg.evaluate("document.querySelector('#roll') === null && document.querySelector('#play') === null"), "rullen och transporten är borta")
+            krav(pg.evaluate("document.querySelector('#ver').textContent").startswith("BRIS "), "versionen syns")
             krav(s["env"] > 0.01 or s["pk"] > 0.01, f"ljud kommer ut (env {s['env']:.3f}, peak {s['pk']:.3f})")
             pg.screenshot(path=f"{UT}/{namn}_spelar.png")
-            pg.evaluate("__bris.setPlaying(false)")
+            pg.evaluate("__bris.off(60); __bris.off(67)")
             # alla växter
             for pi, pl in enumerate(D["plants"]):
                 first = next(i for i in D["order"] if D["presets"][i]["plant"] == pi)
                 pg.evaluate(f"__bris.selectPreset({first})"); pg.wait_for_timeout(250)
-                pg.evaluate("__bris.setPlaying(true)"); pg.wait_for_timeout(1300)
+                pg.evaluate("__bris.note(60, 100)"); pg.wait_for_timeout(1300)
                 pg.screenshot(path=f"{UT}/vaxt_{pi:02d}_{pl['id']}.png")
-                pg.evaluate("__bris.setPlaying(false)")
+                pg.evaluate("__bris.off(60)")
                 acc = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--a').trim()")
                 krav(acc.lower() == pl["color"].lower(), f"växt {pl['id']}: färg {acc}")
             # flikarna
-            for t in ["osc", "filter", "mod", "fx"]:
+            for t in ["osc", "filter", "amp", "mod", "fx"]:
                 pg.click(f"#tabs button[data-tab={t}]"); pg.wait_for_timeout(300)
                 pg.screenshot(path=f"{UT}/flik_{t}.png")
             pg.click("#tabs button[data-tab=play]")
@@ -64,16 +65,27 @@ with sync_playwright() as p:
             # menyn
             pg.click("#menuBtn"); pg.wait_for_timeout(500); pg.screenshot(path=f"{UT}/meny.png"); pg.click("#menuClose")
             # tangenterna
-            pg.click("#vKeys"); pg.wait_for_timeout(300)
             kb = pg.locator("#keys canvas").bounding_box()
-            pg.mouse.move(kb["x"] + 70, kb["y"] + kb["height"] * 0.8); pg.mouse.down(); pg.wait_for_timeout(500)
+            pg.mouse.move(kb["x"] + 90, kb["y"] + kb["height"] * 0.8); pg.mouse.down(); pg.wait_for_timeout(500)
             s = pg.evaluate("__bris.S.m"); pg.screenshot(path=f"{UT}/tangenter.png"); pg.mouse.up()
             krav(s["mask"] != 0, f"tangent spelar en röst (mask {s['mask']})")
-            pg.click("#vRoll")
+            o0 = pg.evaluate("__bris.S.oct"); pg.mouse.click(kb["x"] + 10, kb["y"] + kb["height"] * 0.12)
+            krav(pg.evaluate("__bris.S.oct") == o0 + 1, "oktav upp med + vid tangenterna")
         else:
-            pg.evaluate("__bris.setPlaying(true)"); pg.wait_for_timeout(1500)
+            pg.evaluate("__bris.note(60, 100)"); pg.wait_for_timeout(1500)
             pg.screenshot(path=f"{UT}/{namn}.png", full_page=False)
-            pg.evaluate("__bris.setPlaying(false)")
+            # allt syns utan att skrolla, på alla flikar
+            for t in ["play", "osc", "filter", "amp", "mod", "fx"]:
+                pg.evaluate(f"__bris.tab('{t}')"); pg.wait_for_timeout(150)
+                ut = pg.evaluate("""(() => { const H = innerHeight, W = innerWidth; const bad = [];
+                    for (const e of document.querySelectorAll('#app header, #tabs2, .panel *, #keys')) { if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
+                      const r = e.getBoundingClientRect(); if (r.width && r.height && (r.bottom > H + 1 || r.right > W + 1 || r.top < -1)) bad.push((e.className || e.id || e.tagName) + ':' + Math.round(r.bottom)); }
+                    const st = document.querySelector('#stage').getBoundingClientRect();
+                    return { bad: bad.slice(0, 4), stage: Math.round(st.height) }; })()""")
+                krav(not ut["bad"], f"{namn} {t}: allt syns ({ut['bad']})")
+                krav(ut["stage"] >= (180 if t == "play" else 60) or namn == "auv3_lag", f"{namn} {t}: blomman får plats ({ut['stage']} px)")
+                if t in ("play", "mod"): pg.screenshot(path=f"{UT}/{namn}_{t}.png")
+            pg.evaluate("__bris.off(60)")
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()
     b.close()

@@ -1,4 +1,5 @@
-// BLONDA BRIS – gränssnittets logik: flikar, rattar, reglage, ljudlistan, vågen, rullen och tangenterna.
+// BLONDA BRIS – gränssnittets logik: flikar, rattar, reglage, ljudlistan, vågen och tangenterna.
+// PLAY = blomman stort och tangenter att spela på. Övriga flikar = ljudets inställningar.
 "use strict";
 
 (() => {
@@ -11,25 +12,25 @@
 
   // ---------------------------------------------------------------- tillstånd
   const S = {
-    v: {}, preset: 65, tab: "play", view: "roll", oct: 0, playing: false, tempo: 120, hostTempo: false,
-    pattern: null, standalone: false, web: Bridge.mode === "web", midi: [],
-    m: { env: 0, lfo: 0, pk: 0, mask: 0, step: -1, nc: 0, scope: null },
+    v: {}, preset: 65, tab: "play", oct: 0, standalone: false, web: Bridge.mode === "web", midi: [],
+    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, scope: null },
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
   const plantOf = (i) => D.plants[D.presets[i].plant];
 
   // ---------------------------------------------------------------- sidorna
   const PAGES = [
-    { id: "play", name: "PLAY", wave: "osc", kt: "AMP", knobs: [["aa", "A"], ["ad", "D"], ["asus", "S"], ["ar", "R"]],
-      rt: "TONE", right: [["s", "cut", "CUTOFF"], ["s", "res", "RESONANCE"], ["s", "chorus", "CHORUS"], ["s", "dmix", "DELAY"], ["s", "rvb", "REVERB"]] },
+    { id: "play", name: "PLAY", rt: "TONE", right: [["s", "cut", "CUTOFF"], ["s", "res", "RESONANCE"], ["s", "rvb", "SPACE"]] },
     { id: "osc", name: "OSC", wave: "osc", kt: "OSC", knobs: [["pw", "PW"], ["sub", "SUB"], ["detune", "DETUNE"], ["porta", "GLIDE"]],
-      rt: "VOICE", right: [["c", "vform", ["SAW", "PULSE", "SAW + PULSE"]], ["c", "lage", ["POLY STEREO", "POLY", "MONO", "UNISON"]], ["s", "uniint", "INTERVAL"], ["s", "bendr", "BEND"]] },
-    { id: "filter", name: "FILTER", wave: "filter", kt: "FILTER ENV", knobs: [["fa", "A"], ["fd", "D"], ["fs", "S"], ["fr", "R"]],
-      rt: "FILTER", right: [["s", "cut", "CUTOFF"], ["s", "res", "RESONANCE"], ["s", "eg1", "ENVELOPE"], ["s", "kbd", "KEY TRACK"], ["s", "velf", "VELOCITY"]] },
+      rt: "VOICE", right: [["c", "vform", ["SAW", "PULSE", "BOTH"]], ["c", "lage", ["STEREO", "POLY", "MONO", "UNISON"]], ["s", "uniint", "INTERVAL"], ["s", "bendr", "BEND"]] },
+    { id: "filter", name: "FILTER", wave: "filter", kt: "ENVELOPE", knobs: [["fa", "A"], ["fd", "D"], ["fs", "S"], ["fr", "R"]],
+      rt: "FILTER", right: [["s", "cut", "CUTOFF"], ["s", "res", "RESONANCE"], ["s", "eg1", "ENVELOPE"], ["s", "kbd", "KEY TRACK"]] },
+    { id: "amp", name: "AMP", wave: "env", kt: "ENVELOPE", knobs: [["aa", "A"], ["ad", "D"], ["asus", "S"], ["ar", "R"]],
+      rt: "AMP", right: [["s", "vela", "VELOCITY"], ["s", "lfoamp", "TREMOLO"], ["s", "vol", "VOLUME"]] },
     { id: "mod", name: "MOD", wave: "lfo", kt: "LFO", knobs: [["lrate", "RATE"], ["lfoosc", "VIB"], ["lfopwm", "PWM"], ["lfocut", "FILT"]],
-      rt: "LFO", right: [["c", "lwave", ["TRIANGLE", "RAMP UP", "RAMP DOWN", "SQUARE", "RANDOM"]], ["s", "lfoamp", "TREMOLO"], ["s", "mwosc", "WHEEL VIB"], ["s", "mwcut", "WHEEL CUT"]] },
+      rt: "SHAPE", right: [["c", "lwave", ["TRI", "UP", "DOWN", "SQR", "RND"]], ["s", "mwosc", "WHEEL VIB"], ["s", "mwcut", "WHEEL CUT"]] },
     { id: "fx", name: "FX", wave: "scope", kt: "CHORUS · DELAY", knobs: [["chorus", "CHORUS"], ["dtime", "TIME"], ["dfb", "FDBK"], ["dmix", "MIX"]],
-      rt: "FX", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SPACE"], ["s", "drive", "DRIVE"], ["s", "vela", "VELOCITY"], ["s", "vol", "VOLUME"]] },
+      rt: "SPACE", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SIZE"], ["s", "drive", "DRIVE"]] },
   ];
 
   function fmt(id, v) {
@@ -138,6 +139,7 @@
     return c;
   }
 
+
   // ---------------------------------------------------------------- vågen (vänster panel)
   let waveCv = null, waveType = "osc";
   function drawWave(t) {
@@ -190,6 +192,15 @@
         ys[i] = h * 0.9 - clamp(m, 0, 3.6) / 3.6 * h * 0.8 * 1.0 - 0;
       }
       dots = [[clamp(v.cut, 0, 1) * w, ys[Math.round(clamp(v.cut, 0, 1) * N)]]];
+    } else if (waveType === "env") {
+      // ADSR som form: attack, decay, sustain, release (tiderna 0..1 visas proportionellt)
+      const a = 0.04 + v.aa * 0.3, d = 0.04 + v.ad * 0.3, r = 0.04 + v.ar * 0.3, s = v.asus;
+      const tot = a + d + 0.25 + r, N = 160;
+      for (let i = 0; i <= N; i++) {
+        const x = (i / N) * tot; let y;
+        if (x < a) y = x / a; else if (x < a + d) y = 1 - (1 - s) * ((x - a) / d); else if (x < a + d + 0.25) y = s; else y = s * (1 - (x - a - d - 0.25) / r);
+        ys[i] = h * 0.88 - clamp(y, 0, 1) * h * 0.72;
+      }
     } else {
       const sc = S.m.scope; const N = 160;
       let mx = 0.05;
@@ -214,38 +225,43 @@
     if (dots) { g.fillStyle = acc; for (const [x, y] of dots) { g.beginPath(); g.arc(x, y, 3.5, 0, TAU); g.fill(); } }
   }
 
-  // ---------------------------------------------------------------- bygg panelerna
-  let knobEls = [];
+
+  // ---------------------------------------------------------------- bygg sidan
+  let knobEls = [], browserEl = null;
   function buildPanels() {
     const pg = PAGES.find((p) => p.id === S.tab) || PAGES[0];
     for (const k in binds) delete binds[k];
     knobEls = [];
     const L = $("#left"), Rt = $("#right");
     L.innerHTML = ""; Rt.innerHTML = "";
+    document.getElementById("app").className = "tab-" + pg.id;
     // ljudväljaren
     const br = el("div", "browser");
     br.append(el("div", "ttl", "SOUND"));
     const row = el("div", "row");
-    const prev = el("button", "arr", '<svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M15 5l-7 7 7 7"/></svg>');
-    const next = el("button", "arr", '<svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M9 5l7 7-7 7"/></svg>');
+    const prev = el("button", "arr", '<svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>');
+    const next = el("button", "arr", '<svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>');
     const cur = el("button", "cur"); const nm = el("div", "nm");
     prev.onclick = () => step(-1); next.onclick = () => step(1); cur.onclick = openMenu;
-    row.append(prev, cur, next); br.append(row, nm);
+    const mid = el("div", "mid"); mid.append(cur, nm);
+    row.append(prev, mid, next); br.append(row);
     br._upd = () => { const pr = D.presets[S.preset], pl = plantOf(S.preset); cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase(); };
     browserEl = br; br._upd();
     L.append(br);
-    const ww = el("div", "wave-wrap"); waveCv = el("canvas", "wave"); ww.append(waveCv); L.append(ww); waveType = pg.wave;
-    const kn = el("div", "knobs");
-    pg.knobs.forEach(([id, lab]) => { const k = knob(id, lab); kn.append(k); knobEls.push(k); });
-    L.append(kn);
-    // höger
-    const box = el("div"); box.append(el("div", "ttl", pg.rt));
+    waveCv = null;
+    if (pg.wave) { const ww = el("div", "wave-wrap"); waveCv = el("canvas", "wave"); ww.append(waveCv); L.append(ww); waveType = pg.wave; }
+    if (pg.knobs) {
+      const kb = el("div", "kbox"); kb.append(el("div", "ttl", pg.kt));
+      const kn = el("div", "knobs");
+      pg.knobs.forEach(([id, lab]) => { const k = knob(id, lab); kn.append(k); knobEls.push(k); });
+      kb.append(kn); L.append(kb);
+    }
+    const box = el("div", "rbox"); box.append(el("div", "ttl", pg.rt));
     const sl = el("div", "sliders");
     pg.right.forEach((c) => { if (c[0] === "s") sl.append(slider(c[1], c[2])); else sl.append(choice(c[1], c[2])); });
     box.append(sl); Rt.append(box);
     document.querySelectorAll("#tabs button, #tabs2 button").forEach((b) => b.classList.toggle("on", b.dataset.tab === S.tab));
   }
-  let browserEl = null;
 
   function buildTabs() {
     for (const n of ["#tabs", "#tabs2"]) {
@@ -261,26 +277,14 @@
     const rgb = hexRgb(pl.color);
     r.setProperty("--a", pl.color); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", pl.bg);
     const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = pl.bg;
-    flower.set(pl, S.preset, D.presets[S.preset].nr, pl.color);
+    flower.set(pl, pl.color);
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
     document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", +b.dataset.i === S.preset));
   }
-  function selectPreset(i) {
-    Bridge.send({ t: "preset", i });
-    onPreset(i);
-  }
-  function onPreset(i) {
-    const prevPlant = S.pattern ? S.pattern.plant : null;
-    S.preset = i;
-    applyTheme();
-    const pl = plantOf(i);
-    if (!S.pattern || (!S.pattern.edited && prevPlant !== pl.id)) loadPhrase(pl.id, false);
-  }
-  function step(d) {
-    const o = D.order, k = o.indexOf(S.preset);
-    selectPreset(o[(k + d + o.length) % o.length]);
-  }
+  function selectPreset(i) { Bridge.send({ t: "preset", i }); onPreset(i); }
+  function onPreset(i) { S.preset = i; applyTheme(); }
+  function step(d) { const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]); }
 
   // ---------------------------------------------------------------- menyn
   function buildMenu() {
@@ -303,119 +307,29 @@
     if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => Bridge.send({ t: "settings" }); f.append(b); }
     if (S.web) f.append(el("span", "", S.midi.length ? "MIDI IN · " + S.midi.join(", ").toUpperCase() : "MIDI IN · CONNECT A KEYBOARD"));
     const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => Bridge.send({ t: "panic" }); f.append(pan);
-    f.append(el("span", "", `BLONDA BRIS · ${D.presets.length} SOUNDS · ${D.plants.length} PLANTS`));
+    f.append(el("span", "", `BLONDA BRIS ${D.version} · ${D.presets.length} SOUNDS`));
   }
   function openMenu() { $("#menu").classList.add("open"); const on = $("#list .it.on"); if (on) on.scrollIntoView({ block: "center" }); }
   function closeMenu() { $("#menu").classList.remove("open"); }
 
-  // ---------------------------------------------------------------- frasen / rullen
-  const SCALE = [0, 2, 3, 5, 7, 8, 10];   // c-moll
-  const inScale = (n) => SCALE.includes(((n % 12) + 12) % 12);
-  function scaleFrom(low, count) { const r = []; let n = low; while (r.length < count) { if (inScale(n)) r.push(n); n++; } return r; }
-  function loadPhrase(plantId, user) {
-    const ph = D.phrases[plantId];
-    const notes = ph.notes.map((n) => n.slice());
-    let lo = Math.min(...notes.map((n) => n[2])), hi = Math.max(...notes.map((n) => n[2]));
-    let low = lo - 1; while (!inScale(low)) low--;
-    const all = scaleFrom(low, 40);
-    const rows = clamp(all.indexOf(hi) + 2, 10, 15);
-    S.pattern = { rate: ph.rate, low, rows, notes, plant: plantId, edited: false };
-    sendPattern();
-  }
-  function sendPattern() { const p = S.pattern; Bridge.send({ t: "pattern", rate: p.rate, low: p.low, rows: p.rows, notes: p.notes, plant: p.plant, edited: p.edited }); updTside(); }
-
-  const roll = { cv: null, hover: null, tStep: 0, lastStep: -1 };
-  function rollGeom() {
-    const w = roll.cv.clientWidth, h = roll.cv.clientHeight;
-    const rows = S.pattern.rows, cw = w / 16, rh = h / rows;
-    return { w, h, rows, cw, rh, scale: scaleFrom(S.pattern.low, rows) };
-  }
-  function drawRoll(now) {
-    const cv = roll.cv; if (!cv || !S.pattern || S.view !== "roll") return;
-    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const G = rollGeom(), acc = cssVar("--a"), rgb = hexRgb(acc);
-    // fält
-    g.fillStyle = "rgba(255,255,255,0.28)"; roundRect(g, 0, 0, w, h, 6); g.fill();
-    for (let i = 0; i <= 16; i++) {
-      g.fillStyle = i % 4 === 0 ? "rgba(43,37,33,0.10)" : "rgba(43,37,33,0.045)";
-      g.fillRect(Math.round(i * G.cw), 0, 1, h);
-    }
-    for (let r = 0; r < G.rows; r++) if (G.scale[r] % 12 === 0) { g.fillStyle = "rgba(43,37,33,0.025)"; g.fillRect(0, h - (r + 1) * G.rh, w, G.rh); }
-    // toner
-    const bh = Math.max(4, Math.min(7, G.rh * 0.42));
-    for (const n of S.pattern.notes) {
-      let r = G.scale.indexOf(n[2]); if (r < 0) { r = 0; let best = 99; G.scale.forEach((s, k) => { if (Math.abs(s - n[2]) < best) { best = Math.abs(s - n[2]); r = k; } }); }
-      const y = h - (r + 0.5) * G.rh - bh / 2, x = n[0] * G.cw + 2, len = Math.min(16 - n[0], n[1]) * G.cw - 4;
-      g.fillStyle = `rgba(${rgb},${0.28 + (n[3] / 127) * 0.42})`;
-      roundRect(g, x, y, Math.max(4, len), bh, bh / 2); g.fill();
-    }
-    // spelhuvud
-    const st = S.m.step;
-    if (st >= 0) {
-      if (st !== roll.lastStep) { roll.lastStep = st; roll.tStep = now; }
-      const dur = 60000 / S.tempo / S.pattern.rate;
-      const x = (st + Math.min(1, (now - roll.tStep) / dur)) * G.cw;
-      g.fillStyle = acc; g.fillRect(Math.round(x), 0, 1.5, h);
-      g.beginPath(); g.arc(x + 0.75, 3, 3.5, 0, TAU); g.fill();
-    } else roll.lastStep = -1;
-  }
-  function rollInput() {
-    const cv = roll.cv;
-    let drag = null;
-    cv.addEventListener("pointerdown", (e) => {
-      const r = cv.getBoundingClientRect(), G = rollGeom();
-      const stp = clamp(Math.floor((e.clientX - r.left) / G.cw), 0, 15), row = clamp(Math.floor((r.bottom - e.clientY) / G.rh), 0, G.rows - 1);
-      const note = G.scale[row];
-      const hit = S.pattern.notes.findIndex((n) => n[2] === note && stp >= n[0] && stp < n[0] + n[1]);
-      cv.setPointerCapture(e.pointerId);
-      if (hit >= 0) { drag = { del: hit, moved: false, x0: e.clientX }; }
-      else {
-        const n = [stp, 1, note, 100];
-        S.pattern.notes.push(n); S.pattern.edited = true;
-        drag = { n, s0: stp, moved: false };
-        audition(note);
-        sendPattern();
-      }
-      e.preventDefault();
-    });
-    cv.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      const r = cv.getBoundingClientRect(), G = rollGeom();
-      if (drag.n) {
-        const s = clamp(Math.floor((e.clientX - r.left) / G.cw), drag.s0, 15);
-        const len = s - drag.s0 + 1;
-        if (len !== drag.n[1]) { drag.n[1] = len; sendPattern(); }
-      } else if (Math.abs(e.clientX - drag.x0) > 6) drag.moved = true;
-    });
-    const up = () => {
-      if (drag && drag.del !== undefined && !drag.moved) { S.pattern.notes.splice(drag.del, 1); S.pattern.edited = true; sendPattern(); }
-      drag = null;
-    };
-    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
-  }
-  function audition(n) {
-    if (S.playing) return;
-    Bridge.send({ t: "note", n, v: 96 });
-    setTimeout(() => Bridge.send({ t: "off", n }), 180);
-  }
-
   // ---------------------------------------------------------------- tangenterna
+  // Minimalistiska: en ljus yta med hårfina skiljelinjer och mjuka svarta tangenter. En tryckt tangent tänds
+  // underifrån i växtens färg och tonar ut lugnt. Till vänster en smal kant med oktav: + / C3 / −.
   const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map() };
+  const GUT = 34;
   function keyLayout() {
-    const w = keys.cv.clientWidth, h = keys.cv.clientHeight;
-    const nW = clamp(Math.floor(w / 52), 7, 26);
+    const w = keys.cv.clientWidth - GUT, h = keys.cv.clientHeight;
+    const nW = clamp(Math.round(w / 54), 7, 26);
     const ww = w / nW, base = 48 + S.oct * 12;
     const whites = [], blacks = [];
-    let n = base, i = 0;
+    let n = base;
     while (whites.length < nW) {
       const pc = n % 12;
-      if ([1, 3, 6, 8, 10].includes(pc)) { blacks.push({ n, x: whites.length * ww - ww * 0.24, w: ww * 0.48, h: h * 0.56 }); }
-      else whites.push({ n, x: whites.length * ww, w: ww, h });
-      n++; i++;
+      if ([1, 3, 6, 8, 10].includes(pc)) blacks.push({ n, x: GUT + whites.length * ww - ww * 0.24, w: ww * 0.48, h: h * 0.58 });
+      else whites.push({ n, x: GUT + whites.length * ww, w: ww, h });
+      n++;
     }
-    return { whites, blacks: blacks.filter((b) => b.x > 0 && b.x + b.w < w), ww };
+    return { whites, blacks: blacks.filter((b) => b.x > GUT && b.x + b.w < GUT + w), ww, w, h };
   }
   function keyAt(x, y) {
     const L = keyLayout();
@@ -423,20 +337,20 @@
     for (const k of L.whites) if (x >= k.x && x < k.x + k.w) return { n: k.n, y: y / k.h };
     return null;
   }
-  // minimalistiska tangenter: en ljus yta med hårfina skiljelinjer, mjuka svarta tangenter, och en tryckt tangent
-  // som tänds underifrån i växtens färg och tonar ut lugnt när den släpps
   function drawKeys() {
-    const cv = keys.cv; if (!cv || S.view !== "keys") return;
-    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+    const cv = keys.cv; if (!cv) return;
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), acc = cssVar("--a"), rgb = hexRgb(acc);
-    // nivåer: 1 medan tangenten hålls, tonar ut efter släpp
     for (const n of keys.lit) keys.lvl.set(n, 1);
     for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * 0.88; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
-    const kw = L.whites.length * L.ww;
-    g.fillStyle = "rgba(255,255,255,0.34)"; roundRect(g, 0, 0, kw, h, 8); g.fill();
+    // oktavkanten
+    g.fillStyle = "rgba(43,37,33,0.45)"; g.font = "500 13px 'BLONDA Mono'"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("+", GUT / 2 - 4, h * 0.2); g.fillText("−", GUT / 2 - 4, h * 0.8);
+    g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.35)"; g.fillText("C" + (3 + S.oct), GUT / 2 - 4, h * 0.5);
+    g.fillStyle = "rgba(255,255,255,0.34)"; roundRect(g, GUT, 0, L.w, h, 8); g.fill();
     for (const k of L.whites) {
       const v = lv(k.n);
       if (v > 0) {
@@ -445,18 +359,20 @@
         g.fillStyle = gr; g.fillRect(k.x + 1, 0, k.w - 2, h);
         g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, k.x + k.w * 0.3, h - 7, k.w * 0.4, 2, 1); g.fill();
       }
-      if (k.x > 0) { g.fillStyle = "rgba(43,37,33,0.075)"; g.fillRect(Math.round(k.x), 10, 1, h - 20); }
-      if (k.n % 12 === 0) { g.fillStyle = "rgba(43,37,33,0.32)"; g.font = "500 9px 'BLONDA Mono'"; g.textAlign = "center"; g.fillText("C" + (Math.floor(k.n / 12) - 1), k.x + k.w / 2, h - 16); }
+      if (k.x > GUT + 1) { g.fillStyle = "rgba(43,37,33,0.075)"; g.fillRect(Math.round(k.x), 10, 1, h - 20); }
     }
     for (const b of L.blacks) {
-      const v = lv(b.n);
-      // hålet först, så att skiljelinjerna inte syns genom den svarta tangenten
-      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000"; roundRect(g, b.x - 1, 0, b.w + 2, b.h + 1, Math.min(6, b.w / 2)); g.fill();
+      const v = lv(b.n), rr = Math.min(6, b.w / 2);
+      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000"; roundRect(g, b.x - 1, 0, b.w + 2, b.h + 1, rr); g.fill();
       g.globalCompositeOperation = "source-over";
-      g.fillStyle = "rgba(43,37,33,0.24)";
-      roundRect(g, b.x, 0, b.w, b.h, Math.min(6, b.w / 2)); g.fill();
-      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.85 * v})`; roundRect(g, b.x, 0, b.w, b.h, Math.min(6, b.w / 2)); g.fill(); }
+      g.fillStyle = "rgba(43,37,33,0.24)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();
+      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.85 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
     }
+  }
+  function setOct(o) {
+    o = clamp(o, -3, 3); if (o === S.oct) return;
+    for (const n of keys.down.values()) Bridge.send({ t: "off", n });
+    keys.down.clear(); keys.lit.clear(); S.oct = o; saveUi();
   }
   function keysInput() {
     const cv = keys.cv;
@@ -466,19 +382,21 @@
       if (old !== undefined) { Bridge.send({ t: "off", n: old }); keys.lit.delete(old); keys.down.delete(pid); }
       if (k) { const v = Math.round(clamp(50 + k.y * 77, 1, 127)); Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); keys.down.set(pid, k.n); }
     };
-    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); const r = cv.getBoundingClientRect(); press(e.pointerId, e.clientX - r.left, e.clientY - r.top); e.preventDefault(); });
+    cv.addEventListener("pointerdown", (e) => {
+      const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      if (x < GUT) { if (y < r.height * 0.4) setOct(S.oct + 1); else if (y > r.height * 0.6) setOct(S.oct - 1); return; }
+      cv.setPointerCapture(e.pointerId); press(e.pointerId, x, y); e.preventDefault();
+    });
     cv.addEventListener("pointermove", (e) => { if (!keys.down.has(e.pointerId)) return; const r = cv.getBoundingClientRect(); press(e.pointerId, e.clientX - r.left, e.clientY - r.top); });
     const up = (e) => { const old = keys.down.get(e.pointerId); if (old !== undefined) { Bridge.send({ t: "off", n: old }); keys.lit.delete(old); keys.down.delete(e.pointerId); } };
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   }
-  // datorns tangentbord: A W S E D F T G Y H U J K O L P  (Z/X = oktav)
   const KB = "awsedftgyhujkolp";
   const kbDown = new Map();
   window.addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
     const k = e.key.toLowerCase();
-    if (k === "z" || k === "x") { S.oct = clamp(S.oct + (k === "z" ? -1 : 1), -3, 3); updTside(); saveUi(); return; }
-    if (k === " ") { togglePlay(); e.preventDefault(); return; }
+    if (k === "z" || k === "x") { setOct(S.oct + (k === "z" ? -1 : 1)); return; }
     const i = KB.indexOf(k); if (i < 0 || kbDown.has(k)) return;
     ensureAudio();
     const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n);
@@ -489,40 +407,8 @@
     kbDown.delete(k); keys.lit.delete(n); Bridge.send({ t: "off", n });
   });
 
-  // ---------------------------------------------------------------- transport
-  function togglePlay() { setPlaying(!S.playing); }
-  function setPlaying(on) { ensureAudio(); S.playing = on; $("#play").classList.toggle("on", on); Bridge.send({ t: "play", on }); }
-  function updTside() {
-    const t = $("#tside"); t.innerHTML = "";
-    if (S.view === "roll" && S.pattern) {
-      [[4, "1/16"], [2, "1/8"]].forEach(([r, l]) => { const b = el("button", "tbtn" + (S.pattern.rate === r ? " on" : ""), l); b.onclick = () => { S.pattern.rate = r; S.pattern.edited = true; sendPattern(); }; t.append(b); });
-      const c = el("button", "tbtn", "CLEAR"); c.onclick = () => { S.pattern.notes = []; S.pattern.edited = true; sendPattern(); };
-      const rs = el("button", "tbtn", "RESET"); rs.onclick = () => loadPhrase(plantOf(S.preset).id, true);
-      t.append(c, rs);
-    } else {
-      const m = el("button", "tbtn", "OCT −"); m.onclick = () => { S.oct = clamp(S.oct - 1, -3, 3); updTside(); saveUi(); };
-      const v = el("span", "", (S.oct > 0 ? "+" : "") + S.oct);
-      const p = el("button", "tbtn", "+"); p.onclick = () => { S.oct = clamp(S.oct + 1, -3, 3); updTside(); saveUi(); };
-      t.append(m, v, p);
-    }
-  }
-  function setView(v) {
-    S.view = v; $("#app").classList.toggle("keys", v === "keys");
-    $("#vRoll").classList.toggle("on", v === "roll"); $("#vKeys").classList.toggle("on", v === "keys");
-    updTside(); saveUi();
-  }
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, view: S.view, oct: S.oct }) }); }
 
-  // tempo: dra upp/ned
-  function tempoInput() {
-    const t = $("#tempo"); let y0 = 0, b0 = 0, pid = null;
-    t.addEventListener("pointerdown", (e) => { if (S.hostTempo) return; pid = e.pointerId; t.setPointerCapture(pid); y0 = e.clientY; b0 = S.tempo; });
-    t.addEventListener("pointermove", (e) => { if (e.pointerId !== pid) return; setTempo(Math.round((b0 + (y0 - e.clientY) * 0.5) * 2) / 2); });
-    t.addEventListener("pointerup", () => (pid = null));
-    t.addEventListener("dblclick", () => { if (!S.hostTempo) setTempo(120); });
-  }
-  function setTempo(b) { S.tempo = clamp(b, 40, 240); updTempo(); Bridge.send({ t: "tempo", bpm: S.tempo }); }
-  function updTempo() { $("#bpm").textContent = S.tempo.toFixed(1) + " BPM"; $("#tempo").classList.toggle("host", S.hostTempo); }
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
   function ensureAudio() { if (Bridge.mode === "web" && !Bridge.running) Bridge.startAudio().then(() => $("#start").classList.remove("show")); }
@@ -536,31 +422,24 @@
   const flower = Blommor.create($("#fBack"), $("#fGl"), $("#fFront"), D.blommor);
   flower.preload([...new Set(D.plants.map((p) => p.photo))]);
   let envSm = 0;
+  $("#ver").textContent = "BRIS " + D.version;
   buildTabs();
   buildPanels();
   buildMenu();
-  roll.cv = $("#roll canvas"); keys.cv = $("#keys canvas");
-  rollInput(); keysInput(); tempoInput();
+  keys.cv = $("#keys canvas");
+  keysInput();
   $("#menuBtn").onclick = openMenu; $("#menuClose").onclick = closeMenu; $("#menu .shade").onclick = closeMenu;
-  $("#play").onclick = togglePlay;
-  $("#stop").onclick = () => { setPlaying(false); };
-  $("#back").onclick = () => { if (S.playing) { Bridge.send({ t: "play", on: false }); Bridge.send({ t: "play", on: true }); } };
-  $("#vRoll").onclick = () => setView("roll"); $("#vKeys").onclick = () => setView("keys");
   document.addEventListener("pointerdown", () => ensureAudio(), { capture: true });
 
   Bridge.on.state = (st) => {
     S.standalone = !!st.standalone; S.web = !!st.web;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
-    S.tempo = st.tempo || 120; S.hostTempo = !!st.hostTempo; updTempo();
-    S.playing = !!st.playing; $("#play").classList.toggle("on", S.playing);
-    if (st.ui) { try { const u = JSON.parse(st.ui); S.tab = u.tab || S.tab; S.view = u.view || S.view; S.oct = u.oct || 0; } catch (e) { /* */ } }
-    S.pattern = st.pattern && st.pattern.notes ? st.pattern : null;
+    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; } catch (e) { /* */ } }
     S.preset = st.preset ?? S.preset;
     buildPanels();
     onPreset(S.preset);
-    if (S.pattern) sendPattern();
-    setView(S.view);
     buildFoot();
+    Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
     if (Bridge.needsGesture) $("#start").classList.add("show");
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };
@@ -568,11 +447,9 @@
   Bridge.on.preset = (i) => { if (i !== S.preset) onPreset(i); };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
-    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.step = m.step; S.m.nc = m.nc;
+    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc;
     if (m.scope) S.m.scope = m.scope;
-    if (m.bpm && m.host) { S.hostTempo = true; if (Math.abs(m.bpm - S.tempo) > 0.01) { S.tempo = m.bpm; updTempo(); } }
-    if (m.playing !== undefined && m.playing !== S.playing) { S.playing = m.playing; $("#play").classList.toggle("on", S.playing); }
-    flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, step: m.step, nc: m.nc });
+    flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, nc: m.nc });
   };
   $("#start").addEventListener("click", () => { ensureAudio(); });
 
@@ -580,12 +457,11 @@
     requestAnimationFrame(loop);
     envSm += (S.m.env - envSm) * 0.12;
     drawWave(now / 1000);
-    drawRoll(now);
     drawKeys();
   }
   requestAnimationFrame(loop);
   window.addEventListener("resize", () => knobEls.forEach((k) => k._draw()));
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
-  window.__bris = { S, setParam, selectPreset, setPlaying, setView, loadPhrase };   // för tester
+  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); } };   // för tester
 })();

@@ -10,7 +10,9 @@ BLONDA BRIS – analog sexstämmig poly efter GS Music Bree6 – som plugg och a
 
 Ljudet är BRIS-motorn ur `blonda-motor` (oförändrad, samma GenExpr som Max for Live-pluggen) plus BLONDA RUM
 (reverb) och BLONDA VIBE (drive). Alla 90 fabriksljud finns med, och **varje sorts ljud har sin egen blomma** ur BLONDAs design (se Blommorna nedan).
-Varje ljud inom en kategori får en egen variant (spegling, färgton, vinkel).
+Alla ljud i en kategori visar samma blomma. Gränssnittet är enkelt: PLAY är blomman stort med tangenter och
+ljudväljare; OSC, FILTER, AMP, MOD och FX är ljudets inställningar. Versionen står uppe till höger (BRIS 1.1.0).
+På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
 ## Installera på Macen
 
@@ -38,13 +40,13 @@ böjs bilden med WebGL (`ui/blommor.js`), så blomman vajar, andas och öppnar s
 ## Så hänger det ihop
 
 ```
-core/bris_core.h        ljudkärnan: BRIS + RUM + VIBE + frasspelaren (rullen) + mätare. Delas av allt nedan.
+core/bris_core.h        ljudkärnan: BRIS + RUM + VIBE + mätare (frasspelaren finns kvar men används inte av gränssnittet). Delas av allt nedan.
 core/kategorier.h       GENERERAD: växt per ljud, effekter per växt
 ui/                     gränssnittet (HTML/CSS/JS) – samma i pluggen, appen och på webben
-  app.js                flikar, rattar, reglage, ljudlistan, vågen, rullen, tangenterna
+  app.js                flikar, rattar, reglage, ljudlistan, vågen, tangenterna (med oktav + / −)
   blommor.js            blommorna (WebGL), blommor/*.webp bilderna
   bridge.js             pratar med C++ (JUCE) eller med WebAssembly (webben)
-  data.js               GENERERAD: parametrar, ljud, växter, fraser
+  data.js               GENERERAD: parametrar, ljud, växter, version
 plugin/                 JUCE-skalet: AU/VST3/AUv3/Standalone, gränssnittet i en WebView
 web/                    webben: bris_wasm.cpp (kärnan som WebAssembly), worklet.js, bygg.sh
 tools/kategorier.py     DEN ENDA SANNINGEN för växter, färger och fraser -> core/kategorier.h + ui/data.js
