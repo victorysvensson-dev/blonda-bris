@@ -21,6 +21,13 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## Blommorna i lager
+
+Varje blomma har en mask för sina främre kronblad (`ui/blommor/<foto>_fram.webp`, skriven av `tools/lager.py`).
+Blomman ritas, sedan stoftet ur hjärtat (eller knopparna), sedan blomman igen genom masken: stoftet kommer inifrån
+och glider in bakom de främre kronbladen. Lagren har samma pixlar och rör sig lika, så blomman ser likadan ut.
+Vad som ligger fram, bak och inuti följer Victorys utsnittna kronblad för varje blomma.
+
 ## BLONDA BRIS MPE
 
 En egen app och AUv3 bredvid BRIS (`-DBRIS_MPE=ON`), med motorn `brismpe` ur blonda-motor: samma 90 ljud och samma
