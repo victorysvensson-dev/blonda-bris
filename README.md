@@ -11,9 +11,14 @@ BLONDA BRIS – analog sexstämmig poly efter GS Music Bree6 – som plugg och a
 Ljudet är BRIS-motorn ur `blonda-motor` (oförändrad, samma GenExpr som Max for Live-pluggen) plus BLONDA RUM
 (reverb) och BLONDA VIBE (drive). Alla 90 fabriksljud finns med, och **varje sorts ljud har sin egen blomma** ur BLONDAs design (se Blommorna nedan).
 Alla ljud i en kategori visar samma blomma. Gränssnittet är enkelt: PLAY är blomman stort med tangenter och
-ljudväljare; OSC, FILTER, AMP, MOD och FX är ljudets inställningar. Versionen står uppe till höger (t.ex. BRIS 1.2.0).
+ljudväljare; OSC, FILTER, AMP, MOD och FX är ljudets inställningar. Versionen står uppe till höger (t.ex. BRIS 1.3.0).
 Glid: håll tangenter och för fingrarna rakt uppåt så moduleras ljudet; vad som moduleras väljs i raden SLIDE UP
 ovanför tangenterna (OFF, FILTER, VIBRATO, TREMOLO, PWM, WAH). Det ändrar inte ljudets sparade värden.
+Reglaget eller ratten för det som moduleras visar en prick vid det modulerade värdet. KEYS − / + zoomar
+tangenterna (fler eller större), strecket ovanför dem ändrar höjden (dubbelklick = standard).
+MPE: klaviaturer med MPE (Roli, Linnstrument, Osmose, Logic) – slide (CC74) styr glidet, tryck blir aftertouch och
+böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter och en böj för alla röster, så uttrycket
+slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
 ## Installera på Macen

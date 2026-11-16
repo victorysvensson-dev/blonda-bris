@@ -13,7 +13,8 @@
   // ---------------------------------------------------------------- tillstånd
   const S = {
     v: {}, preset: 65, tab: "play", oct: 0, standalone: false, web: Bridge.mode === "web", midi: [],
-    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, scope: null },
+    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null }, mod: {},
+    kz: 1, kh: null,   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
   const plantOf = (i) => D.plants[D.presets[i].plant];
@@ -55,6 +56,9 @@
     if (id === "cut" || id === "res" || id === "lrate") flower.signals({ [id]: v });
   }
   const gesture = (id, on) => Bridge.send({ t: "gesture", id, on });
+  // modulering (glid/MPE) som visas i reglagen: id -> [uppdatera(värde eller undefined)]
+  const modB = {};
+  function bindMod(id, f) { (modB[id] = modB[id] || []).push(f); }
 
   function dragger(node, id, mode, getRect) {
     // mode: "v" (ratt: dra upp/ned), "h" (reglage: absolut position)
@@ -110,9 +114,16 @@
       const mid = p.min < 0 ? a0 + (a1 - a0) / 2 : a0;
       const av = a0 + (a1 - a0) * x;
       g.beginPath(); g.arc(s / 2, s / 2, r, Math.min(mid, av), Math.max(mid, av)); g.stroke();
+      if (mv !== undefined) {   // glidet: bågen fortsätter ljusare till det modulerade värdet, med en prick
+        const am = a0 + (a1 - a0) * clamp((mv - p.min) / (p.max - p.min), 0, 1);
+        g.globalAlpha = 0.45; g.beginPath(); g.arc(s / 2, s / 2, r, Math.min(av, am), Math.max(av, am)); g.stroke(); g.globalAlpha = 1;
+        g.fillStyle = acc; g.beginPath(); g.arc(s / 2 + Math.cos(am) * r, s / 2 + Math.sin(am) * r, 2.6, 0, TAU); g.fill();
+      }
     };
+    let mv;
     k._draw = () => draw(S.v[id]);
     bind(id, draw);
+    bindMod(id, (m) => { mv = m; draw(S.v[id]); });
     dragger(k, id, "v");
     return k;
   }
@@ -121,7 +132,15 @@
     const s = el("div", "slider");
     const lab = el("div", "lab", label); lab.dataset.t = label;
     const tr = el("div", "tr"); const fill = el("div", "fill"); const hd = el("div", "hd");
-    tr.append(fill, hd); s.append(lab, tr);
+    const mf = el("div", "mfill"), md = el("div", "mdot");   // glidet: ljusare linje och prick till det modulerade värdet
+    tr.append(fill, mf, hd, md); s.append(lab, tr);
+    const showMod = (m) => {
+      if (m === undefined) { mf.style.display = md.style.display = "none"; return; }
+      const p = P[id], x = (S.v[id] - p.min) / (p.max - p.min), xm = clamp((m - p.min) / (p.max - p.min), 0, 1);
+      mf.style.display = md.style.display = "block";
+      mf.style.left = Math.min(x, xm) * 100 + "%"; mf.style.width = Math.abs(xm - x) * 100 + "%"; md.style.left = xm * 100 + "%";
+    };
+    bindMod(id, showMod);
     bind(id, (v) => {
       const p = P[id], x = (v - p.min) / (p.max - p.min);
       hd.style.left = x * 100 + "%";
@@ -231,6 +250,8 @@
   function buildPanels() {
     const pg = PAGES.find((p) => p.id === S.tab) || PAGES[0];
     for (const k in binds) delete binds[k];
+    for (const k in modB) delete modB[k];
+    S.mod = {};   // nästa bildruta skickar moduleringen till de nya reglagen
     knobEls = [];
     const L = $("#left"), Rt = $("#right");
     L.innerHTML = ""; Rt.innerHTML = "";
@@ -316,13 +337,13 @@
   // Lugna, ljusa tangenter som egna mjuka plattor, svarta tangenter i bläckfärg. En tryckt tangent tänds underifrån
   // i växtens färg. Glid: håll tangenter och för fingrarna rakt uppåt -> ljudet moduleras (målet väljs i raden
   // ovanför: FILTER, VIBRATO, TREMOLO, PWM, WAH). Till vänster oktaven: + / C3 / −.
-  const GLID = [["OFF", "OFF"], ["FILTER", "FILT"], ["VIBRATO", "VIB"], ["TREMOLO", "TREM"], ["PWM", "PWM"], ["WAH", "WAH"]];
+  const GLID = [["OFF", "OFF"], ...D.glid.targets.map((t) => [t.name, t.short])];
   S.glid = { m: 1, v: 0, sent: -1 };
   const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map() };
-  const GUT = 34, GAP = 3;
+  const GUT = 34, GAP = 3, KZ_MIN = 0.55, KZ_MAX = 2.4;
   function keyLayout() {
     const w = keys.cv.clientWidth - GUT, h = keys.cv.clientHeight;
-    const nW = clamp(Math.round(w / 56), 7, 26);
+    const nW = clamp(Math.round(w / (56 * S.kz)), 5, 40);
     const ww = w / nW, base = 48 + S.oct * 12;
     const whites = [], blacks = [];
     let n = base;
@@ -422,6 +443,30 @@
       o.dataset.m = m; o.onclick = () => setGlidMode(m); row.append(o);
     });
     bar.append(row);
+    // zoom: färre och större tangenter (+) eller fler och mindre (−)
+    const z = el("div", "zoom");
+    const zo = el("button", "", '<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>');
+    const zi = el("button", "", '<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg>');
+    zo.setAttribute("aria-label", "Fler tangenter"); zi.setAttribute("aria-label", "Större tangenter");
+    zo.onclick = () => setZoom(S.kz / 1.2); zi.onclick = () => setZoom(S.kz * 1.2);
+    z.append(el("span", "ttl", "KEYS"), zo, zi); bar.append(z);
+  }
+  function setZoom(k) { S.kz = clamp(k, KZ_MIN, KZ_MAX); saveUi(); }
+  // tangenternas höjd: dra i strecket ovanför. Sparas som andel av fönstrets höjd; blomman behåller alltid plats.
+  function applyKeysHeight() {
+    const ks = $("#keys");
+    if (S.kh == null) { ks.style.height = ""; return; }
+    ks.style.height = Math.round(clamp(S.kh * innerHeight, 120, innerHeight * 0.55)) + "px";
+    const st = $("#stage").getBoundingClientRect().height, minSt = Math.min(200, innerHeight * 0.22);
+    if (st < minSt) ks.style.height = Math.max(120, ks.getBoundingClientRect().height - (minSt - st)) + "px";
+  }
+  function gripInput() {
+    const gr = $("#kgrip"); let pid = null, y0 = 0, h0 = 0;
+    gr.addEventListener("pointerdown", (e) => { pid = e.pointerId; gr.setPointerCapture(pid); y0 = e.clientY; h0 = $("#keys").getBoundingClientRect().height; gr.classList.add("drag"); e.preventDefault(); });
+    gr.addEventListener("pointermove", (e) => { if (e.pointerId !== pid) return; S.kh = (h0 + (y0 - e.clientY)) / innerHeight; applyKeysHeight(); knobEls.forEach((k) => k._draw()); });
+    const end = (e) => { if (e.pointerId !== pid) return; pid = null; gr.classList.remove("drag"); S.kh = $("#keys").getBoundingClientRect().height / innerHeight; saveUi(); };
+    gr.addEventListener("pointerup", end); gr.addEventListener("pointercancel", end);
+    gr.addEventListener("dblclick", () => { S.kh = null; applyKeysHeight(); saveUi(); });
   }
   function keysInput() {
     const cv = keys.cv;
@@ -471,7 +516,25 @@
   });
 
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m }) }); }
+  // glidets modulering visas i reglagen: målparametern (och LFO-takten för vibrato/tremolo) får en prick vid sitt
+  // modulerade värde. Värdet kommer från ljudkärnan (samma utjämning, även MPE-slide från en klaviatur).
+  function updateMods() {
+    const g = S.glid.m > 0 ? S.m.glid : 0, t = S.glid.m > 0 ? D.glid.targets[S.glid.m - 1] : null;
+    const want = {};
+    if (t && g > 0.002) {
+      const p = P[t.param];
+      want[t.param] = clamp(S.v[t.param] + g * t.depth * (p.max - p.min), p.min, p.max);
+      if (t.rate) { const b = S.v.lrate, to = Math.max(b, D.glid.rate), v = b + (to - b) * Math.min(1, g * 4); if (v - b > 1e-4) want.lrate = v; }
+    }
+    for (const id of new Set([...Object.keys(S.mod), ...Object.keys(want)])) {
+      if (S.mod[id] === want[id]) continue;
+      if (want[id] === undefined) delete S.mod[id]; else S.mod[id] = want[id];
+      (modB[id] || []).forEach((f) => f(want[id]));
+      if (id === "cut") flower.signals({ cut: want.cut ?? S.v.cut });
+    }
+  }
+
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
   function ensureAudio() { if (Bridge.mode === "web" && !Bridge.running) Bridge.startAudio().then(() => $("#start").classList.remove("show")); }
@@ -491,6 +554,7 @@
   buildMenu();
   keys.cv = $("#keys canvas");
   buildKbar();
+  gripInput();
   keysInput();
   $("#menuBtn").onclick = openMenu; $("#menuClose").onclick = closeMenu; $("#menu .shade").onclick = closeMenu;
   document.addEventListener("pointerdown", () => ensureAudio(), { capture: true });
@@ -498,12 +562,13 @@
   Bridge.on.state = (st) => {
     S.standalone = !!st.standalone; S.web = !!st.web;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
-    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; } catch (e) { /* */ } }
+    if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh; } catch (e) { /* */ } }
+    if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
     buildPanels();
     onPreset(S.preset);
     buildFoot();
-    buildKbar(); S.glid.sent = -1; updGlid(); sendGlid();
+    buildKbar(); S.glid.sent = -1; updGlid(); sendGlid(); applyKeysHeight();
     Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
     // layoutens mätvärden till appen (iOS skriver dem till en fil som CI läser); efter en stund och igen senare
     const diag = () => { const pr = document.createElement("div"); pr.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
@@ -517,7 +582,7 @@
   Bridge.on.preset = (i) => { if (i !== S.preset) onPreset(i); };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
-    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc;
+    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
     if (m.scope) S.m.scope = m.scope;
     flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, nc: m.nc });
   };
@@ -529,10 +594,11 @@
     drawWave(now / 1000);
     drawKeys();
     sendGlid();
+    updateMods();
   }
   requestAnimationFrame(loop);
-  window.addEventListener("resize", () => knobEls.forEach((k) => k._draw()));
+  window.addEventListener("resize", () => { applyKeysHeight(); knobEls.forEach((k) => k._draw()); });
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
-  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode };   // för tester
+  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight };   // för tester
 })();

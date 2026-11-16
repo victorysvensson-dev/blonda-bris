@@ -55,6 +55,7 @@ int main() {
     pat->setProperty("notes", notes); pat->setProperty("plant", "iris");
     p.setPattern(juce::var(pat.get()));
     p.uiState = "{\"tab\":\"fx\"}";
+    p.uiGlid(3, 0.0f);
     juce::MemoryBlock mb; p.getStateInformation(mb);
     std::unique_ptr<juce::AudioProcessor> base2(createPluginFilter());
     auto& q = *dynamic_cast<BrisProcessor*>(base2.get());
@@ -62,6 +63,9 @@ int main() {
     KRAV(std::abs(q.paramValue(q.findParam("cut")) - 0.123) < 1e-3, "tillstånd: cutoff %.3f", q.paramValue(q.findParam("cut")));
     KRAV(q.currentPreset() == p.currentPreset(), "tillstånd: ljud %d", q.currentPreset());
     KRAV(q.uiState == p.uiState, "tillstånd: gränssnitt");
+    KRAV(q.getGlidMode() == 3, "tillstånd: glidläget (%d)", q.getGlidMode());
+    KRAV(q.supportsMPE(), "pluggen anmäler MPE till värdprogrammet");
+    p.uiGlid(1, 0.0f);
     KRAV(q.getPattern().getProperty("notes", {}).size() == 4, "tillstånd: rullen (%d toner)", q.getPattern().getProperty("notes", {}).size());
 
     // automation når ljudet: mörkare med låg cutoff

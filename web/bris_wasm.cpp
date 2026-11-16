@@ -13,7 +13,7 @@ Core* core = nullptr;
 float bufL[128], bufR[128];
 Pattern pend;
 // mätare som worklet läser direkt ur minnet: env, lfo, peakL, peakR, voiceMask, step, noteCount, scopeWrite
-float meters[8];
+float meters[9];
 }
 
 EXPORT(bris_init) void bris_init(double sr) {
@@ -27,7 +27,7 @@ EXPORT(bris_process) void bris_process(int n) {
     core->process(bufL, bufR, n);
     const auto& m = core->meters();
     meters[0] = m.env; meters[1] = m.lfo; meters[2] = m.peakL; meters[3] = m.peakR;
-    meters[4] = (float)m.voiceMask; meters[5] = (float)m.step; meters[6] = (float)m.noteCount; meters[7] = (float)core->scopeWrite();
+    meters[4] = (float)m.voiceMask; meters[5] = (float)m.step; meters[6] = (float)m.noteCount; meters[7] = (float)core->scopeWrite(); meters[8] = m.glid;
 }
 EXPORT(bris_meters) float* bris_meters() { return meters; }
 EXPORT(bris_scope) const float* bris_scope() { return core->meters().scope; }

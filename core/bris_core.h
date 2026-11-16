@@ -60,6 +60,7 @@ struct Meters {
     int voiceMask = 0;
     int step = -1;          // frasens steg som spelas nu (-1 = stoppad)
     uint32_t noteCount = 0; // räknas upp vid varje not på (för pollenkorn i växten)
+    float glid = 0;         // glidets värde just nu 0..1 (tangenterna eller MPE-slide), för reglagen som följer med
     float scope[kScopeLen]{};
 };
 
@@ -77,8 +78,8 @@ public:
         rum_.setParam(rum_.findParam("lowc"), 0.2);
         iWet_ = rum_.findParam("wet"); iSize_ = rum_.findParam("size"); iDecay_ = rum_.findParam("decay");
         iDrive_ = vibe_.findParam("drive"); iOut_ = vibe_.findParam("outdb");
-        for (int k = 0; k < kNumGlidTarget; ++k) glidIdx_[k] = cp.find(kGlid[k].id);
-        iRate_ = cp.find("lrate");
+        for (int k = 0; k < kNumGlid; ++k) glidIdx_[k] = cp.find(kGlid[k].param);
+        iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr");
         applyExtra();
     }
 
@@ -93,9 +94,36 @@ public:
     // ---------------------------------------------------------------- toner / MIDI
     void noteOn(int n, int v) { synth_.noteOn(n, v); ++meters_.noteCount; }
     void noteOff(int n) { synth_.noteOff(n); }
-    void allNotesOff() { synth_.allNotesOff(); clearSeqNotes(); }
+    void allNotesOff() { synth_.allNotesOff(); clearSeqNotes(); clearExpr(); }
+    // MIDI, med MPE: varje ton på en egen kanal (2-16, kanal 1 = huvudkanal). Motorn har ett filter och en böj för
+    // alla röster, så uttrycket per ton slås ihop: slide (CC74) styr glidet (högsta slide bland tonerna som hålls),
+    // tryck blir aftertouch (högsta trycket), och böj på tonkanalerna följer den senast spelade tonen
+    // (MPE:s böjomfång, 48 halvtoner om inget annat skickas med RPN 0). Vanliga klaviaturer på kanal 1 som förut.
     void midi(uint8_t s, uint8_t d1, uint8_t d2) {
-        if ((s & 0xF0) == 0x90 && d2 > 0) ++meters_.noteCount;
+        const int ch = s & 15, ty = s & 0xF0;
+        if (ty == 0x90 && d2 > 0) {
+            ++meters_.noteCount; ++chNotes_[ch]; lastCh_ = ch;
+            if (ch != 0) { mpe_ = true; applyBend(ch); }   // MPE skickar tonens böj före tonen: använd den
+        } else if (ty == 0x80 || ty == 0x90) {
+            if (chNotes_[ch] > 0 && --chNotes_[ch] == 0) { slide_[ch] = 0; press_[ch] = 0; }
+            updExpr();
+        } else if (ty == 0xB0 && d1 == 74) {          // MPE slide (eller ljushet på vanliga klaviaturer)
+            slide_[ch] = d2 / 127.0; updExpr(); return;
+        } else if (ty == 0xB0 && (d1 == 101 || d1 == 100)) {
+            (d1 == 101 ? rpnMsb_ : rpnLsb_)[ch] = d2; return;
+        } else if (ty == 0xB0 && d1 == 6 && rpnMsb_[ch] == 0 && rpnLsb_[ch] == 0) {
+            bendRange_[ch] = std::max(1, (int)d2);
+            if (ch != 0) mpe_ = true;
+            return;
+        } else if (ty == 0xD0 && mpe_ && ch != 0) {   // tryck per ton (MPE); på kanal 1 som vanlig aftertouch
+            press_[ch] = d1 / 127.0; updExpr(); return;
+        } else if (ty == 0xE0 && mpe_ && ch != 0) {
+            bend_[ch] = ((((int)d2 << 7) | d1) - 8192) / 8192.0;
+            if (ch == lastCh_) applyBend(ch);
+            return;
+        } else if (ty == 0xB0 && (d1 == 120 || d1 == 123)) {
+            clearExpr();
+        }
         synth_.midi(s, d1, d2);
     }
 
@@ -120,7 +148,7 @@ public:
     // utan att ändra parameterns sparade värde (getParam, automation och ljudets värden är oförändrade).
     // mode: 0 av, 1 FILTER, 2 VIBRATO, 3 TREMOLO, 4 PWM, 5 WAH
     void setGlid(int mode, double amount) {
-        mode = std::max(0, std::min(kNumGlidTarget, mode));
+        mode = std::max(0, std::min(kNumGlid, mode));
         if (mode != glidMode_) { glidRestore(); glidMode_ = mode; glidApplied_ = 0.0; glidSm_ = 0.0; }
         glidTarget_ = mode > 0 ? std::min(1.0, std::max(0.0, amount)) : 0.0;
     }
@@ -179,11 +207,12 @@ public:
         while (done < n) {
             int chunk = n - done;
             // glidet utjämnas och läggs på i bitar om 32 sampel (ingen hackig filtersvepning)
-            const bool glid = glidMode_ > 0 && (glidSm_ > 1e-5 || glidTarget_ > 0.0);
+            const double tgt = glidMode_ > 0 ? std::max(glidTarget_, midiSlide_) : 0.0;
+            const bool glid = glidMode_ > 0 && (glidSm_ > 1e-5 || tgt > 0.0);
             if (glid) {
                 chunk = std::min(chunk, 32);
-                glidSm_ += (glidTarget_ - glidSm_) * (1.0 - std::exp(-chunk / (sr_ * 0.025)));
-                if (glidTarget_ <= 0.0 && glidSm_ < 1e-4) glidSm_ = 0.0;
+                glidSm_ += (tgt - glidSm_) * (1.0 - std::exp(-chunk / (sr_ * 0.025)));
+                if (tgt <= 0.0 && glidSm_ < 1e-4) glidSm_ = 0.0;
                 applyGlid();
             }
             if (playing_) {
@@ -207,6 +236,7 @@ public:
         meters_.peakL = pl; meters_.peakR = pr;
         meters_.env = (float)synth_.envelope(); meters_.lfo = (float)synth_.lfo(); meters_.voiceMask = synth_.voiceMask();
         meters_.step = playing_ ? seqStep_ : -1;
+        meters_.glid = (float)glidSm_;
     }
 
     const Meters& meters() const { return meters_; }
@@ -214,20 +244,25 @@ public:
     bris::Bris& synth() { return synth_; }
 
 private:
-    struct GlidTarget { const char* id; double depth; bool rate; };
-    static constexpr int kNumGlidTarget = 5;
-    static constexpr GlidTarget kGlid[kNumGlidTarget] = {
-        {"cut", 0.42, false},      // FILTER: öppnar filtret (ca 4 oktaver vid fullt glid)
-        {"lfoosc", 0.28, true},    // VIBRATO: tonhöjd, upp till knappt en halvton
-        {"lfoamp", 0.70, true},    // TREMOLO: volymen pulserar
-        {"lfopwm", 0.80, false},   // PWM: pulsbredden svävar
-        {"lfocut", 0.60, false},   // WAH: LFO:n på filtret
-    };
-    static constexpr double kGlidRate = 0.6;  // vibrato/tremolo: LFO minst ca 6 Hz medan man glider
+    void updExpr() {
+        double sl = 0, pr = 0;
+        for (int c = 0; c < 16; ++c) if (chNotes_[c] > 0) { sl = std::max(sl, slide_[c]); if (c != 0) pr = std::max(pr, press_[c]); }
+        midiSlide_ = sl;
+        if (mpe_ && std::fabs(pr - pressOut_) > 1e-9) { pressOut_ = pr; synth_.aftertouch(pr); }
+    }
+    void clearExpr() {
+        for (int c = 0; c < 16; ++c) { chNotes_[c] = 0; slide_[c] = 0; press_[c] = 0; }
+        midiSlide_ = 0; if (pressOut_ > 0.0) { pressOut_ = 0; synth_.aftertouch(0); }
+    }
+    void applyBend(int ch) {
+        const double semis = bend_[ch] * bendRange_[ch];
+        const double br = std::max(1.0, iBendr_ >= 0 ? val_[iBendr_] : 2.0);
+        synth_.pitchBend(std::min(1.0, std::max(-1.0, semis / br)));
+    }
 
     void applyGlid() {
         const CoreParams& cp = coreParams();
-        const GlidTarget& g = kGlid[glidMode_ - 1];
+        const GlidInfo& g = kGlid[glidMode_ - 1];
         const int i = glidIdx_[glidMode_ - 1];
         if (i < 0) return;
         const ParamInfo& p = cp.info[i];
@@ -285,8 +320,14 @@ private:
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
-    int glidIdx_[5]{-1, -1, -1, -1, -1}, iRate_ = -1, glidMode_ = 0;
+    int glidIdx_[kNumGlid]{}, iRate_ = -1, glidMode_ = 0;
     double glidTarget_ = 0.0, glidSm_ = 0.0, glidApplied_ = 0.0;
+    // MPE / uttryck per kanal
+    int chNotes_[16]{}, rpnMsb_[16]{127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127},
+        rpnLsb_[16]{127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127},
+        bendRange_[16]{2, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48}, lastCh_ = 0, iBendr_ = -1;
+    double slide_[16]{}, press_[16]{}, bend_[16]{}, midiSlide_ = 0.0, pressOut_ = 0.0;
+    bool mpe_ = false;
     bool rvbOn_ = false, driveOn_ = false;
     double val_[64]{};
     double sr_ = 48000.0, bpm_ = 120.0;

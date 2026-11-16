@@ -45,12 +45,12 @@ class BrisProcessor extends AudioWorkletProcessor {
     if (out[1]) R.set(new Float32Array(mem, e.bris_buf_r(), n));
     if (++this.n >= 6) {
       this.n = 0;
-      const m = new Float32Array(mem, e.bris_meters(), 8);
+      const m = new Float32Array(mem, e.bris_meters(), 9);
       const sc = new Float32Array(mem, e.bris_scope(), this.scopeLen);
       const w = m[7] | 0;
       const scope = new Float32Array(this.scopeLen);
       scope.set(sc.subarray(w)); scope.set(sc.subarray(0, w), this.scopeLen - w);   // äldst först
-      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, scope });
+      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, glid: m[8], scope });
     }
     return true;
   }

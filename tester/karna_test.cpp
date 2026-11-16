@@ -114,6 +114,35 @@ int main() {
             if (mode == 1) KRAV(ea / eb > 1.3, "glid FILTER öppnar inte filtret (%.2fx)", ea / eb);
         }
     }
+    // MPE: slide (CC74) på tonens kanal styr glidet, släpps tonen går glidet tillbaka; vanlig MIDI på kanal 1 som förut
+    {
+        const CoreParams& cp = coreParams();
+        Core a; a.prepare(sr); a.setParam(cp.find("cut"), 0.3); a.setGlid(1, 0.0);
+        a.midi(0xB1, 74, 0); a.midi(0x91, 60, 100);
+        for (int k = 0; k < 10; ++k) a.process(L.data(), R.data(), B);
+        const float g0 = a.meters().glid;
+        a.midi(0xB1, 74, 127);
+        for (int k = 0; k < 20; ++k) a.process(L.data(), R.data(), B);
+        const float g1 = a.meters().glid;
+        a.midi(0x81, 60, 0);
+        for (int k = 0; k < 40; ++k) a.process(L.data(), R.data(), B);
+        const float g2 = a.meters().glid;
+        std::printf("MPE slide: glid %.2f -> %.2f -> %.2f efter släpp\n", g0, g1, g2);
+        KRAV(g0 < 0.01 && g1 > 0.95 && g2 < 0.01, "MPE slide styr inte glidet (%.2f %.2f %.2f)", g0, g1, g2);
+        KRAV(std::fabs(a.getParam(cp.find("cut")) - 0.3) < 1e-12, "MPE slide ändrade cutoff-parametern");
+        // vanlig MIDI på kanal 1 ger exakt samma ljud som motorn ensam (rvb/drive av)
+        Core c; c.prepare(sr); c.setParam(cp.find("rvb"), 0); c.setParam(cp.find("drive"), 0);
+        blonda::bris::Bris b; b.prepare(sr);
+        const uint8_t ev[][3] = {{0x90, 60, 100}, {0xE0, 0, 80}, {0xB0, 1, 90}, {0xD0, 70, 0}, {0x80, 60, 0}};
+        std::vector<float> L2(B), R2(B); double md = 0;
+        for (int k = 0; k < 60; ++k) {
+            if (k % 10 == 0 && k / 10 < 5) { c.midi(ev[k / 10][0], ev[k / 10][1], ev[k / 10][2]); b.midi(ev[k / 10][0], ev[k / 10][1], ev[k / 10][2]); }
+            c.process(L.data(), R.data(), B); b.process(L2.data(), R2.data(), B);
+            for (int s2 = 0; s2 < B; ++s2) md = std::max(md, (double)std::fabs(L[s2] - L2[s2]));
+        }
+        std::printf("vanlig MIDI på kanal 1: största skillnad mot motorn %.2e\n", md);
+        KRAV(md == 0.0, "vanlig MIDI på kanal 1 låter annorlunda än motorn (%.2e)", md);
+    }
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;

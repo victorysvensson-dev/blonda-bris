@@ -39,4 +39,16 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"drive", "Drive", 0.0, 1.0, 0.0},
 };
 
+// glid på tangenterna / MPE-slide (läge = index + 1)
+struct GlidInfo { const char* id; const char* name; const char* param; double depth; bool rate; };
+constexpr int kNumGlid = 5;
+constexpr double kGlidRate = 0.6;
+inline constexpr GlidInfo kGlid[kNumGlid] = {
+    {"filter", "FILTER", "cut", 0.42, false},
+    {"vibrato", "VIBRATO", "lfoosc", 0.28, true},
+    {"tremolo", "TREMOLO", "lfoamp", 0.7, true},
+    {"pwm", "PWM", "lfopwm", 0.8, false},
+    {"wah", "WAH", "lfocut", 0.6, false},
+};
+
 }  // namespace blonda::app

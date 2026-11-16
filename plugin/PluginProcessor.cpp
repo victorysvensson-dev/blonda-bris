@@ -204,6 +204,7 @@ void BrisProcessor::getStateInformation(juce::MemoryBlock& destData) {
     xml->setAttribute("preset", preset.load());
     xml->setAttribute("tempo", uiTempo.load());
     xml->setAttribute("ui", uiState);
+    xml->setAttribute("glid", glidMode.load());
     xml->setAttribute("pattern", juce::JSON::toString(patternVar, true));
     copyXmlToBinary(*xml, destData);
 }
@@ -214,6 +215,7 @@ void BrisProcessor::setStateInformation(const void* data, int sizeInBytes) {
     preset.store(juce::jlimit(0, kNumFactory - 1, xml->getIntAttribute("preset", 65)));
     uiTempo.store(xml->getDoubleAttribute("tempo", 120.0));
     uiState = xml->getStringAttribute("ui");
+    glidMode.store(juce::jlimit(0, blonda::app::kNumGlid, xml->getIntAttribute("glid", 1)));
     const auto pat = juce::JSON::parse(xml->getStringAttribute("pattern"));
     if (pat.isObject()) setPattern(pat);
     apvts.replaceState(juce::ValueTree::fromXml(*xml));

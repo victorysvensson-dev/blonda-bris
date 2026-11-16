@@ -106,6 +106,7 @@ void BrisEditor::sendState() {
     o->setProperty("t", "state");
     o->setProperty("params", juce::var(pv));
     o->setProperty("preset", proc.currentPreset());
+    o->setProperty("glid", proc.getGlidMode());
     o->setProperty("pattern", proc.getPattern());
     const double ht = proc.getHostTempo();
     o->setProperty("tempo", ht > 0.0 ? ht : proc.getUiTempo());
@@ -191,7 +192,7 @@ void BrisEditor::timerCallback() {
         auto* o = new juce::DynamicObject();
         o->setProperty("t", "m");
         o->setProperty("env", s.m.env); o->setProperty("lfo", s.m.lfo); o->setProperty("pk", std::max(s.m.peakL, s.m.peakR));
-        o->setProperty("mask", s.m.voiceMask); o->setProperty("step", s.m.step); o->setProperty("nc", (int)(s.m.noteCount % 1000000u));
+        o->setProperty("mask", s.m.voiceMask); o->setProperty("step", s.m.step); o->setProperty("nc", (int)(s.m.noteCount % 1000000u)); o->setProperty("glid", s.m.glid);
         juce::Array<juce::var> sc; sc.ensureStorageAllocated(blonda::app::kScopeLen);
         for (int i = 0; i < blonda::app::kScopeLen; i += 2) sc.add(s.m.scope[i]);
         o->setProperty("scope", sc);

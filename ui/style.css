@@ -81,9 +81,19 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
 .tab-play .panel { gap: 0; }
 
 /* ---------------------------------------------------------------- tangenter */
-#keys { flex: none; height: clamp(118px, 22vh, 196px); margin-top: 14px; position: relative; z-index: 1; display: flex; flex-direction: column; }
+#keys { flex: none; height: clamp(140px, 25vh, 230px); margin-top: 14px; position: relative; z-index: 1; display: flex; flex-direction: column; }
 #keys canvas { width: 100%; flex: 1; min-height: 0; display: block; touch-action: none; }
 #kbar { flex: none; display: flex; align-items: center; gap: 22px; height: 28px; margin: 0 0 8px 34px; }
+#kgrip { flex: none; height: 16px; margin-top: -6px; display: flex; justify-content: center; align-items: center; cursor: ns-resize; touch-action: none; }
+#kgrip i { width: 38px; height: 3px; border-radius: 2px; background: var(--line); transition: background .2s, width .2s; }
+#kgrip:hover i, #kgrip.drag i { background: var(--a2); width: 56px; }
+#kbar .zoom { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+#kbar .zoom .ttl { margin-right: 8px; }
+#kbar .zoom button { width: 30px; height: 28px; display: grid; place-items: center; opacity: .55; }
+#kbar .zoom button:hover { opacity: 1; }
+#kbar .zoom .ic { width: 15px; height: 15px; }
+.slider .mfill { position: absolute; top: 50%; height: 1px; background: var(--a); opacity: .45; display: none; }
+.slider .mdot { position: absolute; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--a); display: none; }
 #kbar .ttl { margin: 0; font-size: 10px; white-space: nowrap; }
 #kbar .choice { flex-wrap: nowrap; gap: 0 18px; }
 #kbar .opt { font-size: 10px; letter-spacing: .22em; gap: 8px; padding: 6px 0; }
@@ -133,11 +143,11 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
   .ttl { margin-bottom: 12px; }
   .sliders { gap: 12px; }
   .slider .tr { height: 30px; }
-  #keys { height: clamp(128px, 20vh, 224px); margin-top: 12px; }
+  #keys { height: clamp(150px, 22vh, 250px); margin-top: 12px; }
   /* PLAY: blomman stort, ljudväljaren, tangenter */
   .tab-play #right { display: none; }
   .tab-play .browser .ttl { display: none; }
-  .tab-play #keys { height: clamp(150px, 25vh, 264px); }
+  .tab-play #keys { height: clamp(176px, 28vh, 300px); }
   /* inställningsflikarna: ljudväljaren finns i menyn, blomman tar resten */
   #app:not(.tab-play) #left .browser { display: none; }
   #app:not(.tab-play) #left { gap: 0; }
@@ -163,12 +173,16 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
   .knob canvas { width: 28px; height: 28px; }
   #keys { height: clamp(92px, 30vh, 146px); margin-top: 6px; }
   #kbar { height: 22px; margin-bottom: 4px; }
+  #kgrip { display: none; }
 }
 /* smalt: korta namn och ingen rubrik */
 @media (max-width: 600px) {
-  #kbar { gap: 16px; margin-left: 0; }
+  #kbar { gap: 14px; margin-left: 0; }
   #kbar .choice { flex: 1; justify-content: space-between; gap: 0; }
+  #kbar .zoom .ttl { display: none; }
+  #kbar .zoom button { width: 26px; }
   #kbar .l { display: none; }
   #kbar .s { display: inline; }
 }
+@media (max-width: 430px) { #kbar > .ttl { display: none; } }
 @media (max-height: 330px) { #keys { display: none; } }

@@ -25,6 +25,7 @@ public:
 
     const juce::String getName() const override { return "BLONDA BRIS"; }
     bool acceptsMidi() const override { return true; }
+    bool supportsMPE() const override { return true; }   // MPE-klaviaturer: slide, tryck och böj per ton (se Core::midi)
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 4.0; }
@@ -51,6 +52,7 @@ public:
 
     void uiNote(bool on, int note, int vel);      // tangenter i gränssnittet -> ljudtråden
     void uiGlid(int mode, float amount) { glidMode.store(mode); glidAmount.store(amount); }
+    int getGlidMode() const { return glidMode.load(); }
     void allNotesOff() { panic.store(true); }
     void setPattern(const juce::var& pattern);    // rullen
     juce::var getPattern() const { return patternVar; }
@@ -79,7 +81,7 @@ private:
     juce::AbstractFifo noteFifo { 256 };
     std::array<NoteEv, 256> noteBuf {};
     std::atomic<bool> panic { false };
-    std::atomic<int> glidMode { 0 };          // glid på tangenterna (gränssnittet -> ljudtråden)
+    std::atomic<int> glidMode { 1 };            // 1 = FILTER (som gränssnittets standard); sparas i projektet          // glid på tangenterna (gränssnittet -> ljudtråden)
     std::atomic<float> glidAmount { 0.0f };
 
     // rullen

@@ -22,6 +22,19 @@ EXTRA = [
     ("drive", "Drive", 0.0, 1.0, 0.0),
 ]
 
+# Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...
+# (läge 0 = av). param = parametern som får glidet ovanpå sig, djup = andel av parameterns omfång vid fullt glid,
+# takt = LFO:n höjs till minst ca 6 Hz medan man glider. Ändra bara genom att lägga till i slutet.
+GLID = [
+    # id, namn, kort, param, djup, takt
+    ("filter", "FILTER", "FILT", "cut", 0.42, False),
+    ("vibrato", "VIBRATO", "VIB", "lfoosc", 0.28, True),
+    ("tremolo", "TREMOLO", "TREM", "lfoamp", 0.70, True),
+    ("pwm", "PWM", "PWM", "lfopwm", 0.80, False),
+    ("wah", "WAH", "WAH", "lfocut", 0.60, False),
+]
+GLID_TAKT = 0.6   # lrate minst så här medan man glider (0.1 * 1000^0.6 = ca 6 Hz)
+
 # Växterna. Ordningen = ordningen i ljudlistan. id används av växtritaren i ui/vaxter.js.
 # fx = (rvb, rsize, drive) som sätts när man väljer ett ljud av växten.
 VAXTER = [
@@ -133,6 +146,12 @@ def main():
           f"constexpr int kNumExtra = {len(EXTRA)};", "inline constexpr ExtraParam kExtra[kNumExtra] = {"]
     for e in EXTRA:
         h.append(f'    {{"{e[0]}", "{e[1]}", {e[2]}, {e[3]}, {e[4]}}},')
+    h += ["};", "", "// glid på tangenterna / MPE-slide (läge = index + 1)",
+          "struct GlidInfo { const char* id; const char* name; const char* param; double depth; bool rate; };",
+          f"constexpr int kNumGlid = {len(GLID)};", f"constexpr double kGlidRate = {GLID_TAKT};",
+          "inline constexpr GlidInfo kGlid[kNumGlid] = {"]
+    for g in GLID:
+        h.append(f'    {{"{g[0]}", "{g[1]}", "{g[3]}", {g[4]}, {"true" if g[5] else "false"}}},')
     h += ["};", "", "}  // namespace blonda::app", ""]
     open(os.path.join(ROT, "core/kategorier.h"), "w", encoding="utf-8").write("\n".join(h))
 
@@ -157,6 +176,7 @@ def main():
                 plants=[dict(id=v["id"], cat=v["kat"], name=v["namn"], color=v["farg"], bg=v["bg"], photo=v["foto"],
                              hue=v.get("ton", 0), sat=v.get("mattnad", 1), fx=list(v["fx"])) for v in VAXTER],
                 blommor=blom,
+                glid=dict(rate=GLID_TAKT, targets=[dict(id=g[0], name=g[1], short=g[2], param=g[3], depth=g[4], rate=g[5]) for g in GLID]),
                 phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip(),
                 version=open(os.path.join(ROT, "VERSION")).read().strip())
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
