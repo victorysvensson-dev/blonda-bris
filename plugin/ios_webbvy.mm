@@ -4,7 +4,7 @@
 // synliga höjd med samma marginaler, så de räknades två gånger och det blev ett tomrum under tangenterna.
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
-#include <string>
+#include "ios_webbvy.h"
 
 static bool justera(UIView* v) {
     if ([v isKindOfClass:[WKWebView class]]) {
@@ -38,5 +38,6 @@ std::string brisWebbvyInfo(void* nativeView) {
         NSStringFromClass([root class]), NSStringFromCGRect(root.frame), NSStringFromCGRect([w convertRect:w.bounds toView:nil]),
         NSStringFromUIEdgeInsets(w.safeAreaInsets), NSStringFromUIEdgeInsets(sv.contentInset),
         NSStringFromUIEdgeInsets(sv.adjustedContentInset), (long) sv.contentInsetAdjustmentBehavior, NSStringFromCGRect(sv.bounds)];
-    return std::string([t UTF8String]);
+    const char* c = t.UTF8String;
+    return c != nullptr ? std::string(c) : std::string();
 }

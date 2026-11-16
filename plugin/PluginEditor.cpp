@@ -34,8 +34,7 @@ juce::WebBrowserComponent::Options webOptions(BrisEditor* self, std::function<vo
 }  // namespace
 
 #if JUCE_IOS
-bool brisJusteraWebbvy(void* nativeView);   // ios_webbvy.mm
-std::string brisWebbvyInfo(void* nativeView);
+#include "ios_webbvy.h"
 #endif
 
 BrisEditor::BrisEditor(BrisProcessor& p)

@@ -137,7 +137,8 @@ void BrisProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuf
     // parametrar som ändrats (värden, automation, gränssnitt)
     for (int i = 0; i < numParams(); ++i) {
         const double v = paramValue(i);
-        if (!(v == applied[(size_t)i])) { core.setParam(i, v); applied[(size_t)i] = v; }
+        if (!juce::exactlyEqual(v, applied[(size_t)i])) {   // NaN i början = alltid skicka
+            core.setParam(i, v); applied[(size_t)i] = v; }
     }
     // tempo: värdprogrammets om det finns, annars gränssnittets
     double bpm = 0.0;

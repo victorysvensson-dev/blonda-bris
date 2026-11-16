@@ -53,11 +53,26 @@ if [ "$VILL" = "xcode" ]; then
   cd "$MAPP"
   "$CMAKE" -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" \
     -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$TEAM" -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic >/dev/null
+  # visa bara appens schema (BlondaBris_Standalone) så att Kör lägger appen på enheten; ALL_BUILD m.fl. bygger bara
+  UD="build-ios/BLONDA_BRIS.xcodeproj/xcuserdata/$USER.xcuserdatad/xcschemes"
+  mkdir -p "$UD"
+  {
+    echo '<?xml version="1.0" encoding="UTF-8"?>'
+    echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+    echo '<plist version="1.0"><dict><key>SchemeUserState</key><dict>'
+    i=1
+    for S in BlondaBris_Standalone BlondaBris_AUv3 ALL_BUILD BlondaBris BlondaBris_All BrisUi install ZERO_CHECK; do
+      VIS=false; [ "$S" = BlondaBris_Standalone ] && VIS=true
+      echo "<key>$S.xcscheme_^#shared#^_</key><dict><key>orderHint</key><integer>$i</integer><key>isShown</key><$VIS/></dict>"
+      i=$((i+1))
+    done
+    echo '</dict></dict></plist>'
+  } > "$UD/xcschememanagement.plist"
   open build-ios/BLONDA_BRIS.xcodeproj
   cat <<'TXT'
 
 Xcode öppnar BLONDA BRIS. Där:
-  1. Uppe i mitten: välj schemat "BlondaBris_Standalone" och din iPad som enhet.
+  1. Uppe i mitten ska det stå "BlondaBris_Standalone" och din iPad (står det ALL_BUILD: klicka och byt).
   2. Tryck på Kör (triangeln uppe till vänster, eller Cmd+R).
 Första bygget tar några minuter. Öppnas inte appen: se tipsen nedan.
   - Inställningar > Integritet och säkerhet > Utvecklarläge: slå på och starta om enheten.
