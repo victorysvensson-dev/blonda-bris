@@ -134,5 +134,31 @@ with sync_playwright() as p:
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()
     b.close()
+    # Blommorna i lager: bakre och främre lager tillsammans ska bli exakt blomman (inga tätare halvgenomskinliga
+    # partier där lagren möts). Klockan och slumpen fryses, så att stoftet och rörelsen är lika i båda bilderna.
+    import numpy as np, io
+    from PIL import Image
+    def blomma(bl, foto, med):
+        pg = bl.new_page(viewport={"width": 900, "height": 700})
+        pg.goto(URL); pg.evaluate("document.fonts.ready"); pg.wait_for_timeout(900)   # typsnittet ändrar scenens storlek
+        pg.evaluate("document.querySelector('#start').classList.remove('show')")
+        if not med: pg.evaluate(f"BRIS_DATA.blommor['{foto}'].lager = null")
+        i = pg.evaluate(f"BRIS_DATA.presets.findIndex(p => BRIS_DATA.plants[p.plant].photo === '{foto}')")
+        pg.evaluate(f"__bris.selectPreset({i})")
+        pg.wait_for_function("__bris.flower.klar()", timeout=15000)
+        pg.evaluate("__bris.flower.frys(12.5)"); pg.wait_for_timeout(1300)   # bakgrundens färg tonar över på 0,8 s
+        bild = np.asarray(Image.open(io.BytesIO(pg.locator("#stage").screenshot())).convert("RGB"), np.int16)
+        pg.close()
+        return bild
+    for webgl in (True, False):
+        bl = p.chromium.launch(args=[] if webgl else ["--disable-webgl", "--disable-3d-apis"])
+        for foto in [k for k, v in D["blommor"].items() if v.get("lager")]:
+            a, b2 = blomma(bl, foto, True), blomma(bl, foto, False)
+            dd = np.abs(a - b2).max(axis=2)
+            # WebGL: exakt (avrundning). 2D (reserven): webbläsarens heltalsalfa ger små skillnader i enstaka kantpixlar.
+            ok = dd.max() <= 2 if webgl else (dd.max() <= 16 and (dd > 2).mean() < 0.005)
+            krav(ok and b2.std() > 20, f"lager {foto} ({'WebGL' if webgl else '2D'}): blomman i lager = blomman (största skillnad {int(dd.max())}, {int((dd > 2).sum())} px, kontrast {b2.std():.0f})")
+            if not ok: Image.fromarray(np.clip(dd * 20, 0, 255).astype(np.uint8)).save(f"{UT}/lagerfel_{foto}_{'gl' if webgl else '2d'}.png")
+        bl.close()
 print("ALLT OK" if not fel else f"{len(fel)} FEL")
 sys.exit(1 if fel else 0)

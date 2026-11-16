@@ -35,7 +35,9 @@ BLOMMOR = {
 RINGAR = {"iris", "strelitzia", "silke", "lavendel", "kanna"}
 GLASRING = {"iris", "strelitzia"}   # tjock glasring med ljus skiva innanför
 RENSA = {
-    "iris": [(622, 100, 742, 345, 90), (80, 300, 340, 505, 30)],
+    # iris: rutan slutar ovanför det högra hängande kronbladet (y 298); där bladet börjar följer en smal ruta bara
+    # ringen (x 664-682), annars klipps kronbladets bleka överkant bort (ringen och bladet har samma färgmättnad)
+    "iris": [(622, 100, 742, 298, 90), (664, 298, 682, 332, 46), (80, 300, 340, 505, 30)],
     "strelitzia": [(676, 212, 804, 452, 90), (240, 0, 530, 48, 30), (95, 55, 178, 430, 30)],
 }
 

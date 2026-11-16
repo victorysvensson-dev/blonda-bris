@@ -65,7 +65,14 @@ vec3 hue(vec3 c, float a) {
 }
 void main() {
   vec4 t = texture2D(uTex, vUv);
-  if (uUseMask > 0.5) t *= texture2D(uMask, vUv).a;   // främre lagret: bara de främre kronbladen
+  // lager: främre = bilden genom masken (m); bakre = resten, skalat så att främre över bakre blir exakt bilden:
+  // a*m + (1 - a*m) * a*k = a  när  k = (1 - m) / (1 - a*m)  (samma för färgen). Halvgenomskinliga partier blir
+  // alltså inte tätare där lagren möts.
+  if (uUseMask > 0.5) {
+    float m = texture2D(uMask, vUv).a;
+    if (uUseMask < 1.5) t *= m;
+    else t *= clamp((1.0 - m) / max(1e-4, 1.0 - t.a * m), 0.0, 1.0);
+  }
   vec3 c = t.a > 0.0 ? t.rgb / t.a : vec3(0.0);
   if (uHue != 0.0) c = hue(c, uHue);
   float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -216,18 +223,32 @@ void main() {
       gl.uniform1f(u.uSat, cfg.sat);
       gl.uniform1f(u.uLift, envS * 0.03);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uTex, 0);
-      gl.uniform1f(u.uUseMask, masked ? 1 : 0);
+      gl.uniform1f(u.uUseMask, masked === "fram" ? 1 : masked === "bak" ? 2 : 0);
       if (masked) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, mtex); gl.uniform1i(u.uMask, 1); gl.activeTexture(gl.TEXTURE0); }
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.drawElements(gl.TRIANGLES, nIdx, gl.UNSIGNED_SHORT, 0);
     }
-    // 2D utan WebGL: blommans främre lager som en egen bild (blomman genom masken)
-    let framCanvas = null, framFor = null;
-    function framBild(img, mimg) {
-      if (framFor === img && framCanvas) return framCanvas;
-      const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const g = c.getContext("2d"); g.drawImage(img, 0, 0); g.globalCompositeOperation = "destination-in"; g.drawImage(mimg, 0, 0, c.width, c.height);
-      framCanvas = c; framFor = img; return c;
+    // 2D utan WebGL: blommans två lager som egna bilder, räknade som i WebGL (främre över bakre = bilden).
+    // Görs om till vanliga bilder (inte canvas), så att webbläsaren skalar ner dem exakt som originalbilden.
+    let lagerCache = null;
+    function lagerBilder(img, mimg) {
+      if (lagerCache && lagerCache.img === img) return lagerCache.klar ? lagerCache : null;
+      lagerCache = { img, klar: false };
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const mk = (draw) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d", { willReadFrequently: true }); draw(g); return c; };
+      const bild = mk((g) => g.drawImage(img, 0, 0)), mask = mk((g) => g.drawImage(mimg, 0, 0, w, h));
+      const bd = bild.getContext("2d").getImageData(0, 0, w, h), md = mask.getContext("2d").getImageData(0, 0, w, h).data;
+      const fd = new ImageData(new Uint8ClampedArray(bd.data), w, h);
+      for (let i = 0; i < md.length; i += 4) {
+        const m = md[i + 3] / 255, a = bd.data[i + 3] / 255;
+        fd.data[i + 3] = Math.round(a * m * 255);                                   // främre: a * m
+        bd.data[i + 3] = Math.round(a * Math.min(1, Math.max(0, (1 - m) / Math.max(1e-4, 1 - a * m))) * 255);   // bakre
+      }
+      const bak = mk((g) => g.putImageData(bd, 0, 0)), fram = mk((g) => g.putImageData(fd, 0, 0));
+      const tillBild = (c) => new Promise((res) => c.toBlob((b) => { const i = new Image(); i.onload = () => res(i); i.src = URL.createObjectURL(b); }, "image/png"));
+      const c = lagerCache;
+      Promise.all([tillBild(bak), tillBild(fram)]).then(([b, f]) => { if (lagerCache === c) { c.bak = b; c.fram = f; c.klar = true; } });
+      return null;
     }
     function draw2D(ctx, cfg, img, t, alpha) {
       const r = rect(cfg, img);
@@ -235,6 +256,7 @@ void main() {
       const sway = Math.sin(t * 0.21 + cfg.ph) * 0.006;
       const b = 1 + envS * 0.012;
       ctx.save(); ctx.globalAlpha = alpha;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";   // samma nedskalning för bild och lager
       ctx.translate(fx, fy); ctx.rotate(cfg.rot + sway * 0.5); ctx.scale(cfg.flip ? -b : b, b); ctx.translate(-fx, -fy);
       const f = (cfg.hue ? `hue-rotate(${(cfg.hue * 180 / Math.PI).toFixed(1)}deg) ` : "") + (cfg.sat !== 1 ? `saturate(${cfg.sat})` : "");
       ctx.filter = f || "none";
@@ -266,10 +288,12 @@ void main() {
       return c;
     }
 
+    let frys = null;   // tester: fast tid, inget stoft, prickarna på plats (blomman ritas likadant varje gång)
     function frame(now) {
       requestAnimationFrame(frame);
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      const t = (now - t0) / 1000;
+      let dt = Math.min(0.05, (now - last) / 1000); last = now;
+      let t = (now - t0) / 1000;
+      if (frys !== null && curImg && fade >= 1) { dt = 0; t = frys; lph = 0; envS = 0; pkS = 0; dust.length = 0; spawnAcc = 0; lastNc = sig.nc; }
       resize();
       if (!W) return;
       if (want && want !== cur) {
@@ -306,14 +330,14 @@ void main() {
       bctx.fillStyle = accent; bctx.beginPath(); bctx.arc(cx + Math.cos(oa) * R, cy + Math.sin(oa) * R, 4, 0, TAU); bctx.fill();
 
       // blomman (i lager: bakre delen nu, stoftet ur hjärtat och de främre kronbladen ritas efter stoftet nedan)
-      const lager = !!(curImg && curMask && heart);
+      const lager = !!(curImg && curMask && heart) && (gl || !!lagerBilder(curImg, curMask));
       if (gl) {
         gl.viewport(0, 0, glCv.width, glCv.height);
         gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-        if (curImg) drawGL(cur, curImg, t, 1, false);
+        if (curImg) drawGL(cur, curImg, t, 1, lager ? "bak" : null);
       } else {
         fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H);
-        if (curImg) draw2D(fctx, cur, curImg, t, fade);
+        if (curImg) draw2D(fctx, cur, lager ? lagerBilder(curImg, curMask).bak : curImg, t, fade);
       }
       if (gl) { fctx.setTransform(dpr, 0, 0, dpr, 0, 0); fctx.clearRect(0, 0, W, H); }
       glCv.style.opacity = gl ? String(0.15 + 0.85 * fade) : "1";
@@ -324,8 +348,8 @@ void main() {
       const toPx = (u, v) => [r[0] + (cur && cur.flip ? 1 - u : u) * r[2], r[1] + v * r[3]];
       if (lastNc < 0) lastNc = sig.nc;
       let burst = 0;
-      if (sig.nc !== lastNc) { burst = Math.min(6, Math.abs(sig.nc - lastNc)) * 4; lastNc = sig.nc; }
-      spawnAcc += dt * (0.5 + envS * 5);
+      if (frys === null && sig.nc !== lastNc) { burst = Math.min(6, Math.abs(sig.nc - lastNc)) * 4; lastNc = sig.nc; }
+      if (frys === null) spawnAcc += dt * (0.5 + envS * 5);
       const spawn = burst + Math.floor(spawnAcc);
       spawnAcc -= Math.floor(spawnAcc);
       const com = toPx(maskCom[0], maskCom[1]);
@@ -335,12 +359,13 @@ void main() {
           let u = 0, v = 0;
           for (let j = 0; j < 30; j++) { u = heartBox[0] + Math.random() * (heartBox[2] - heartBox[0]); v = heartBox[1] + Math.random() * (heartBox[3] - heartBox[1]); if (inHeart(heart, u, v)) break; }
           o = toPx(u, v);
-          const sp = R * (0.03 + Math.random() * 0.06), z = Math.random();
+          // ut ur hjärtat med fart, sedan inbromsning till lugnt svävande (annars klumpar kornen ihop sig vid hjärtat)
+          const sp = R * (0.12 + Math.random() * 0.16), z = Math.random();
           // riktningen ut ur hjärtat (blommor.json: lager.ut, grader på skärmen, 180 = vänster, 270 = upp)
           const ut = cur.lager.ut || [200, 340];
-          const ang = (ut[0] + Math.random() * (ut[1] - ut[0])) * Math.PI / 180;
+          const ang = (ut[0] - 12 + Math.random() * (ut[1] - ut[0] + 24)) * Math.PI / 180;
           dust.push({ x: o[0], y: o[1], vx: Math.cos(ang) * sp * 1.3, vy: Math.sin(ang) * sp * 1.3 - sp * 0.15,
-            ph: Math.random() * TAU, life: 0, max: 3.5 + Math.random() * 4.5, layer: z < 0.86 ? 3 : 2, warm: Math.random() < 0.6,
+            ph: Math.random() * TAU, life: 0, max: 3.5 + Math.random() * 4.5, layer: z < 0.86 ? 3 : 2, warm: Math.random() < 0.6, broms: 1.3,
             s: z < 0.86 ? 0.9 + Math.random() * 1.5 : 5 + Math.random() * 7 });
           continue;
         }
@@ -365,7 +390,7 @@ void main() {
         if (p.life >= p.max) { dust.splice(i, 1); continue; }
         const k = p.life / p.max;
         p.x += (p.vx + Math.sin(t * 0.7 + p.ph) * R * 0.006) * dt; p.y += p.vy * dt;
-        p.vx *= 1 - dt * 0.15; p.vy *= 1 - dt * 0.1;
+        p.vx *= 1 - dt * (p.broms || 0.15); p.vy *= 1 - dt * (p.broms || 0.1);
         const a = Math.min(1, p.life / 0.8) * (k > 0.55 ? (1 - k) / 0.45 : 1);
         if (p.layer === 3) {   // mellan lagren
           if (lager && gl) { const c = p.warm ? [224, 168, 84] : acc; inre.push([p.x, p.y, p.s * 6, c[0] / 255, c[1] / 255, c[2] / 255, a * 0.85]); continue; }
@@ -385,8 +410,8 @@ void main() {
       bctx.globalAlpha = 1; fctx.globalAlpha = 1;
       // de främre kronbladen över stoftet ur hjärtat
       if (lager) {
-        if (gl) { drawDustGL(inre); drawGL(cur, curImg, t, 1, true); }
-        else draw2D(fctx, cur, framBild(curImg, curMask), t, fade);
+        if (gl) { drawDustGL(inre); drawGL(cur, curImg, t, 1, "fram"); }
+        else draw2D(fctx, cur, lagerBilder(curImg, curMask).fram, t, fade);
       }
     }
     requestAnimationFrame(frame);
@@ -404,6 +429,8 @@ void main() {
       },
       signals(s) { Object.assign(sig, s); },
       preload(list) { list.forEach((p) => load(p)); },
+      frys(tSek) { frys = tSek; },     // tester
+      klar() { return !!curImg && fade >= 1 && (!cur || !cur.lager || (!!curMask && (!!gl || !!(lagerCache && lagerCache.klar)))); },
     };
   }
   return { create };
