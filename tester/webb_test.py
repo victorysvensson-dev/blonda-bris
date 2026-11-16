@@ -99,6 +99,19 @@ with sync_playwright() as p:
             krav(h1 > h0 + 40 and st >= 150, f"tangenterna blir högre när man drar i strecket ({h0:.0f} -> {h1:.0f}, blomman {st:.0f})")
             pg.screenshot(path=f"{UT}/tangenter_hoga.png")
             pg.locator("#kgrip").dblclick(); pg.evaluate("__bris.setZoom(1)")
+            # BRIS MPE-läget (som i MPE-appen): varje finger skickar sin egen slide för sin ton, inget gemensamt glid
+            pg.evaluate("""(() => { window.__skickat = []; const o = Bridge.send; Bridge.send = (m) => { window.__skickat.push(m); o(m); };
+                __bris.S.mpe = true; })()""")
+            x1 = kb["x"] + 34 + (kb["width"] - 34) / round((kb["width"] - 34) / 56) * 0.5
+            pg.mouse.move(x1, kb["y"] + kb["height"] * 0.9); pg.mouse.down(); pg.wait_for_timeout(100)
+            for f in range(1, 6): pg.mouse.move(x1, kb["y"] + kb["height"] * (0.9 - 0.1 * f)); pg.wait_for_timeout(40)
+            pg.wait_for_timeout(200)
+            sk = pg.evaluate("window.__skickat.filter((m) => m.t === 'slide' || m.t === 'glid')")
+            nt = pg.evaluate("[...__bris.keys.down.values()][0].n")
+            pg.mouse.up()
+            krav(any(m["t"] == "slide" and m["n"] == nt and m["v"] > 0.5 for m in sk) and not any(m["t"] == "glid" for m in sk),
+                 f"MPE-läget: fingret skickar slide för sin ton ({len(sk)} meddelanden)")
+            pg.evaluate("__bris.S.mpe = false")
             pg.click("#kbar .opt[data-m='2']")
             krav(pg.evaluate("__bris.S.glid.m") == 2, "välja VIBRATO i raden ovanför tangenterna")
             o0 = pg.evaluate("__bris.S.oct"); pg.mouse.click(kb["x"] + 10, kb["y"] + kb["height"] * 0.12)

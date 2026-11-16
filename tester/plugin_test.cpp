@@ -76,8 +76,14 @@ int main() {
     KRAV(hi > lo * 1.3, "automation når ljudet (cutoff 0.05: %.3f, 0.95: %.3f)", lo, hi);
     // glid på tangenterna (gränssnittets meddelande) når ljudet utan att ändra parametern
     {
+#if BRIS_MPE
+        // BRIS MPE: fingrets slide på sin ton (tangenterna på skärmen)
+        auto rmsGlid = [&](float v) { p.setParamFromUi(iCut, 0.05); p.uiGlid(1, 0.0f); p.uiNote(true, 48, 100);
+            render(p, 0.2); p.uiSlide(48, v); const double r = render(p, 0.5); p.uiNote(false, 48, 0); render(p, 3); return r; };
+#else
         auto rmsGlid = [&](float v) { p.setParamFromUi(iCut, 0.05); p.uiGlid(1, v); juce::MidiBuffer m; m.addEvent(juce::MidiMessage::noteOn(1, 48, (juce::uint8)100), 0);
             render(p, 0.2, &m); const double r = render(p, 0.5); juce::MidiBuffer o; o.addEvent(juce::MidiMessage::allNotesOff(1), 0); p.uiGlid(1, 0.0f); render(p, 3, &o); return r; };
+#endif
         const double g0 = rmsGlid(0.0f), g1 = rmsGlid(1.0f);
         KRAV(g1 > g0 * 1.3, "glid FILTER når ljudet (%.3f -> %.3f)", g0, g1);
         KRAV(std::abs(p.paramValue(iCut) - 0.05) < 1e-6, "glidet ändrar inte cutoff-parametern (%.3f)", p.paramValue(iCut));

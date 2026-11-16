@@ -3,9 +3,13 @@
 #   curl -sL https://raw.githubusercontent.com/victorysvensson-dev/blonda-bris/main/tools/ios-installera.sh | bash
 #   ... | bash -s iphone      (välj iPhone när flera enheter syns; "ipad" är standard)
 #   ... | bash -s xcode       (gör bara Xcode-projektet och öppnar det i Xcode: välj enhet och tryck Kör där)
+#   ... | bash -s xcode mpe   (samma för BLONDA BRIS MPE, egen app bredvid BRIS; "mpe" går att kombinera med allt ovan)
 # Kräver Xcode med ditt Apple-ID inlagt (Xcode > Settings > Accounts). CMake hämtas automatiskt om det saknas.
 set -e
-VILL="${1:-ipad}"
+VILL=ipad; MPE=0
+for a in "$@"; do case "$a" in mpe) MPE=1 ;; ipad|iphone|xcode) VILL="$a" ;; esac; done
+if [ "$MPE" = 1 ]; then APPNAMN="BLONDA BRIS MPE"; BUNDLE=se.blonda.brismpe; BYGG=build-ios-mpe; MPEFLAGGA=ON
+else APPNAMN="BLONDA BRIS"; BUNDLE=se.blonda.bris; BYGG=build-ios; MPEFLAGGA=OFF; fi
 MAPP="$HOME/Developer/blonda-bris"
 VERKTYG="$HOME/.blonda"
 steg() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
@@ -51,10 +55,10 @@ echo "team: $TEAM"
 if [ "$VILL" = "xcode" ]; then
   steg "5/5 Gör Xcode-projektet och öppnar det"
   cd "$MAPP"
-  "$CMAKE" -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" \
+  "$CMAKE" -B "$BYGG" -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" -DBRIS_MPE=$MPEFLAGGA \
     -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$TEAM" -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic >/dev/null
   # visa bara appens schema (BlondaBris_Standalone) så att Kör lägger appen på enheten; ALL_BUILD m.fl. bygger bara
-  UD="build-ios/BLONDA_BRIS.xcodeproj/xcuserdata/$USER.xcuserdatad/xcschemes"
+  UD="$BYGG/BLONDA_BRIS.xcodeproj/xcuserdata/$USER.xcuserdatad/xcschemes"
   mkdir -p "$UD"
   {
     echo '<?xml version="1.0" encoding="UTF-8"?>'
@@ -68,7 +72,8 @@ if [ "$VILL" = "xcode" ]; then
     done
     echo '</dict></dict></plist>'
   } > "$UD/xcschememanagement.plist"
-  open build-ios/BLONDA_BRIS.xcodeproj
+  open "$BYGG/BLONDA_BRIS.xcodeproj"
+  echo "Öppnar $APPNAMN ($BYGG/BLONDA_BRIS.xcodeproj)"
   cat <<'TXT'
 
 Xcode öppnar BLONDA BRIS. Där:
@@ -106,22 +111,22 @@ echo "enhet: $NAMN"
 
 steg "6/6 Bygger och installerar (tar några minuter första gången)"
 cd "$MAPP"
-"$CMAKE" -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" >/dev/null
+"$CMAKE" -B "$BYGG" -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" -DBRIS_MPE=$MPEFLAGGA >/dev/null
 set -o pipefail
-xcodebuild -project build-ios/BLONDA_BRIS.xcodeproj -scheme BlondaBris_Standalone -configuration Release \
+xcodebuild -project "$BYGG/BLONDA_BRIS.xcodeproj" -scheme BlondaBris_Standalone -configuration Release \
   -destination "platform=iOS,id=$UDID" -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic build 2>&1 | grep -E "error:|warning: .*(sign|provision)|BUILD (SUCCEEDED|FAILED)" || true
-APP=$(find build-ios -name "BLONDA BRIS.app" -path "*Release-iphoneos*" -not -path "*/PlugIns/*" | head -1)
-[ -n "$APP" ] || APP=$(find build-ios -name "BLONDA BRIS.app" -path "*Standalone*" -not -path "*iphonesimulator*" | head -1)
+APP=$(find "$BYGG" -name "$APPNAMN.app" -path "*Release-iphoneos*" -not -path "*/PlugIns/*" | head -1)
+[ -n "$APP" ] || APP=$(find "$BYGG" -name "$APPNAMN.app" -path "*Standalone*" -not -path "*iphonesimulator*" | head -1)
 [ -n "$APP" ] || stopp "Bygget blev inte klart (se felen ovan)."
 xcrun devicectl device install app --device "$UDID" "$APP" | tail -2
-xcrun devicectl device process launch --device "$UDID" se.blonda.bris >/dev/null 2>&1 \
-  && echo "Klart: BLONDA BRIS är startad på $NAMN." \
+xcrun devicectl device process launch --device "$UDID" "$BUNDLE" >/dev/null 2>&1 \
+  && echo "Klart: $APPNAMN är startad på $NAMN." \
   || echo "Appen är installerad på $NAMN men kunde inte startas än (se nedan)."
 cat <<'TXT'
 
 Om appen inte öppnas på enheten:
   - Inställningar > Integritet och säkerhet > Utvecklarläge: slå på och starta om enheten.
   - Inställningar > Allmänt > VPN och enhetshantering: tryck på ditt Apple-ID och "Lita på".
-Som plugg: öppna GarageBand/Logic för iPad/AUM och välj AUv3-instrumentet BLONDA BRIS.
+Som plugg: öppna GarageBand/Logic för iPad/AUM och välj AUv3-instrumentet BLONDA BRIS (eller BLONDA BRIS MPE).
 TXT

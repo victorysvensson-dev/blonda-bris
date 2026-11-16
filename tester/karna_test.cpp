@@ -92,17 +92,17 @@ int main() {
             double before[64]; for (int i = 0; i < Core::numParams(); ++i) before[i] = a.getParam(i);
             std::vector<float> L2(B), R2(B); double diff = 0, ea = 0, eb = 0;
             for (int k = 0; k < (int)(0.8 * sr / B); ++k) {
-                a.setGlid(mode, std::min(1.0, k / 40.0));
+                a.setGlid(mode, std::min(1.0, k / 40.0)); a.uiSlide(57, std::min(1.0, k / 40.0));   // uiSlide: BRIS MPE
                 a.process(L.data(), R.data(), B); b.process(L2.data(), R2.data(), B);
                 for (int s = 1; s < B; ++s) { diff += std::fabs(L[s] - L2[s]); ea += std::fabs(L[s] - L[s - 1]); eb += std::fabs(L2[s] - L2[s - 1]); }
             }
             bool same = true;
-            for (int i = 0; i < Core::numParams(); ++i) if (a.getParam(i) != before[i]) same = false;
-            a.setGlid(mode, 0.0);
+            for (int i = 0; i < Core::numParams(); ++i) if (a.getParam(i) != before[i] && i != cp.find("slm")) same = false;
+            a.setGlid(mode, 0.0); a.uiSlide(57, 0.0);
             for (int k = 0; k < (int)(0.5 * sr / B); ++k) a.process(L.data(), R.data(), B);
             bool back = true;
             for (int i = 0; i < Core::numParams(); ++i) if (cp.brisIdx[i] >= 0 && a.synth().getParam(cp.brisIdx[i]) != a.getParam(i)) back = false;
-            a.setGlid(mode, 1.0); for (int k = 0; k < 20; ++k) a.process(L.data(), R.data(), B);
+            a.setGlid(mode, 1.0); a.uiSlide(57, 1.0); for (int k = 0; k < 20; ++k) a.process(L.data(), R.data(), B);
             a.setGlid(0, 0.0); a.process(L.data(), R.data(), B);
             bool off = true;
             for (int i = 0; i < Core::numParams(); ++i) if (cp.brisIdx[i] >= 0 && a.synth().getParam(cp.brisIdx[i]) != a.getParam(i)) off = false;
@@ -143,6 +143,24 @@ int main() {
         std::printf("vanlig MIDI på kanal 1: största skillnad mot motorn %.2e\n", md);
         KRAV(md == 0.0, "vanlig MIDI på kanal 1 låter annorlunda än motorn (%.2e)", md);
     }
+#if BRIS_MPE
+    // BRIS MPE: två fingrar på skärmen, bara det ena glider -> bara den tonens röst får slide
+    {
+        Core c; c.prepare(sr);
+        c.noteOn(60, 100); c.noteOn(67, 100);
+        c.uiSlide(67, 0.8);
+        auto& d = c.synth().dsp();
+        double n[6] = {d.n0, d.n1, d.n2, d.n3, d.n4, d.n5}, es[6] = {d.es0, d.es1, d.es2, d.es3, d.es4, d.es5};
+        double s60 = -1, s67 = -1;
+        for (int i = 0; i < 6; ++i) { if (n[i] == 60) s60 = es[i]; if (n[i] == 67) s67 = es[i]; }
+        std::printf("BRIS MPE på skärmen: slide 60 = %.2f, 67 = %.2f\n", s60, s67);
+        KRAV(s60 == 0.0 && std::fabs(s67 - 0.8) < 1e-12, "slide per finger går till fel ton (%.2f / %.2f)", s60, s67);
+        c.noteOff(67); c.noteOn(67, 90);
+        double es2[6] = {d.es0, d.es1, d.es2, d.es3, d.es4, d.es5}, n2[6] = {d.n0, d.n1, d.n2, d.n3, d.n4, d.n5};
+        bool ny0 = false; for (int i = 0; i < 6; ++i) if (n2[i] == 67 && es2[i] == 0.0 && d.g0 + d.g1 + d.g2 > 0) ny0 = true;
+        KRAV(ny0, "en ny ton börjar inte utan slide");
+    }
+#endif
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;

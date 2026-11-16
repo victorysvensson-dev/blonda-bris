@@ -21,6 +21,18 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## BLONDA BRIS MPE
+
+En egen app och AUv3 bredvid BRIS (`-DBRIS_MPE=ON`), med motorn `brismpe` ur blonda-motor: samma 90 ljud och samma
+blommor, men varje ton har egen böj, egen slide och eget tryck. På skärmen får varje finger sin egen slide (för
+fingret uppåt på tangenten); vad slide styr väljs i SLIDE UP (FILTER, VIBRATO, TREMOLO, PWM, WAH) och sparas som
+parametern Slide Target. MPE-klaviaturer (kanal 1 huvudkanal, 2–16 en ton var) spelar per ton. Utan uttryck låter
+BRIS MPE exakt som BRIS. iPad först:
+
+```sh
+curl -sL https://raw.githubusercontent.com/victorysvensson-dev/blonda-bris/main/tools/ios-installera.sh | bash -s xcode mpe
+```
+
 ## Installera på Macen
 
 ```sh
@@ -78,7 +90,7 @@ Releases → **senaste**.
 ## Uppdatera BRIS-ljudet
 
 Ljudet ändras bara i `blonda-motor`. Kopiera sedan `include/blonda/{motor,effekt,gen_runtime}.h` och
-`motorer/{bris,rum,vibe,sliten}` hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
+`motorer/{bris,brismpe,rum,vibe,sliten}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
 och kör testerna.
 
 © BLONDA. Byggt med JUCE 8.

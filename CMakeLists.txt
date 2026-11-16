@@ -32,14 +32,29 @@ endif()
 
 set(BRIS_TEAM "" CACHE STRING "Apples utvecklar-team-id för signering (tomt = osignerat)")
 
+# BLONDA BRIS MPE: samma projekt och gränssnitt, motorn BRIS MPE (egen böj, slide och tryck per ton).
+# En egen app/plugg bredvid BRIS (eget namn, bundle-id och pluggkod).   cmake -B build-mpe -DBRIS_MPE=ON ...
+option(BRIS_MPE "Bygg BLONDA BRIS MPE" OFF)
+if(BRIS_MPE)
+    set(BRIS_NAMN "BLONDA BRIS MPE")
+    set(BRIS_BUNDLE "se.blonda.brismpe")
+    set(BRIS_KOD Brmp)
+    set(BRIS_BESKRIVNING "BLONDA BRIS MPE - analog poly synth with per-note expression")
+else()
+    set(BRIS_NAMN "BLONDA BRIS")
+    set(BRIS_BUNDLE "se.blonda.bris")
+    set(BRIS_KOD Bris)
+    set(BRIS_BESKRIVNING "BLONDA BRIS - analog poly synth")
+endif()
+
 juce_add_plugin(BlondaBris
-    PRODUCT_NAME "BLONDA BRIS"
+    PRODUCT_NAME "${BRIS_NAMN}"
     COMPANY_NAME "BLONDA"
     COMPANY_WEBSITE "https://blonda.studio"
-    BUNDLE_ID "se.blonda.bris"
+    BUNDLE_ID "${BRIS_BUNDLE}"
     PLUGIN_MANUFACTURER_CODE Blnd
-    PLUGIN_CODE Bris
-    DESCRIPTION "BLONDA BRIS - analog poly synth"
+    PLUGIN_CODE ${BRIS_KOD}
+    DESCRIPTION "${BRIS_BESKRIVNING}"
     FORMATS ${BRIS_FORMATS}
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
@@ -79,7 +94,8 @@ target_compile_definitions(BlondaBris PUBLIC
     JUCE_WEB_BROWSER=1
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=0)
+    JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=0
+    BRIS_MPE=$<BOOL:${BRIS_MPE}>)
 target_link_libraries(BlondaBris
     PRIVATE BrisUi juce::juce_audio_utils juce::juce_gui_extra
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)

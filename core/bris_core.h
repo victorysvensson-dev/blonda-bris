@@ -13,23 +13,37 @@
 
 #include "blonda/effekt.h"
 #include "bris/bris.h"
+#ifndef BRIS_MPE
+#define BRIS_MPE 0   // 1 = BLONDA BRIS MPE (motorn brismpe: egen böj, slide och tryck per ton)
+#endif
+#if BRIS_MPE
+#include "brismpe/brismpe.h"
+#endif
 #include "rum/rum_ljud.h"
 #include "vibe/vibe_ljud.h"
 #include "kategorier.h"
 
 namespace blonda::app {
 
+#if BRIS_MPE
+namespace syn = blonda::brismpe;
+using Synth = brismpe::BrisMpe;
+#else
+namespace syn = blonda::bris;
+using Synth = bris::Bris;
+#endif
+
 // ------------------------------------------------------------------ parametrar
 // BRIS-parametrarna (utom UI_ONLY "hyll") i blonda-motors ordning, sedan kExtra.
 struct CoreParams {
-    static constexpr int kNumBris = bris::kNumParams;
+    static constexpr int kNumBris = syn::kNumParams;
     int count = 0;
     ParamInfo info[64]{};
     int brisIdx[64]{};
     CoreParams() {
-        for (int i = 0; i < bris::kNumParams; ++i) {
-            if (std::strcmp(bris::kParams[i].id, "hyll") == 0) continue;
-            info[count] = bris::kParams[i]; brisIdx[count] = i; ++count;
+        for (int i = 0; i < syn::kNumParams; ++i) {
+            if (std::strcmp(syn::kParams[i].id, "hyll") == 0) continue;
+            info[count] = syn::kParams[i]; brisIdx[count] = i; ++count;
         }
         for (int i = 0; i < kNumExtra; ++i) {
             info[count] = ParamInfo{kExtra[i].id, kExtra[i].name, kExtra[i].min, kExtra[i].max, kExtra[i].def, false, false};
@@ -79,7 +93,7 @@ public:
         iWet_ = rum_.findParam("wet"); iSize_ = rum_.findParam("size"); iDecay_ = rum_.findParam("decay");
         iDrive_ = vibe_.findParam("drive"); iOut_ = vibe_.findParam("outdb");
         for (int k = 0; k < kNumGlid; ++k) glidIdx_[k] = cp.find(kGlid[k].param);
-        iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr");
+        iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr"); iSlm_ = cp.find("slm");
         applyExtra();
     }
 
@@ -89,18 +103,53 @@ public:
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { synth_.reset(); rum_.reset(); vibe_.reset(); clearSeqNotes(); }
+    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); }
 
     // ---------------------------------------------------------------- toner / MIDI
+#if BRIS_MPE
+    // Tangenterna på skärmen i BRIS MPE: varje ton får en egen MPE-kanal (2-16), så att fingrets slide (uiSlide)
+    // bara påverkar den tonen.
+    void noteOn(int n, int v) {
+        if (n < 0 || n > 127) return;
+        if (uiCh_[n] > 0) synth_.noteOffCh(uiCh_[n], n);
+        int ch = -1;
+        for (int k = 0; k < 15 && ch < 0; ++k) { const int c = 1 + (uiNext_ + k) % 15; if (uiUsed_[c] == 0) ch = c; }
+        if (ch < 0) ch = 1 + uiNext_ % 15;
+        uiNext_ = ch % 15;
+        uiCh_[n] = ch; ++uiUsed_[ch];
+        synth_.channelBend(ch, 0); synth_.channelSlide(ch, 0); synth_.channelPressure(ch, 0);
+        synth_.noteOnCh(ch, n, v); ++meters_.noteCount;
+    }
+    void noteOff(int n) {
+        if (n < 0 || n > 127 || uiCh_[n] <= 0) return;
+        synth_.noteOffCh(uiCh_[n], n); --uiUsed_[uiCh_[n]]; uiCh_[n] = 0;
+    }
+    void uiSlide(int n, double v) { if (n >= 0 && n <= 127 && uiCh_[n] > 0) synth_.channelSlide(uiCh_[n], v); }
+#else
     void noteOn(int n, int v) { synth_.noteOn(n, v); ++meters_.noteCount; }
     void noteOff(int n) { synth_.noteOff(n); }
-    void allNotesOff() { synth_.allNotesOff(); clearSeqNotes(); clearExpr(); }
+    void uiSlide(int, double) {}   // bara BRIS MPE har slide per ton
+#endif
+    void allNotesOff() {
+        synth_.allNotesOff(); clearSeqNotes(); clearExpr();
+#if BRIS_MPE
+        for (int n = 0; n < 128; ++n) uiCh_[n] = 0;
+        for (int c = 0; c < 16; ++c) uiUsed_[c] = 0;
+#endif
+    }
     // MIDI, med MPE: varje ton på en egen kanal (2-16, kanal 1 = huvudkanal). Motorn har ett filter och en böj för
     // alla röster, så uttrycket per ton slås ihop: slide (CC74) styr glidet (högsta slide bland tonerna som hålls),
     // tryck blir aftertouch (högsta trycket), och böj på tonkanalerna följer den senast spelade tonen
     // (MPE:s böjomfång, 48 halvtoner om inget annat skickas med RPN 0). Vanliga klaviaturer på kanal 1 som förut.
     void midi(uint8_t s, uint8_t d1, uint8_t d2) {
         const int ch = s & 15, ty = s & 0xF0;
+#if BRIS_MPE
+        // BRIS MPE tolkar MPE själv, per ton (brismpe.h)
+        if (ty == 0x90 && d2 > 0) ++meters_.noteCount;
+        (void)ch;
+        synth_.midi(s, d1, d2);
+        return;
+#endif
         if (ty == 0x90 && d2 > 0) {
             ++meters_.noteCount; ++chNotes_[ch]; lastCh_ = ch;
             if (ch != 0) { mpe_ = true; applyBend(ch); }   // MPE skickar tonens böj före tonen: använd den
@@ -149,19 +198,29 @@ public:
     // mode: 0 av, 1 FILTER, 2 VIBRATO, 3 TREMOLO, 4 PWM, 5 WAH
     void setGlid(int mode, double amount) {
         mode = std::max(0, std::min(kNumGlid, mode));
+#if BRIS_MPE
+        // BRIS MPE: läget är motorns slide-mål (parametern slm), mängden kommer per ton (uiSlide / MPE)
+        (void)amount;
+        if (iSlm_ >= 0 && (int)val_[iSlm_] != mode) setParam(iSlm_, mode);
+        return;
+#endif
         if (mode != glidMode_) { glidRestore(); glidMode_ = mode; glidApplied_ = 0.0; glidSm_ = 0.0; }
         glidTarget_ = mode > 0 ? std::min(1.0, std::max(0.0, amount)) : 0.0;
     }
+#if BRIS_MPE
+    int glidMode() const { return iSlm_ >= 0 ? (int)val_[iSlm_] : 0; }
+#else
     int glidMode() const { return glidMode_; }
+#endif
 
     // Räknar ut alla parametrars värden efter att fabriksljud `index` valts, utgående från `current`
     // (samma regler som Max-pluggen: allt som ljudet inte nämner får standardvärdet, utom volym/böjomfång).
     // Effekterna får växtens startvärden. Allokerar inte, men använder en egen motor: anropa inte från ljudtråden.
     static void presetValues(int index, const double* current, double* out) {
 #if defined(__wasm__)
-        static bris::Bris scratch;          // webben: en enda tråd
+        static Synth scratch;               // webben: en enda tråd
 #else
-        thread_local bris::Bris scratch;    // en egen per tråd: anropas från meddelande-/gränssnittstråden
+        thread_local Synth scratch;         // en egen per tråd: anropas från meddelande-/gränssnittstråden
 #endif
         const CoreParams& cp = coreParams();
         for (int i = 0; i < cp.count; ++i) {
@@ -236,12 +295,16 @@ public:
         meters_.peakL = pl; meters_.peakR = pr;
         meters_.env = (float)synth_.envelope(); meters_.lfo = (float)synth_.lfo(); meters_.voiceMask = synth_.voiceMask();
         meters_.step = playing_ ? seqStep_ : -1;
+#if BRIS_MPE
+        meters_.glid = (float)synth_.slideNow();
+#else
         meters_.glid = (float)glidSm_;
+#endif
     }
 
     const Meters& meters() const { return meters_; }
     int scopeWrite() const { return scopeW_; }   // var i ringbufferten nästa värde skrivs
-    bris::Bris& synth() { return synth_; }
+    Synth& synth() { return synth_; }
 
 private:
     void updExpr() {
@@ -316,7 +379,7 @@ private:
         nActive_ = 0;
     }
 
-    bris::Bris synth_;
+    Synth synth_;
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
@@ -328,6 +391,10 @@ private:
         bendRange_[16]{2, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48}, lastCh_ = 0, iBendr_ = -1;
     double slide_[16]{}, press_[16]{}, bend_[16]{}, midiSlide_ = 0.0, pressOut_ = 0.0;
     bool mpe_ = false;
+    int iSlm_ = -1;   // BRIS MPE: slide-målet
+#if BRIS_MPE
+    int uiCh_[128]{}, uiUsed_[16]{}, uiNext_ = 0;   // tangenterna på skärmen: kanal per ton
+#endif
     bool rvbOn_ = false, driveOn_ = false;
     double val_[64]{};
     double sr_ = 48000.0, bpm_ = 120.0;

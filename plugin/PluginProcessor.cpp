@@ -107,6 +107,29 @@ void BrisProcessor::uiNote(bool on, int note, int vel) {
     if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)(on ? 1 : 0), (uint8_t)juce::jlimit(0, 127, note), (uint8_t)juce::jlimit(1, 127, vel) };
 }
 
+void BrisProcessor::uiGlid(int mode, float amount) {
+#if BRIS_MPE
+    (void)amount;   // mängden kommer per ton (uiSlide); läget är parametern slm (sparas och kan automatiseras)
+    if (const int i = findParam("slm"); i >= 0) setParamFromUi(i, mode);
+#else
+    glidMode.store(mode); glidAmount.store(amount);
+#endif
+}
+
+int BrisProcessor::getGlidMode() const {
+#if BRIS_MPE
+    const int i = findParam("slm");
+    return i >= 0 ? (int)std::lround(paramValue(i)) : 0;
+#else
+    return glidMode.load();
+#endif
+}
+
+void BrisProcessor::uiSlide(int note, float v) {
+    const auto w = noteFifo.write(1);
+    if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)2, (uint8_t)juce::jlimit(0, 127, note), (uint8_t)juce::roundToInt(juce::jlimit(0.0f, 1.0f, v) * 255.0f) };
+}
+
 void BrisProcessor::setPattern(const juce::var& pv) {
     patternVar = pv;
     Pattern p;
@@ -150,12 +173,19 @@ void BrisProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuf
     if (const int pr = playReq.exchange(-1); pr >= 0) core.setPlaying(pr == 1);
     seqPlaying.store(core.playing());
     if (panic.exchange(false)) core.allNotesOff();
-    core.setGlid(glidMode.load(), glidAmount.load());
+#if !BRIS_MPE
+    core.setGlid(glidMode.load(), glidAmount.load());   // BRIS MPE: slide-målet är en parameter, mängden per ton
+#endif
     // toner från gränssnittet
     {
         const auto r = noteFifo.read(noteFifo.getNumReady());
         auto play = [this](int start, int size) {
-            for (int k = 0; k < size; ++k) { const auto& e = noteBuf[(size_t)(start + k)]; if (e.on) core.noteOn(e.note, e.vel); else core.noteOff(e.note); }
+            for (int k = 0; k < size; ++k) {
+                const auto& e = noteBuf[(size_t)(start + k)];
+                if (e.on == 2) core.uiSlide(e.note, e.vel / 255.0);   // slide (0..255)
+                else if (e.on) core.noteOn(e.note, e.vel);
+                else core.noteOff(e.note);
+            }
         };
         play(r.startIndex1, r.blockSize1); play(r.startIndex2, r.blockSize2);
     }
@@ -215,7 +245,7 @@ void BrisProcessor::setStateInformation(const void* data, int sizeInBytes) {
     preset.store(juce::jlimit(0, kNumFactory - 1, xml->getIntAttribute("preset", 65)));
     uiTempo.store(xml->getDoubleAttribute("tempo", 120.0));
     uiState = xml->getStringAttribute("ui");
-    glidMode.store(juce::jlimit(0, blonda::app::kNumGlid, xml->getIntAttribute("glid", 1)));
+    glidMode.store(juce::jlimit(0, blonda::app::kNumGlid, xml->getIntAttribute("glid", 1)));   // BRIS MPE: parametern slm
     const auto pat = juce::JSON::parse(xml->getStringAttribute("pattern"));
     if (pat.isObject()) setPattern(pat);
     apvts.replaceState(juce::ValueTree::fromXml(*xml));

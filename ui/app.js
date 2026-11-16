@@ -328,7 +328,7 @@
     if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => Bridge.send({ t: "settings" }); f.append(b); }
     if (S.web) f.append(el("span", "", S.midi.length ? "MIDI IN · " + S.midi.join(", ").toUpperCase() : "MIDI IN · CONNECT A KEYBOARD"));
     const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => Bridge.send({ t: "panic" }); f.append(pan);
-    f.append(el("span", "", `BLONDA BRIS ${D.version} · ${D.presets.length} SOUNDS`));
+    f.append(el("span", "", `BLONDA ${S.name || "BRIS"} ${D.version} · ${D.presets.length} SOUNDS`));
   }
   function openMenu() { $("#menu").classList.add("open"); const on = $("#list .it.on"); if (on) on.scrollIntoView({ block: "center" }); }
   function closeMenu() { $("#menu").classList.remove("open"); }
@@ -426,6 +426,10 @@
     S.glid.v = S.glid.m > 0 ? v : 0;
   }
   function sendGlid() {
+    if (S.mpe) {   // BRIS MPE: varje finger har sin egen slide på sin ton
+      for (const d of keys.down.values()) if (d.dirty) { d.dirty = false; Bridge.send({ t: "slide", n: d.n, v: +d.up.toFixed(4) }); }
+      return;
+    }
     if (Math.abs(S.glid.v - S.glid.sent) < 0.004 && !(S.glid.v === 0 && S.glid.sent !== 0)) return;
     S.glid.sent = S.glid.v; Bridge.send({ t: "glid", m: S.glid.m, v: +S.glid.v.toFixed(4) });
   }
@@ -493,7 +497,8 @@
         if (k && k.n !== d.n) { release(e.pointerId); start(e.pointerId, k, y); updGlid(); }
         return;
       }
-      d.y = y; d.up = clamp((d.y0 - y) / (kh() * 0.55), 0, 1);
+      const up = clamp((d.y0 - y) / (kh() * 0.55), 0, 1);
+      d.y = y; if (Math.abs(up - d.up) > 0.002) d.dirty = true; d.up = up;
       updGlid();
     });
     const up = (e) => { release(e.pointerId); updGlid(); };
@@ -560,7 +565,9 @@
   document.addEventListener("pointerdown", () => ensureAudio(), { capture: true });
 
   Bridge.on.state = (st) => {
-    S.standalone = !!st.standalone; S.web = !!st.web;
+    S.standalone = !!st.standalone; S.web = !!st.web; S.mpe = !!st.mpe;
+    S.name = S.mpe ? "BRIS MPE" : "BRIS";
+    $("#ver").textContent = S.name + " " + D.version; document.title = "BLONDA " + S.name;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh; } catch (e) { /* */ } }
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
@@ -568,7 +575,7 @@
     buildPanels();
     onPreset(S.preset);
     buildFoot();
-    buildKbar(); S.glid.sent = -1; updGlid(); sendGlid(); applyKeysHeight();
+    buildKbar(); S.glid.sent = -1; updGlid(); if (S.mpe) Bridge.send({ t: "glid", m: S.glid.m, v: 0 }); else sendGlid(); applyKeysHeight();
     Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
     // layoutens mätvärden till appen (iOS skriver dem till en fil som CI läser); efter en stund och igen senare
     const diag = () => { const pr = document.createElement("div"); pr.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";

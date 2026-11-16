@@ -46,7 +46,8 @@ public:
     virtual void sustain(bool down) = 0;
 
     // Ett råmeddelande (status + två databyte). Tolkar not på/av, CC1, CC64, CC120/123, böj och aftertouch.
-    void midi(uint8_t status, uint8_t d1, uint8_t d2) {
+    // virtual: BRIS MPE tolkar MIDI per kanal (MPE); övriga motorer använder den här
+    virtual void midi(uint8_t status, uint8_t d1, uint8_t d2) {
         uint8_t ty = status & 0xF0;
         if (ty == 0x90 && d2 > 0) noteOn(d1, d2);
         else if (ty == 0x80 || ty == 0x90) noteOff(d1);

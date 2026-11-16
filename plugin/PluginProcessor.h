@@ -51,8 +51,9 @@ public:
     int currentPreset() const { return preset.load(); }
 
     void uiNote(bool on, int note, int vel);      // tangenter i gränssnittet -> ljudtråden
-    void uiGlid(int mode, float amount) { glidMode.store(mode); glidAmount.store(amount); }
-    int getGlidMode() const { return glidMode.load(); }
+    void uiGlid(int mode, float amount);   // glidets läge (och i BRIS mängden från skärmens tangenter)
+    int getGlidMode() const;               // BRIS MPE: motorns slide-mål (parametern slm)
+    void uiSlide(int note, float v);       // BRIS MPE: ett fingers slide på sin ton (gränssnittet -> ljudtråden)
     void allNotesOff() { panic.store(true); }
     void setPattern(const juce::var& pattern);    // rullen
     juce::var getPattern() const { return patternVar; }

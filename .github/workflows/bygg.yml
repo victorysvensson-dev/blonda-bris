@@ -24,6 +24,10 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -Wall -Werror -Icore -IExternal/blonda-motor/include -IExternal/blonda-motor/motorer tester/karna_test.cpp -o karna_test
           ./karna_test | tail -8
+      - name: Ljudkärnan i BRIS MPE (egen böj, slide och tryck per ton)
+        run: |
+          g++ -std=c++17 -O2 -Wall -Werror -DBRIS_MPE=1 -Icore -IExternal/blonda-motor/include -IExternal/blonda-motor/motorer tester/karna_test.cpp -o karna_mpe
+          ./karna_mpe | tail -6
       - name: wasi-sdk
         run: |
           curl -sSL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz | tar xz
@@ -46,6 +50,11 @@ jobs:
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DBRIS_TESTER=ON > /dev/null
           cmake --build build -j4 --target bris-plugin-test
           xvfb-run -a ./build/bris-plugin-test
+      - name: BRIS MPE-pluggens ljuddel
+        run: |
+          cmake -B build-mpe -DCMAKE_BUILD_TYPE=Release -DBRIS_TESTER=ON -DBRIS_MPE=ON > /dev/null
+          cmake --build build-mpe -j4 --target bris-plugin-test
+          xvfb-run -a ./build-mpe/bris-plugin-test
       - uses: actions/upload-artifact@v4
         with:
           name: webb
@@ -158,6 +167,14 @@ jobs:
             | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | head -40
           find build-ios dd -name "*.app" -path "*iphonesimulator*" | head -3
           find build-ios dd -name "*.appex" | head -3
+      - name: Bygg BRIS MPE för simulatorn (app + AUv3)
+        run: |
+          set -o pipefail
+          cmake -B build-ios-mpe -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_MPE=ON > /dev/null
+          xcodebuild -project build-ios-mpe/BLONDA_BRIS.xcodeproj -scheme BlondaBris_Standalone -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath dd-mpe CODE_SIGNING_ALLOWED=NO build 2>&1 \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | head -40
+          find dd-mpe -name "BLONDA BRIS MPE.app" -path "*iphonesimulator*" | grep -q . || { echo "BLONDA BRIS MPE.app saknas"; exit 1; }
       - name: Kör i simulatorn och ta skärmdumpar
         continue-on-error: true
         timeout-minutes: 28
