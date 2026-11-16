@@ -2,6 +2,7 @@
 # Bygger BLONDA BRIS (app + AUv3) och lägger den på en iPad/iPhone som är kopplad till Macen med sladd.
 #   curl -sL https://raw.githubusercontent.com/victorysvensson-dev/blonda-bris/main/tools/ios-installera.sh | bash
 #   ... | bash -s iphone      (välj iPhone när flera enheter syns; "ipad" är standard)
+#   ... | bash -s xcode       (gör bara Xcode-projektet och öppnar det i Xcode: välj enhet och tryck Kör där)
 # Kräver Xcode med ditt Apple-ID inlagt (Xcode > Settings > Accounts). CMake hämtas automatiskt om det saknas.
 set -e
 VILL="${1:-ipad}"
@@ -46,6 +47,24 @@ if [ -z "$TEAM" ]; then
 fi
 [ -n "$TEAM" ] || stopp "Hittar inget Apple-ID i Xcode. Öppna Xcode > Settings > Accounts, tryck + och logga in med ditt Apple-ID. Kör sedan raden igen."
 echo "team: $TEAM"
+
+if [ "$VILL" = "xcode" ]; then
+  steg "5/5 Gör Xcode-projektet och öppnar det"
+  cd "$MAPP"
+  "$CMAKE" -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DBRIS_TEAM="$TEAM" \
+    -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$TEAM" -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE=Automatic >/dev/null
+  open build-ios/BLONDA_BRIS.xcodeproj
+  cat <<'TXT'
+
+Xcode öppnar BLONDA BRIS. Där:
+  1. Uppe i mitten: välj schemat "BlondaBris_Standalone" och din iPad som enhet.
+  2. Tryck på Kör (triangeln uppe till vänster, eller Cmd+R).
+Första bygget tar några minuter. Öppnas inte appen: se tipsen nedan.
+  - Inställningar > Integritet och säkerhet > Utvecklarläge: slå på och starta om enheten.
+  - Inställningar > Allmänt > VPN och enhetshantering: tryck på ditt Apple-ID och "Lita på".
+TXT
+  exit 0
+fi
 
 steg "5/6 Letar efter din iPad/iPhone"
 J=$(mktemp)
