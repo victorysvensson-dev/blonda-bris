@@ -113,6 +113,14 @@ with sync_playwright() as p:
             pg.click("#tabs button[data-tab=play]"); pg.wait_for_timeout(200)
             lab = pg.evaluate("[...document.querySelectorAll('#right .slider .lab')].map(e => e.textContent).join(',')")
             krav(lab.startswith("CUTOFF") and "CHORUS" in lab and "REVERB" in lab and "RESONANCE" not in lab, f"PLAY: CUTOFF, CHORUS, REVERB ({lab})")
+            # skrivmaskinen: tre toner samtidigt blir ett ackordnamn, sedan enskilda toner på samma rad
+            pg.evaluate("for (const n of [57, 60, 64]) __bris.skriv.ton(n, 'ui')"); pg.wait_for_timeout(400)
+            pg.evaluate("__bris.skriv.ton(62, 'ui')"); pg.wait_for_timeout(400)
+            rad = pg.evaluate("[...document.querySelectorAll('#skriv .rad')].map(r => r.dataset.k + ':' + r.textContent.replace(/\u00a0/g, ' ')).join('|')")
+            krav(rad.endswith("0:Am D4") or "0:Am D4|" in rad, f"skrivmaskinen skriver det man spelar ({rad!r})")
+            pg.evaluate("__bris.skriv.ton(62, 'midi')"); pg.wait_for_timeout(120)
+            krav(pg.evaluate("[...document.querySelectorAll('#skriv .rad')].map(r => r.dataset.k + ':' + r.textContent.replace(/\u00a0/g, ' ')).join('|')") == rad, "skrivmaskinen: samma ton från MIDI skrivs inte två gånger")
+            pg.screenshot(path=f"{UT}/skrivmaskin.png")
             # AUDIO / MIDI-rutan (fristående appen): egen ruta som går att stänga
             pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200)
             pg.evaluate("""Bridge.on.devs({ t: 'devs', midi: [{ id: 'a', name: 'KeyStep 37', on: true }, { id: 'b', name: 'Bluetooth: Roli', on: false }], bt: true,

@@ -17,7 +17,7 @@
     kz: 1, kh: null,
     motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
     egna: [], eget: null,
-    hid: false,   // MOOD: de dolda rattarna (som pedalens hidden options)
+    hid: false, skriv: true,   // skrivmaskinen som skriver det man spelar   // MOOD: de dolda rattarna (som pedalens hidden options)
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
@@ -360,10 +360,62 @@
     return NOTNAMN[bas] + "…";
   }
   const tonNamn = (n) => NOTNAMN[n % 12] + (Math.floor(n / 12) - 1);   // som tangenterna: 48 = C3
+  // ---------------------------------------------------------------- skrivmaskinen
+  // Det man spelar skrivs med skrivmaskin längst ner över blomman: tonnamnen (eller ackordets namn när flera toner
+  // slås an samtidigt) slås an vid en fast punkt och pappret flyttas åt vänster, som en vagn. Efter en paus blir det
+  // ny rad; gamla rader glider upp och bleknar. Varje tecken får lite olika svärta och läge, som riktigt bläck.
+  const skriv = { buf: [], b0: 0, t: 0, rad: null, senast: 0, egna: new Map(), radT: 0 };
+  function skrivTon(n, fran) {   // fran = "ui" (skärmen/datorns tangenter) eller "midi" (via mätarna)
+    if (!S.skriv) return;
+    const nu = performance.now();
+    if (fran === "midi" && nu - (skriv.egna.get(n) || 0) < 400) return;   // redan skriven från skärmen
+    if (fran === "ui") skriv.egna.set(n, nu);
+    if (skriv.buf.length && nu - skriv.b0 > 60) skrivUt();   // förra ackordet är klart även om timern är sen
+    if (!skriv.buf.length) skriv.b0 = nu;
+    skriv.buf.push(n);
+    clearTimeout(skriv.t); skriv.t = setTimeout(skrivUt, 45);   // toner inom 45 ms = ett ackord
+  }
+  function skrivUt() {
+    clearTimeout(skriv.t);
+    const nt = [...new Set(skriv.buf)].sort((a, b) => a - b); skriv.buf = [];
+    if (!nt.length) return;
+    const ak = nt.length >= 3 ? ackordNamn(nt) : "";
+    skrivOrd(ak && !ak.endsWith("…") ? ak : nt.map(tonNamn).join(" "));
+  }
+  function skrivOrd(ord) {
+    const box = $("#skriv"); if (!box || !S.skriv || $("#stage").clientHeight < 150) return;   // inte när blomman är liten
+    const nu = performance.now();
+    if (!skriv.rad || nu - skriv.senast > 2200 || skriv.rad.textContent.length > 46) {   // ny rad
+      box.querySelectorAll(".rad").forEach((r) => { const k = +(r.dataset.k || 0) + 1; r.dataset.k = k; r.style.setProperty("--k", k); if (k > 3) r.remove(); });
+      skriv.rad = el("div", "rad"); skriv.rad.dataset.k = 0; skriv.rad.style.setProperty("--k", 0);
+      box.querySelector(".rader").append(skriv.rad);
+    } else skriv.rad.append(document.createTextNode(" "));
+    skriv.senast = nu;
+    const rand = (a, b) => a + Math.random() * (b - a);
+    for (const ch of ord) {
+      const c = el("span", "ch", ch === " " ? "&nbsp;" : ch);
+      if (S.motion) c.style.cssText = `--r:${rand(-2.2, 2.2).toFixed(2)}deg;--y:${rand(-0.7, 0.7).toFixed(2)}px;--o:${rand(0.62, 1).toFixed(2)}`;
+      skriv.rad.append(c);
+    }
+    if (S.motion && Math.random() < 0.18) {   // en liten bläckfläck då och då
+      const f = el("i", "flack"); f.style.cssText = `--fx:${rand(-30, 6).toFixed(0)}px;--fy:${rand(-14, 10).toFixed(0)}px;--fs:${rand(1.2, 2.6).toFixed(1)}px`;
+      skriv.rad.append(f);
+    }
+    box.classList.add("aktiv");
+    clearTimeout(skriv.radT); skriv.radT = setTimeout(() => box.classList.remove("aktiv"), 2600);
+  }
+  function buildSkriv() {
+    let b = $("#skriv"); if (b) return;
+    b = el("div", ""); b.id = "skriv";
+    b.innerHTML = '<div class="rader"></div><div class="vagn"><i></i></div>';
+    $("#stage").append(b);
+  }
+
   function padSpela(k) {
     const nt = S.pads.list[k] || [];
     S.pads.active = k;
     Bridge.send({ t: "pad", n: nt, v: 100 });
+    if (nt.length) { nt.forEach((n) => skriv.egna.set(n, performance.now())); skrivOrd(ackordNamn(nt)); }
     updPads();
   }
   function padSlapp() { if (S.pads.active < 0) return; S.pads.active = -1; Bridge.send({ t: "pad", n: [] }); updPads(); }
@@ -532,6 +584,9 @@
       f.append(inp, ok, av); inp.focus(); inp.select();
     };
     f.append(spara);
+    const sk = el("button", "", S.skriv ? "TYPEWRITER ON" : "TYPEWRITER OFF");
+    sk.onclick = () => { S.skriv = !S.skriv; if (!S.skriv) { const b = $("#skriv .rader"); if (b) b.innerHTML = ""; skriv.rad = null; } saveUi(); buildFoot(); };
+    f.append(sk);
     const mo = el("button", "", S.motion ? "MOTION ON" : "MOTION OFF");
     mo.onclick = () => { setMotion(!S.motion); saveUi(); buildFoot(); };
     f.append(mo);
@@ -599,7 +654,7 @@
     let n = base;
     while (whites.length < nW) {
       const pc = n % 12;
-      if ([1, 3, 6, 8, 10].includes(pc)) blacks.push({ n, x: GUT + whites.length * ww - ww * 0.27, w: ww * 0.54, h: h * 0.6, black: true });
+      if ([1, 3, 6, 8, 10].includes(pc)) blacks.push({ n, x: GUT + whites.length * ww - ww * 0.24, w: ww * 0.48, h: (h - 9) * 0.6, black: true });
       else whites.push({ n, x: GUT + whites.length * ww, w: ww, h });
       n++;
     }
@@ -631,31 +686,49 @@
     g.fillStyle = "rgba(43,37,33,0.42)"; g.font = "400 15px 'BLONDA Mono'";
     g.fillText("+", GUT / 2 - 5, h * 0.2); g.fillText("−", GUT / 2 - 5, h * 0.8);
     g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.34)"; g.fillText("C" + (3 + S.oct), GUT / 2 - 5, h * 0.5);
-    // vita tangenter: egna plattor
+    // ett sammanhängande tangentbord: en ljus bädd med mjuk skugga, vita tangenter med tunna skiljelinjer,
+    // tonnamn på C, och svarta tangenter i mörk taupe med rak överkant, rundad underkant och en ljus fas nertill
+    const bx = GUT, bw = L.w, bh = h - 9, br = 12;
+    g.save();
+    g.shadowColor = "rgba(70,45,35,0.13)"; g.shadowBlur = 18; g.shadowOffsetY = 6;
+    g.fillStyle = "rgba(255,253,252,0.96)"; roundRect(g, bx, 0, bw, bh, br); g.fill();
+    g.restore();
+    g.save(); roundRect(g, bx, 0, bw, bh, br); g.clip();
     for (const k of L.whites) {
-      const v = lv(k.n), x = k.x + GAP / 2, kw = k.w - GAP;
-      g.fillStyle = "rgba(255,255,255,0.66)"; roundRect(g, x, 0.5, kw, h - 1, 7); g.fill();
-      g.strokeStyle = "rgba(43,37,33,0.07)"; g.lineWidth = 1; roundRect(g, x + 0.5, 0.5, kw - 1, h - 1, 7); g.stroke();
+      const v = lv(k.n), x = k.x, kw = k.w;
       if (v > 0) {
-        const gr = g.createLinearGradient(0, h, 0, h * 0.2);
-        gr.addColorStop(0, `rgba(${rgb},${0.34 * v})`); gr.addColorStop(1, `rgba(${rgb},0)`);
-        g.save(); roundRect(g, x, 0, kw, h, 7); g.clip(); g.fillStyle = gr; g.fillRect(x, 0, kw, h); g.restore();
-        g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, x + kw * 0.32, h - 9, kw * 0.36, 2, 1); g.fill();
+        const gr = g.createLinearGradient(0, bh, 0, bh * 0.25);
+        gr.addColorStop(0, `rgba(${rgb},${0.26 * v})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+        g.fillStyle = gr; g.fillRect(x, 0, kw, bh);
+        g.fillStyle = `rgba(${rgb},${v})`; g.beginPath(); g.arc(x + kw / 2, bh - 24, 3.2, 0, TAU); g.fill();
       }
-      if (!iSkala(k.n)) { g.fillStyle = "rgba(43,37,33,0.10)"; roundRect(g, x, 0.5, kw, h - 1, 7); g.fill(); }
-      else if (fm && k.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},0.8)`; g.beginPath(); g.arc(x + kw / 2, h - 18, 2.4, 0, TAU); g.fill(); }
+      if (!iSkala(k.n)) { g.fillStyle = "rgba(43,37,33,0.07)"; g.fillRect(x, 0, kw, bh); }
+      else if (fm && k.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},0.8)`; g.beginPath(); g.arc(x + kw / 2, bh - 24, 2.4, 0, TAU); g.fill(); }
+      if (k.n % 12 === 0 && kw > 26) {   // tonnamn på C
+        g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.42)"; g.textAlign = "left";
+        g.fillText("C" + (Math.floor(k.n / 12) - 1), x + Math.min(14, kw * 0.22), bh - 26);
+      }
+      if (k.x > bx + 1) { g.fillStyle = "rgba(43,37,33,0.11)"; g.fillRect(Math.round(k.x) - 0.5, 0, 1, bh); }
     }
-    // svarta tangenter: en jämn ljusare bläckfärg, rundade nertill, med luft runt sig
+    // en svag skugga i överkanten, som om tangenterna går in under en kant
+    const ts = g.createLinearGradient(0, 0, 0, 9); ts.addColorStop(0, "rgba(43,37,33,0.07)"); ts.addColorStop(1, "rgba(43,37,33,0)");
+    g.fillStyle = ts; g.fillRect(bx, 0, bw, 9);
     for (const b of L.blacks) {
-      const v = lv(b.n), rr = Math.min(6, b.w / 2.4);
-      g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
-      roundRect(g, b.x - GAP, -1, b.w + GAP * 2, b.h + GAP + 1, rr + GAP); g.fill();
-      g.globalCompositeOperation = "source-over";
-      g.fillStyle = "rgba(43,37,33,0.5)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();   // en jämn färg, ingen tonning
-      if (v > 0) { g.fillStyle = `rgba(${rgb},${0.9 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
-      if (!iSkala(b.n)) { g.fillStyle = "rgba(246,241,238,0.55)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
-      else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, b.h - 12, 2.2, 0, TAU); g.fill(); }
+      const v = lv(b.n), rr = Math.min(5, b.w / 3), bh2 = b.h;
+      g.save();
+      g.shadowColor = "rgba(30,20,20,0.28)"; g.shadowBlur = 6; g.shadowOffsetY = 3;
+      g.fillStyle = "rgb(80,73,75)"; nedRund(g, b.x, -1, b.w, bh2 + 1, rr); g.fill();
+      g.restore();
+      g.fillStyle = "rgba(255,255,255,0.13)"; nedRund(g, b.x + 1.5, bh2 - 9, b.w - 3, 7.5, rr - 1); g.fill();   // fasen nertill
+      g.fillStyle = "rgba(255,255,255,0.06)"; g.fillRect(b.x + 1.5, 0, 1, bh2 - 10);                         // ljuskant
+      if (v > 0) {
+        g.fillStyle = `rgba(${rgb},${0.62 * v})`; nedRund(g, b.x, -1, b.w, bh2 + 1, rr); g.fill();
+        g.fillStyle = `rgba(255,255,255,${0.9 * v})`; g.beginPath(); g.arc(b.x + b.w / 2, bh2 - 18, 2.6, 0, TAU); g.fill();
+      }
+      if (!iSkala(b.n)) { g.fillStyle = "rgba(246,241,238,0.5)"; nedRund(g, b.x, -1, b.w, bh2 + 1, rr); g.fill(); }
+      else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, bh2 - 18, 2.2, 0, TAU); g.fill(); }
     }
+    g.restore();
     // glidet: en tunn linje från där fingret tryckte till där det är nu, och en prick som lyser starkare ju högre
     if (S.glid.m > 0) for (const d of gl.values()) {
       if (d.up <= 0.01) continue;
@@ -735,7 +808,7 @@
     const release = (pid) => { const d = keys.down.get(pid); if (!d) return; Bridge.send({ t: "off", n: d.n }); keys.lit.delete(d.n); keys.down.delete(pid); };
     const start = (pid, k, y) => {
       const v = Math.round(clamp(50 + k.y * 77, 1, 127));
-      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n);
+      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n); skrivTon(k.n, "ui");
       keys.down.set(pid, { n: k.n, x: k.x, w: k.w, black: !!k.black, y0: y, y, up: 0 });
     };
     cv.addEventListener("pointerdown", (e) => {
@@ -769,7 +842,7 @@
     if (k === "z" || k === "x") { setOct(S.oct + (k === "z" ? -1 : 1)); return; }
     const i = KB.indexOf(k); if (i < 0 || kbDown.has(k)) return;
     ensureAudio();
-    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n);
+    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n); skrivTon(n, "ui");
     Bridge.send({ t: "note", n, v: 100 });
   });
   window.addEventListener("keyup", (e) => {
@@ -796,7 +869,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, skriv: S.skriv,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -805,6 +878,8 @@
   // ---------------------------------------------------------------- hjälpare
   function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
   function hexRgb(hex) { const n = parseInt(hex.replace("#", ""), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; }
+  // rak överkant, rundade hörn nertill (de svarta tangenterna)
+  function nedRund(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.closePath(); }
   function roundRect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   // ---------------------------------------------------------------- start
@@ -816,6 +891,7 @@
   buildPanels();
   buildMenu();
   keys.cv = $("#keys canvas");
+  buildSkriv();
   buildPads();
   buildKbar();
   gripInput();
@@ -863,6 +939,7 @@
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
       if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null;
+      if (typeof u.skriv === "boolean") S.skriv = u.skriv;
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
     if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
@@ -894,6 +971,11 @@
     if (m.scope) S.m.scope = m.scope;
     S.m.fr = m.fr ?? -1; S.m.fm = m.fm || 0; S.m.an = m.an ?? -1;
     if (S.pads.armed >= 0 && m.keys) for (let w = 0; w < 4; w++) for (let b = 0; b < 32; b++) if ((m.keys[w] >>> b) & 1) padLagg(w * 32 + b);
+    if (m.keys) {   // nya toner från en klaviatur (MIDI) skrivs också
+      const fore = S.m.keys || [0, 0, 0, 0];
+      for (let w = 0; w < 4; w++) { const ny = (m.keys[w] >>> 0) & ~(fore[w] >>> 0); if (ny) for (let b = 0; b < 32; b++) if ((ny >>> b) & 1) skrivTon(w * 32 + b, "midi"); }
+      S.m.keys = m.keys.slice();
+    }
     flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, nc: m.nc });
   };
   $("#start").addEventListener("click", () => { ensureAudio(); });
@@ -911,5 +993,5 @@
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
   window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
-    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev } };   // för tester
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, skriv: { ton: skrivTon, ord: skrivOrd } };   // för tester
 })();

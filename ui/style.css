@@ -277,3 +277,17 @@ main { position: relative; }
 #dev .rad.on em { color: var(--a); }
 #dev .tom { font-size: 10px; letter-spacing: .24em; color: var(--mute); }
 #dev .choice { flex-wrap: wrap; gap: 8px 18px; justify-content: flex-start; }
+
+/* ---------------------------------------------------------------- skrivmaskinen över blommans nederkant */
+#skriv { position: absolute; left: 0; right: 0; bottom: 16px; height: 84px; z-index: 1; pointer-events: none; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 4%, #000 30%, #000 56%, transparent 66%); mask-image: linear-gradient(90deg, transparent 4%, #000 30%, #000 56%, transparent 66%); }
+.tab-mood #skriv { bottom: 56px; }
+#skriv .rader { position: absolute; inset: 0; }
+#skriv .rad { position: absolute; right: 50%; bottom: calc(18px + var(--k) * 19px); white-space: nowrap; font-size: 12px; letter-spacing: .16em; color: var(--ink);
+  opacity: calc(0.62 - var(--k) * 0.17); transition: bottom .35s ease, opacity .35s ease; }
+#skriv .ch { display: inline-block; opacity: var(--o, .9); transform: translateY(var(--y, 0)) rotate(var(--r, 0deg)); animation: slag .12s ease-out; }
+@keyframes slag { from { opacity: 0; transform: translateY(var(--y, 0)) rotate(var(--r, 0deg)) scale(1.35); } }
+#skriv .flack { position: absolute; right: calc(0px - var(--fx)); top: var(--fy); width: var(--fs); height: var(--fs); border-radius: 50%; background: var(--ink); opacity: .35; }
+#skriv .vagn { position: absolute; left: 6%; right: 6%; bottom: 10px; height: 1px; background: var(--line); opacity: 0; transition: opacity .6s ease; }
+#skriv .vagn i { position: absolute; left: 50%; top: -3px; width: 22px; height: 7px; margin-left: -1px; border-radius: 4px; background: rgba(255, 255, 255, .85); border: 1px solid var(--line); }
+#skriv.aktiv .vagn { opacity: .9; transition-duration: .15s; }
