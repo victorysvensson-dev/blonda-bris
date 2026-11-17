@@ -169,6 +169,23 @@ with sync_playwright() as p:
             pg.wait_for_timeout(700); pg.screenshot(path=f"{UT}/kristall_ackord.png")
             for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
             pg.wait_for_timeout(300)
+            # med arpen igång följer ljuset arpen: en ton i taget, de hållna tangenterna lyser svagt
+            pg.evaluate("__bris.setParam('arp', 1, true)")
+            for n in (60, 64, 67): pg.evaluate(f"__bris.note({n}, 100)")
+            pg.wait_for_timeout(400)
+            prov = []
+            for i in range(24):
+                prov.append(pg.evaluate("({ v: Object.fromEntries([...__bris.ljus().v]), k: Object.fromEntries([...__bris.keys.lvl]) })")); pg.wait_for_timeout(90)
+            starkast = [max(p_["v"], key=lambda n: p_["v"][n]) for p_ in prov if p_["v"]]
+            alla = sum(1 for p_ in prov if all(p_["v"].get(str(n), 0) >= 0.9 for n in (60, 64, 67)))
+            svag = min(min(p_["k"].get(str(n), 0) for n in (60, 64, 67)) for p_ in prov)
+            krav(len(set(starkast)) >= 2 and alla == 0 and svag >= 0.3, f"KRISTALL + ARP: ljuset följer arpen (starkast {starkast}, alla tre fullt {alla} gånger, svagast {svag:.2f})")
+            pg.screenshot(path=f"{UT}/kristall_arp.png")
+            pg.evaluate("__bris.setParam('arp', 0, true)"); pg.wait_for_timeout(700)
+            v = pg.evaluate("Object.fromEntries([...__bris.ljus().v])")
+            krav(all(v.get(str(n), 0) >= 0.9 for n in (60, 64, 67)), f"ARP av: de hållna tonerna lyser igen ({v})")
+            for n in (60, 64, 67): pg.evaluate(f"__bris.off({n})")
+            pg.wait_for_function("__bris.ljus().tomt", timeout=5000)
             pg.click("#menuBtn"); pg.wait_for_timeout(300)
             krav(pg.locator("#list .grp.hemlig .it.on").count() == 1, "menyn: SECRET · KRISTALL överst och vald")
             pg.screenshot(path=f"{UT}/kristall_meny.png")

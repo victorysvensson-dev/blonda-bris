@@ -28,6 +28,7 @@
   let INK = "43,37,33";   // text och linjer som ritas i dukarna (ljust i det mörka läget)
   // den hemliga patchen: accent, bakgrund och ljusets två färger (lila och bärnsten, per ton)
   const KR = { accent: "#a47cff", bg: "#0b0a13", lila: [150, 100, 255], barn: [255, 172, 82], lilaL: [0.42, 0.20, 1.0], barnL: [1.0, 0.52, 0.16] };
+  const KR_HALL = 0.32;   // hur starkt de hållna tangenterna lyser när arpen spelar i KRISTALL
   const krBarn = (n) => { const pc = ((n % 12) + 12) % 12; return pc >= 5 && pc <= 9; };   // F–A bärnsten, resten lila
 
   // ---------------------------------------------------------------- sidorna
@@ -643,13 +644,25 @@
     // när de släpps (tidigare klingade MIDI-tonerna av redan i samma bildruta som de tändes).
     const held = keys.held = new Set(keys.lit);
     if (S.m.keys) for (let w = 0; w < 4; w++) { const k = S.m.keys[w] >>> 0; if (k) for (let b = 0; b < 32; b++) if ((k >>> b) & 1) held.add(w * 32 + b); }
-    for (const n of held) keys.lvl.set(n, 1);
-    if (S.m.an >= 0) { held.add(S.m.an); keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7)); }   // arpens ton
+    // KRISTALL med arpen igång: ljuset följer arpen. Arpens ton lyser fullt och klingar av när nästa tar över;
+    // de hållna tangenterna lyser svagt (KR_HALL) så att man ser ackordet arpen spelar.
+    const krArp = S.kristall && S.v.arp > 0.5;
+    if (!krArp) for (const n of held) keys.lvl.set(n, 1);
+    else for (const n of held) if (!keys.lvl.has(n)) keys.lvl.set(n, KR_HALL);
+    if (S.m.an >= 0) {   // arpens ton
+      if (krArp) keys.lvl.set(S.m.an, 1);
+      else { held.add(S.m.an); keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7)); }
+    }
     // FOLLOW: tangenterna utanför ackordets skala tonas ner, grundtonen får en prick
     const fm = S.pads.follow && S.m.fm ? S.m.fm : 0, iSkala = (n) => !fm || ((fm >> (n % 12)) & 1);
     const tnu = performance.now(), kdt = Math.min(0.5, Math.max(0, (tnu - (keys.t || tnu)) / 1000)); keys.t = tnu;
     const kner = S.motion ? Math.exp(-kdt / 0.13) : 0;   // tangentens sken klingar av efter tid, inte bildrutor
-    for (const [n, v] of keys.lvl) { if (!held.has(n)) { const nv = v * kner; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
+    if (krArp) for (const [n, v] of keys.lvl) {
+      if (n === S.m.an) continue;
+      const lo = held.has(n) ? KR_HALL : 0, nv = lo + (v - lo) * kner;
+      if (!lo && nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv);
+    }
+    else for (const [n, v] of keys.lvl) { if (!held.has(n)) { const nv = v * kner; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
     // glid per ton (för att rita linjen där fingret glider)
     const gl = new Map();
@@ -783,10 +796,16 @@
     // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
     const pa = new Set();
     const paL = S.kristall || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
-    if (paL && keys.held) for (const n of keys.held) pa.add(n);
+    // KRISTALL med arpen igång: bara arpens ton lyser, och varje nytt slag tänder den på nytt (även samma ton
+    // två gånger i rad: notantalet nc räknas upp vid varje anslag); annars lyser tonerna som hålls
+    const krArp = S.kristall && S.v.arp > 0.5;
+    if (krArp) {
+      if (S.m.an >= 0) { pa.add(S.m.an); if (S.m.nc !== ljus.nc) ljus.v.set(S.m.an, 1); }
+    } else if (paL && keys.held) for (const n of keys.held) pa.add(n);
+    ljus.nc = S.m.nc;
     // efter tid, inte bildrutor (60 eller 120 Hz, eller en långsam webbläsare, ska kännas likadant)
     const nu = performance.now(), dt = Math.min(0.5, Math.max(0, (nu - (ljus.t || nu)) / 1000)); ljus.t = nu;
-    const upp = S.motion ? 1 - Math.exp(-dt / 0.045) : 1, ner = S.motion ? Math.exp(-dt / 0.32) : 0;
+    const upp = S.motion ? 1 - Math.exp(-dt / 0.045) : 1, ner = S.motion ? Math.exp(-dt / (krArp ? 0.2 : 0.32)) : 0;   // arpen: kortare svans
     for (const n of pa) ljus.v.set(n, (ljus.v.get(n) || 0) + (1 - (ljus.v.get(n) || 0)) * upp);
     for (const [n, v] of ljus.v) if (!pa.has(n)) { const nv = v * ner; if (nv < 0.01) ljus.v.delete(n); else ljus.v.set(n, nv); }
     const g = cv.getContext("2d");

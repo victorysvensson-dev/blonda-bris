@@ -21,6 +21,12 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.10.1
+
+- KRISTALL med arpen igång: ljuset följer arpen. Varje ton arpen spelar skjuter en stråle, tänder glaset på sitt
+  ställe och klingar av när nästa ton tar över (även samma ton två gånger i rad tänds på nytt), medan de hållna
+  tangenterna lyser svagt. Stängs arpen av lyser de hållna tonerna som vanligt igen.
+
 ## 1.10.0
 
 - Den hemliga patchen KRISTALL: tryck fem gånger på versionen uppe till höger. Då blir BRIS mörk och blomman byts
