@@ -58,6 +58,9 @@ public:
     juce::var loadUserPresets() const;
     void saveUserPresets(const juce::var& list) const;
     void uiSlide(int note, float v);       // BRIS MPE: ett fingers slide på sin ton (gränssnittet -> ljudtråden)
+    void uiPad(const juce::var& notes, int vel);   // ackordpad: tonerna (tom = släpp)
+    void uiFollow(bool on) { follow.store(on); }    // FOLLOW: tangenterna följer padens skala
+    bool getFollow() const { return follow.load(); }
     void allNotesOff() { panic.store(true); }
     void setPattern(const juce::var& pattern);    // rullen
     juce::var getPattern() const { return patternVar; }
@@ -86,6 +89,7 @@ private:
     juce::AbstractFifo noteFifo { 256 };
     std::array<NoteEv, 256> noteBuf {};
     std::atomic<bool> panic { false };
+    std::atomic<bool> follow { false };          // sparas i projektet
     std::atomic<int> glidMode { 1 };            // 1 = FILTER (som gränssnittets standard); sparas i projektet          // glid på tangenterna (gränssnittet -> ljudtråden)
     std::atomic<float> glidAmount { 0.0f };
 

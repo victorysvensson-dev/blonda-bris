@@ -9,6 +9,10 @@ const { instance } = await WebAssembly.instantiate(fs.readFileSync(wasmPath), {
 const e = instance.exports;
 e._initialize();
 let fel = 0;
+// parametrarnas ordning = kärnans (ui/data.js)
+const dataJs = fs.readFileSync(new URL("../ui/data.js", import.meta.url), "utf8");
+const PARAMS = JSON.parse(dataJs.slice(dataJs.indexOf("{"), dataJs.lastIndexOf("}") + 1)).params.map((p) => p.id);
+const sp = (id, v) => e.bris_set_param(PARAMS.indexOf(id), v);
 for (const p of [0, 1, 5, 20, 36, 58, 83, 89]) {
   e.bris_init(48000);
   e.bris_all_off();
@@ -24,6 +28,24 @@ for (const p of [0, 1, 5, 20, 36, 58, 83, 89]) {
   }
   console.log(`ljud ${p}: största skillnad wasm mot C++ ${md.toExponential(2)}`);
   if (!(md < 1e-4)) fel++;
+}
+// MOOD (delay, mikrolooper) och ARP som spelar en pad, med en ton ovanpå
+for (const p of [4, 53]) {
+  e.bris_init(48000); e.bris_all_off(); e.bris_load_preset(p);
+  e.bris_set_tempo(120); sp("mowet", 1); sp("mowmode", 1); sp("arp", 1); sp("arpm", 2); sp("arpo", 2);
+  e.bris_pad_note(57, 100); e.bris_pad_note(60, 90); e.bris_pad_note(64, 80);
+  const ref = new Float32Array(execFileSync(dumpBin, [String(p), "extra"], { maxBuffer: 1 << 26 }).buffer.slice(0));
+  let md = 0, k = 0, pk = 0;
+  for (let b = 0; b < 750; b++) {
+    if (b === 500) e.bris_all_off();
+    if (b === 300) sp("moloop", 1);
+    if (b === 200) e.bris_note_on(72, 100);
+    e.bris_process(128);
+    const L = new Float32Array(e.memory.buffer, e.bris_buf_l(), 128), R = new Float32Array(e.memory.buffer, e.bris_buf_r(), 128);
+    for (let s = 0; s < 128; s++) { md = Math.max(md, Math.abs(L[s] - ref[k++]), Math.abs(R[s] - ref[k++])); pk = Math.max(pk, Math.abs(L[s])); }
+  }
+  console.log(`ljud ${p} med MOOD och ARP: största skillnad wasm mot C++ ${md.toExponential(2)} (topp ${pk.toFixed(2)})`);
+  if (!(md < 1e-4) || !(pk > 0.01)) fel++;
 }
 console.log(fel ? `${fel} FEL` : "wasm = C++: OK");
 process.exit(fel ? 1 : 0);

@@ -52,9 +52,60 @@ with sync_playwright() as p:
                 acc = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--a').trim()")
                 krav(acc.lower() == pl["color"].lower(), f"växt {pl['id']}: färg {acc}")
             # flikarna
-            for t in ["osc", "filter", "amp", "mod", "fx"]:
+            for t in ["osc", "filter", "amp", "mod", "fx", "mood", "arp"]:
                 pg.click(f"#tabs button[data-tab={t}]"); pg.wait_for_timeout(300)
                 pg.screenshot(path=f"{UT}/flik_{t}.png")
+            # MOOD: fotknapparna slår på WET och LOOP, HIDDEN visar de dolda rattarna
+            pg.click("#tabs button[data-tab=mood]"); pg.wait_for_timeout(200)
+            pg.click("#fsw .fs[data-id=mowet]"); pg.click("#fsw .fs[data-id=moloop]"); pg.wait_for_timeout(200)
+            v = pg.evaluate("({ w: __bris.S.v.mowet, l: __bris.S.v.moloop, on: document.querySelectorAll('#fsw .fs.on').length })")
+            krav(v["w"] == 1 and v["l"] == 1 and v["on"] == 2, f"MOOD: WET och LOOP slås på med fotknapparna ({v})")
+            pg.evaluate("__bris.note(57, 100); __bris.note(64, 90)"); pg.wait_for_timeout(1200); pg.evaluate("__bris.off(57); __bris.off(64)")
+            pg.screenshot(path=f"{UT}/mood_pa.png")
+            pg.click("#right .hidb"); pg.wait_for_timeout(200)
+            krav(pg.evaluate("[...document.querySelectorAll('#left .knob .lab')].map(e => e.textContent).join(',')") == "FADE,WIDTH,BALANCE,DIRECT", "MOOD: HIDDEN visar de dolda rattarna")
+            pg.click("#right .tog .opt[data-id=mosprd]"); krav(pg.evaluate("__bris.S.v.mosprd") == 1, "MOOD: SPREAD slås på")
+            pg.screenshot(path=f"{UT}/mood_hidden.png")
+            pg.click("#right .hidb"); pg.click("#fsw .fs[data-id=mowet]"); pg.click("#fsw .fs[data-id=moloop]"); pg.click("#right .tog .opt[data-id=mosprd]") if pg.locator("#right .tog .opt[data-id=mosprd]").count() else None
+            pg.evaluate("__bris.setParam('mosprd', 0, true)")
+            krav(pg.evaluate("__bris.S.v.mowet + __bris.S.v.moloop") == 0, "MOOD: av igen")
+            # ARP-sidan
+            pg.click("#tabs button[data-tab=arp]"); pg.wait_for_timeout(200)
+            pg.click("#left .tog .opt[data-id=arp]"); pg.click("#right .choice .opt:has-text('1/8T')")
+            krav(pg.evaluate("__bris.S.v.arp") == 1 and pg.evaluate("__bris.S.v.arpr") == 2, "ARP slås på och takten väljs")
+            pg.click("#right .choice .opt:has-text('3 OCT')"); krav(pg.evaluate("__bris.S.v.arpo") == 3, "ARP: oktaver (värdet börjar på 1)")
+            # ackordpads: öppna, spela, HOLD, FOLLOW, spela in ett ackord från tangenterna
+            pg.click("#kbar .padsb"); pg.wait_for_timeout(400)
+            krav(pg.evaluate("getComputedStyle(document.querySelector('#pads')).display") == "flex", "PADS öppnas över skärmen")
+            namn = pg.evaluate("[...document.querySelectorAll('#pads .pad .ak')].map(e => e.textContent)")
+            krav(namn == ["Am7", "Fmaj7", "C", "G"], f"padsens ackordnamn ({namn})")
+            pad0 = pg.locator("#pads .pad").first.bounding_box()
+            pg.mouse.move(pad0["x"] + pad0["width"] / 2, pad0["y"] + pad0["height"] / 2); pg.mouse.down(); pg.wait_for_timeout(900)
+            m = pg.evaluate("__bris.S.m"); pg.screenshot(path=f"{UT}/pads_arp.png")
+            krav(m["an"] in (57, 60, 64, 67, 69, 72, 76, 79, 81, 84, 88, 91), f"arpen spelar padens ackord (ton {m['an']})")
+            pg.mouse.up(); pg.wait_for_timeout(500)
+            krav(pg.evaluate("__bris.S.m.an") == -1 and pg.evaluate("__bris.S.pads.active") == -1, "paden släpps när fingret lyfts (utan HOLD)")
+            pg.click("#pads .pbar .arpb"); krav(pg.evaluate("__bris.S.v.arp") == 0, "ARP av i padsens rad")
+            pg.click("#pads .pbar .hold"); pg.click("#pads .pad >> nth=1"); pg.wait_for_timeout(500)
+            krav(pg.evaluate("__bris.S.pads.active") == 1 and pg.evaluate("__bris.S.m.mask") != 0, "HOLD: paden ligger kvar efter tryck")
+            pg.click("#pads .pad >> nth=2"); pg.wait_for_timeout(200)
+            krav(pg.evaluate("__bris.S.pads.active") == 2, "HOLD: en annan pad byter ackord")
+            pg.click("#pads .pbar .follow"); pg.wait_for_timeout(500)
+            fm = pg.evaluate("({ fr: __bris.S.m.fr, fm: __bris.S.m.fm })")
+            krav(fm["fr"] == 0 and fm["fm"] == 0xAB5, f"FOLLOW: C-dur efter C-paden ({fm})")
+            pg.screenshot(path=f"{UT}/pads_hold_follow.png")
+            pg.click("#pads .pad >> nth=2"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("__bris.S.pads.active") == -1, "HOLD: samma pad igen släpper")
+            # REC: tryck REC, välj pad 4, spela D-moll på tangenterna, tryck paden igen
+            pg.click("#pads .pbar .follow"); pg.click("#pads .pbar .rec"); pg.click("#pads .pad >> nth=3")
+            for n in (62, 65, 69): pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(120); pg.evaluate(f"__bris.off({n})")
+            pg.wait_for_timeout(200); pg.screenshot(path=f"{UT}/pads_rec.png")
+            pg.click("#pads .pad >> nth=3"); pg.wait_for_timeout(200)
+            rec = pg.evaluate("({ l: __bris.S.pads.list[3], rec: __bris.S.pads.rec, namn: document.querySelectorAll('#pads .pad .ak')[3].textContent })")
+            krav(rec["l"] == [62, 65, 69] and not rec["rec"] and rec["namn"] == "Dm", f"REC spelar in ackordet från tangenterna ({rec})")
+            pg.click("#pads .pbar .hold"); pg.click("#pads .pbar .stang"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("getComputedStyle(document.querySelector('#pads')).display") == "none", "PADS stängs")
+            pg.evaluate("__bris.setParam('arpr', 3, true); __bris.setParam('arpo', 1, true)")
             pg.click("#tabs button[data-tab=play]")
             # ratt: dra cutoff
             before = pg.evaluate("__bris.S.v.cut")
@@ -120,7 +171,7 @@ with sync_playwright() as p:
             pg.evaluate("__bris.note(60, 100)"); pg.wait_for_timeout(1500)
             pg.screenshot(path=f"{UT}/{namn}.png", full_page=False)
             # allt syns utan att skrolla, på alla flikar
-            for t in ["play", "osc", "filter", "amp", "mod", "fx"]:
+            for t in ["play", "osc", "filter", "amp", "mod", "fx", "mood", "arp"]:
                 pg.evaluate(f"__bris.tab('{t}')"); pg.wait_for_timeout(150)
                 ut = pg.evaluate("""(() => { const H = innerHeight, W = innerWidth; const bad = [];
                     for (const e of document.querySelectorAll('#app header, #tabs2, .panel *, #keys, #kbar *')) { if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
@@ -129,7 +180,15 @@ with sync_playwright() as p:
                     return { bad: bad.slice(0, 4), stage: Math.round(st.height) }; })()""")
                 krav(not ut["bad"], f"{namn} {t}: allt syns ({ut['bad']})")
                 krav(ut["stage"] >= (180 if t == "play" else 60) or namn == "auv3_lag", f"{namn} {t}: blomman får plats ({ut['stage']} px)")
-                if t in ("play", "mod"): pg.screenshot(path=f"{UT}/{namn}_{t}.png")
+                if t in ("play", "mod", "mood", "arp"): pg.screenshot(path=f"{UT}/{namn}_{t}.png")
+            # padsen över skärmen: alla fyra syns och är stora nog att träffa
+            pg.evaluate("__bris.tab('play'); __bris.pads.open(true)"); pg.wait_for_timeout(400)
+            pb = pg.evaluate("""[...document.querySelectorAll('#pads .pad, #pads .pbar')].map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom), Math.round(r.width)]; })""")
+            kh = pg.evaluate("document.querySelector('#keys').getBoundingClientRect().top")
+            ok = all(r[0] >= 0 and r[2] <= vp[0] + 1 and r[1] >= 0 and r[3] <= kh + 1 for r in pb) and min(r[4] for r in pb[:4]) >= 60
+            krav(ok, f"{namn}: padsen syns ovanför tangenterna och är stora nog ({pb})")
+            pg.screenshot(path=f"{UT}/{namn}_pads.png")
+            pg.evaluate("__bris.pads.open(false)")
             pg.evaluate("__bris.off(60)")
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()

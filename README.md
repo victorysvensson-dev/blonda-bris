@@ -21,6 +21,33 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## MOOD (från 1.7.0)
+
+Sidan MOOD är effekten `mood` ur blonda-motor, gjord i Chase Bliss MOOD MKII:s anda för att bygga atmosfärer.
+Den ligger sist i kedjan. Fotknapparna över blomman: **WET** och **FREEZE** (wet-kanalen), **LOOP** och **DUB**
+(mikrolooper).
+
+- WET (vänster): REVERB / DELAY / SLIP, TIME, MODIFY, TONE och CLOCK (gemensam klocka i harmoniska steg: lägre =
+  längre loopar och ekon, mörkare och mer vikning).
+- MICRO-LOOP (höger): ENV / TAPE / STRETCH, LENGTH, MODIFY och MIX. Loopen lyssnar alltid, så LOOP spelar upp det
+  man just spelat.
+- HIDDEN: FADE, WIDTH, BALANCE, DIRECT, ROUTING (IN, IN + LOOP, LOOP), SPREAD, HALF och SMOOTH.
+
+Är både WET och LOOP av går ljudet igenom oförändrat (testat sampel för sampel). FREEZE, LOOP och DUB sparas inte i
+egna ljud eftersom de gäller stunden. Ramping, Classic mode och MIDI-klocksynk från pedalen finns inte med.
+
+## ARP och ackordpads (från 1.7.0)
+
+- **ARP** (egen sida): UP, DOWN, UP-DOWN och RANDOM, takt 1/4 till 1/32 (följer tempot), 1–4 oktaver och GATE.
+- **PADS** (knappen ovanför tangenterna): fyra ackordpads tonar fram över skärmen och blomman blir suddig bakom.
+  - Tryck på en pad för att spela ackordet.
+  - **REC**: tryck på REC och sedan på en pad, spela ackordet på pianot (eller en klaviatur) och tryck på paden igen.
+  - **HOLD**: ackordet ligger kvar tills man trycker på samma pad igen eller byter pad.
+  - **FOLLOW**: pianot rättas till skalan för det senaste ackordet. Skalan är dur, mixolydisk, lydisk, moll, dorisk,
+    frygisk eller lokrisk utifrån ackordets toner. Tangenterna utanför skalan tonas ner och grundtonen får en prick.
+- Med ARP på arpas padens ackord, och pianot spelar vanligt ovanpå. Utan pad arpas tangenterna.
+- MIDI från en vanlig klaviatur går samma väg (FOLLOW och ARP). I BRIS MPE går MIDI direkt till motorn.
+
 ## Blommorna i lager
 
 Varje blomma har en mask för sina främre kronblad (`ui/blommor/<foto>_fram.webp`, skriven av `tools/lager.py`).

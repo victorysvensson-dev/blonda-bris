@@ -13,10 +13,13 @@
   // ---------------------------------------------------------------- tillstånd
   const S = {
     v: {}, preset: 65, tab: "play", oct: 0, standalone: false, web: Bridge.mode === "web", midi: [],
-    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null }, mod: {},
+    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null, fr: -1, fm: 0, an: -1 }, mod: {},
     kz: 1, kh: null,
     motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
-    egna: [], eget: null,   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
+    egna: [], eget: null,
+    hid: false,   // MOOD: de dolda rattarna (som pedalens hidden options)
+    // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
+    pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
   const plantOf = (i) => D.plants[D.presets[i].plant];
@@ -34,6 +37,15 @@
       rt: "SHAPE", right: [["c", "lwave", ["TRI", "UP", "DOWN", "SQR", "RND"]], ["s", "mwosc", "WHEEL VIB"], ["s", "mwcut", "WHEEL CUT"]] },
     { id: "fx", name: "FX", wave: "scope", kt: "CHORUS · DELAY", knobs: [["chorus", "CHORUS"], ["dtime", "TIME"], ["dfb", "FDBK"], ["dmix", "MIX"]],
       rt: "SPACE", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SIZE"], ["s", "drive", "DRIVE"]] },
+    // MOOD: WET-kanalen till vänster, mikrolooperns till höger, fotknapparna (WET FREEZE · LOOP DUB) över blomman.
+    // HIDDEN visar de dolda rattarna, som när man håller båda fotknapparna på pedalen.
+    { id: "mood", name: "MOOD", fsw: true, kt: "WET", pre: [["c", "mowmode", ["REVERB", "DELAY", "SLIP"]]],
+      knobs: [["motime", "TIME"], ["mowmod", "MODIFY"], ["motone", "TONE"], ["moclk", "CLOCK"]],
+      rt: "MICRO-LOOP", right: [["c", "molmode", ["ENV", "TAPE", "STRETCH"]], ["s", "molen", "LENGTH"], ["s", "molmod", "MODIFY"], ["s", "moblend", "MIX"]],
+      hid: { kt: "HIDDEN", knobs: [["mofade", "FADE"], ["mowidth", "WIDTH"], ["mobal", "BALANCE"], ["modir", "DIRECT"]],
+        rt: "ROUTING", right: [["c", "morout", ["IN", "IN + LOOP", "LOOP"]], ["t", [["mosprd", "SPREAD"], ["mohalf", "HALF"], ["mosmth", "SMOOTH"]]]] } },
+    { id: "arp", name: "ARP", kt: "ARPEGGIO", pre: [["t", [["arp", "ARP"]]], ["c", "arpm", ["UP", "DOWN", "UP-DOWN", "RANDOM"]]],
+      rt: "RATE", right: [["c", "arpr", ["1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"]], ["c", "arpo", ["1 OCT", "2 OCT", "3 OCT", "4 OCT"]], ["s", "arpg", "GATE"]] },
   ];
 
   function fmt(id, v) {
@@ -154,11 +166,23 @@
   }
 
   function choice(id, opts) {
-    const c = el("div", "choice");
-    const bs = opts.map((o, i) => { const b = el("button", "opt", `<i></i>${o}`); b.onclick = () => { gesture(id, true); setParam(id, i, true); gesture(id, false); }; c.append(b); return b; });
-    bind(id, (v) => bs.forEach((b, i) => b.classList.toggle("on", i === Math.round(v))));
+    const c = el("div", "choice"), lo = P[id].min;
+    const bs = opts.map((o, i) => { const b = el("button", "opt", `<i></i>${o}`); b.onclick = () => { gesture(id, true); setParam(id, lo + i, true); gesture(id, false); }; c.append(b); return b; });
+    bind(id, (v) => bs.forEach((b, i) => b.classList.toggle("on", lo + i === Math.round(v))));
     return c;
   }
+  // knappar som slås av och på var för sig (av/på-parametrar)
+  function toggles(list, cls) {
+    const c = el("div", "choice " + (cls || "tog"));
+    list.forEach(([id, lab]) => {
+      const b = el("button", "opt", `<i></i>${lab}`); b.dataset.id = id;
+      b.onclick = () => { gesture(id, true); setParam(id, S.v[id] > 0.5 ? 0 : 1, true); gesture(id, false); };
+      bind(id, (v) => b.classList.toggle("on", v > 0.5));
+      c.append(b);
+    });
+    return c;
+  }
+  const item = (c) => c[0] === "s" ? slider(c[1], c[2]) : c[0] === "t" ? toggles(c[1]) : choice(c[1], c[2]);
 
 
   // ---------------------------------------------------------------- vågen (vänster panel)
@@ -277,17 +301,138 @@
     L.append(br);
     waveCv = null;
     if (pg.wave) { const ww = el("div", "wave-wrap"); waveCv = el("canvas", "wave"); ww.append(waveCv); L.append(ww); waveType = pg.wave; }
-    if (pg.knobs) {
-      const kb = el("div", "kbox"); kb.append(el("div", "ttl", pg.kt));
-      const kn = el("div", "knobs");
-      pg.knobs.forEach(([id, lab]) => { const k = knob(id, lab); kn.append(k); knobEls.push(k); });
-      kb.append(kn); L.append(kb);
+    const vy = pg.hid && S.hid ? { ...pg, ...pg.hid, pre: pg.hid.pre || [] } : pg;   // MOOD: dolda rattar
+    if (vy.knobs || vy.pre) {
+      const kb = el("div", "kbox"); kb.append(el("div", "ttl", vy.kt));
+      if (vy.pre && vy.pre.length) { const pr = el("div", "pre"); vy.pre.forEach((c) => pr.append(item(c))); kb.append(pr); }
+      if (vy.knobs) {
+        const kn = el("div", "knobs");
+        vy.knobs.forEach(([id, lab]) => { const k = knob(id, lab); kn.append(k); knobEls.push(k); });
+        kb.append(kn);
+      }
+      L.append(kb);
     }
-    const box = el("div", "rbox"); box.append(el("div", "ttl", pg.rt));
+    const box = el("div", "rbox"); const rt = el("div", "ttl", vy.rt);
+    if (pg.hid) {
+      const hb = el("button", "hidb" + (S.hid ? " on" : ""), S.hid ? "BACK" : "HIDDEN");
+      hb.onclick = () => { S.hid = !S.hid; buildPanels(); };
+      rt.append(hb);
+    }
+    box.append(rt);
     const sl = el("div", "sliders");
-    pg.right.forEach((c) => { if (c[0] === "s") sl.append(slider(c[1], c[2])); else sl.append(choice(c[1], c[2])); });
+    vy.right.forEach((c) => sl.append(item(c)));
     box.append(sl); Rt.append(box);
+    buildFsw(pg);
     document.querySelectorAll("#tabs button, #tabs2 button").forEach((b) => b.classList.toggle("on", b.dataset.tab === S.tab));
+  }
+
+  // MOOD: fotknapparna över blomman – WET och FREEZE för wet-kanalen, LOOP och DUB för mikrolooper
+  function buildFsw(pg) {
+    let f = $("#fsw"); if (f) f.remove();
+    if (!pg.fsw) return;
+    f = el("div", ""); f.id = "fsw";
+    const grp = (list) => { const g = el("div", "grp"); list.forEach(([id, lab]) => {
+      const b = el("button", "fs", `<i></i><span>${lab}</span>`); b.dataset.id = id;
+      b.onclick = () => { gesture(id, true); setParam(id, S.v[id] > 0.5 ? 0 : 1, true); gesture(id, false); };
+      bind(id, (v) => b.classList.toggle("on", v > 0.5));
+      g.append(b); }); return g; };
+    f.append(grp([["mowet", "WET"], ["mofrz", "FREEZE"]]), grp([["moloop", "LOOP"], ["modub", "DUB"]]));
+    $("#stage").append(f);
+  }
+
+  // ---------------------------------------------------------------- ackordpads
+  // Fyra pads över skärmen (blomman blir suddig bakom). Tryck = spela ackordet (HOLD: ligger kvar tills man trycker
+  // igen eller byter pad). REC och sedan en pad: tonerna man spelar på pianot (eller en klaviatur) spelas in i den,
+  // tryck på paden igen när ackordet är klart. FOLLOW: pianot rättas till skalan för det senaste ackordet.
+  const NOTNAMN = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const ACKORD = { "0,4,7": "", "0,3,7": "m", "0,4,7,10": "7", "0,4,7,11": "maj7", "0,3,7,10": "m7", "0,3,6": "dim", "0,3,6,9": "dim7",
+    "0,3,6,10": "m7b5", "0,4,8": "aug", "0,2,7": "sus2", "0,5,7": "sus4", "0,4,7,9": "6", "0,3,7,9": "m6", "0,2,4,7": "add9",
+    "0,2,4,7,10": "9", "0,2,3,7,10": "m9", "0,2,4,7,11": "maj9", "0,7": "5", "0,5,7,10": "7sus4", "0,3,7,11": "mmaj7", "0,2,3,7": "madd9",
+    "0,4,7,9,11": "maj13", "0,4,11": "maj7", "0,3,10": "m7", "0,4,10": "7" };
+  function ackordNamn(nt) {
+    if (!nt.length) return "";
+    const pcs = [...new Set(nt.map((n) => n % 12))], bas = Math.min(...nt) % 12;
+    // grundtonen = basen om det går, annars en omvändning (/bas)
+    for (const r of [bas, ...pcs.filter((p) => p !== bas)]) {
+      const k = pcs.map((p) => (p - r + 12) % 12).sort((a, b) => a - b).join(",");
+      if (ACKORD[k] !== undefined) return NOTNAMN[r] + ACKORD[k] + (r !== bas ? "/" + NOTNAMN[bas] : "");
+    }
+    return NOTNAMN[bas] + "…";
+  }
+  const tonNamn = (n) => NOTNAMN[n % 12] + (Math.floor(n / 12) - 1);   // som tangenterna: 48 = C3
+  function padSpela(k) {
+    const nt = S.pads.list[k] || [];
+    S.pads.active = k;
+    Bridge.send({ t: "pad", n: nt, v: 100 });
+    updPads();
+  }
+  function padSlapp() { if (S.pads.active < 0) return; S.pads.active = -1; Bridge.send({ t: "pad", n: [] }); updPads(); }
+  function padRec(k) {   // REC-läget: tryck på en pad för att spela in i den, tryck igen för att sluta
+    if (S.pads.armed === k) { S.pads.armed = -1; S.pads.rec = false; saveUi(); updPads(); return; }
+    S.pads.armed = k; S.pads.list[k] = []; updPads();
+  }
+  function padLagg(n) {   // en ton som spelas medan en pad spelar in
+    const k = S.pads.armed; if (k < 0) return;
+    const l = S.pads.list[k]; if (l.includes(n) || l.length >= 8) return;
+    l.push(n); l.sort((a, b) => a - b); updPads(); saveUi();
+  }
+  function setFollow(on) { S.pads.follow = !!on; Bridge.send({ t: "follow", on: S.pads.follow }); updPads(); saveUi(); }
+  function oppnaPads(on) {
+    S.pads.open = !!on;
+    if (!on) { padSlapp(); S.pads.rec = false; S.pads.armed = -1; }
+    $("#pads").classList.toggle("open", S.pads.open);
+    document.getElementById("app").classList.toggle("pads-open", S.pads.open);
+    const kb = $("#kbar .padsb"); if (kb) kb.classList.toggle("on", S.pads.open);
+    updPads(); saveUi();
+  }
+  function buildPads() {
+    let o = $("#pads"); if (o) o.remove();
+    o = el("div", ""); o.id = "pads";
+    const bar = el("div", "pbar choice");
+    const knapp = (lab, cls, f) => { const b = el("button", "opt " + cls, `<i></i>${lab}`); b.onclick = f; bar.append(b); return b; };
+    knapp("REC", "rec", () => { S.pads.rec = !S.pads.rec; if (!S.pads.rec) S.pads.armed = -1; else padSlapp(); updPads(); saveUi(); });
+    knapp("HOLD", "hold", () => { S.pads.hold = !S.pads.hold; if (!S.pads.hold) padSlapp(); updPads(); saveUi(); });
+    knapp("FOLLOW", "follow", () => setFollow(!S.pads.follow));
+    const ab = el("button", "opt arpb", "<i></i>ARP"); ab.dataset.id = "arp";
+    ab.onclick = () => { gesture("arp", true); setParam("arp", S.v.arp > 0.5 ? 0 : 1, true); gesture("arp", false); updPads(); };
+    bar.append(ab);
+    const x = el("button", "stang", '<svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'); x.setAttribute("aria-label", "Close");
+    x.onclick = () => oppnaPads(false); bar.append(x);
+    const grid = el("div", "pgrid");
+    for (let k = 0; k < 4; k++) {
+      const p = el("button", "pad", `<span class="nr">${String(k + 1).padStart(2, "0")}</span><span class="ak"></span><span class="tn"></span>`); p.dataset.k = k;
+      p.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); ensureAudio();
+        if (S.pads.rec) { padRec(k); return; }
+        if (!(S.pads.list[k] || []).length) return;
+        if (S.pads.hold) { if (S.pads.active === k) padSlapp(); else padSpela(k); return; }
+        p.setPointerCapture(e.pointerId); padSpela(k);
+      });
+      const upp = () => { if (!S.pads.hold && !S.pads.rec && S.pads.active === k) padSlapp(); };
+      p.addEventListener("pointerup", upp); p.addEventListener("pointercancel", upp);
+      grid.append(p);
+    }
+    o.append(bar, grid);
+    $("#main").append(o);
+    o.classList.toggle("open", S.pads.open);
+    document.getElementById("app").classList.toggle("pads-open", S.pads.open);
+    updPads();
+  }
+  function updPads() {
+    const o = $("#pads"); if (!o) return;
+    o.querySelector(".rec").classList.toggle("on", S.pads.rec);
+    o.querySelector(".hold").classList.toggle("on", S.pads.hold);
+    o.querySelector(".follow").classList.toggle("on", S.pads.follow);
+    o.querySelector(".arpb").classList.toggle("on", S.v.arp > 0.5);
+    o.classList.toggle("recording", S.pads.rec);
+    o.querySelectorAll(".pad").forEach((p) => {
+      const k = +p.dataset.k, nt = S.pads.list[k] || [];
+      p.querySelector(".ak").textContent = nt.length ? ackordNamn(nt) : (S.pads.armed === k ? "PLAY KEYS" : "EMPTY");
+      p.querySelector(".tn").textContent = nt.map(tonNamn).join("  ");
+      p.classList.toggle("on", S.pads.active === k);
+      p.classList.toggle("armed", S.pads.armed === k);
+      p.classList.toggle("tom", !nt.length);
+    });
   }
 
   function buildTabs() {
@@ -348,7 +493,7 @@
     });
     buildFoot();
   }
-  const BEHALL = ["vol", "bendr", "slm"];   // som fabriksljuden: volym, böjomfång och slide-mål följer inte med ljudet
+  const BEHALL = ["vol", "bendr", "slm", "mofrz", "moloop", "modub"];   // + MOOD:s FREEZE, LOOP och DUB (stunden, inte ljudet)   // som fabriksljuden: volym, böjomfång och slide-mål följer inte med ljudet
   function sparaEget(namn) {
     namn = namn.replace(/\s+/g, " ").trim().toUpperCase().slice(0, 28);
     if (!namn) return;
@@ -392,7 +537,7 @@
     f.append(mo);
     if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => Bridge.send({ t: "settings" }); f.append(b); }
     if (S.web) f.append(el("span", "", S.midi.length ? "MIDI IN · " + S.midi.join(", ").toUpperCase() : "MIDI IN · CONNECT A KEYBOARD"));
-    const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => Bridge.send({ t: "panic" }); f.append(pan);
+    const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => { Bridge.send({ t: "panic" }); S.pads.active = -1; updPads(); }; f.append(pan);
     f.append(el("span", "", `BLONDA ${S.name || "BRIS"} ${D.version} · ${D.presets.length} SOUNDS`));
   }
   function openMenu() { $("#menu").classList.add("open"); const on = $("#list .it.on"); if (on) on.scrollIntoView({ block: "center" }); }
@@ -433,6 +578,9 @@
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), rgb = hexRgb(cssVar("--a"));
     for (const n of keys.lit) keys.lvl.set(n, 1);
+    if (S.m.an >= 0) keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7));   // arpens ton
+    // FOLLOW: tangenterna utanför ackordets skala tonas ner, grundtonen får en prick
+    const fm = S.pads.follow && S.m.fm ? S.m.fm : 0, iSkala = (n) => !fm || ((fm >> (n % 12)) & 1);
     for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = S.motion ? v * 0.88 : 0; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
     // glid per ton (för att rita linjen där fingret glider)
@@ -454,6 +602,8 @@
         g.save(); roundRect(g, x, 0, kw, h, 7); g.clip(); g.fillStyle = gr; g.fillRect(x, 0, kw, h); g.restore();
         g.fillStyle = `rgba(${rgb},${v})`; roundRect(g, x + kw * 0.32, h - 9, kw * 0.36, 2, 1); g.fill();
       }
+      if (!iSkala(k.n)) { g.fillStyle = "rgba(43,37,33,0.10)"; roundRect(g, x, 0.5, kw, h - 1, 7); g.fill(); }
+      else if (fm && k.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},0.8)`; g.beginPath(); g.arc(x + kw / 2, h - 18, 2.4, 0, TAU); g.fill(); }
     }
     // svarta tangenter: bläck, rundade nertill, med luft runt sig
     for (const b of L.blacks) {
@@ -466,6 +616,8 @@
       g.fillStyle = gr; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();
       g.fillStyle = "rgba(255,255,255,0.10)"; roundRect(g, b.x + b.w * 0.2, b.h - 7, b.w * 0.6, 2, 1); g.fill();
       if (v > 0) { g.fillStyle = `rgba(${rgb},${0.9 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
+      if (!iSkala(b.n)) { g.fillStyle = "rgba(246,241,238,0.55)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
+      else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, b.h - 12, 2.2, 0, TAU); g.fill(); }
     }
     // glidet: en tunn linje från där fingret tryckte till där det är nu, och en prick som lyser starkare ju högre
     if (S.glid.m > 0) for (const d of gl.values()) {
@@ -518,7 +670,10 @@
     const zi = el("button", "", '<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg>');
     zo.setAttribute("aria-label", "Fler tangenter"); zi.setAttribute("aria-label", "Större tangenter");
     zo.onclick = () => setZoom(S.kz / 1.2); zi.onclick = () => setZoom(S.kz * 1.2);
-    z.append(el("span", "ttl", "KEYS"), zo, zi); bar.append(z);
+    z.append(el("span", "ttl", "KEYS"), zo, zi);
+    const pw = el("div", "choice padsw"), pb = el("button", "opt padsb" + (S.pads.open ? " on" : ""), "<i></i>PADS");
+    pb.onclick = () => oppnaPads(!S.pads.open); pw.append(pb);
+    bar.append(pw, z);
   }
   function setZoom(k) { S.kz = clamp(k, KZ_MIN, KZ_MAX); saveUi(); }
   // tangenternas höjd: dra i strecket ovanför. Sparas som andel av fönstrets höjd; blomman behåller alltid plats.
@@ -543,7 +698,7 @@
     const release = (pid) => { const d = keys.down.get(pid); if (!d) return; Bridge.send({ t: "off", n: d.n }); keys.lit.delete(d.n); keys.down.delete(pid); };
     const start = (pid, k, y) => {
       const v = Math.round(clamp(50 + k.y * 77, 1, 127));
-      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n);
+      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n);
       keys.down.set(pid, { n: k.n, x: k.x, w: k.w, black: !!k.black, y0: y, y, up: 0 });
     };
     cv.addEventListener("pointerdown", (e) => {
@@ -577,7 +732,7 @@
     if (k === "z" || k === "x") { setOct(S.oct + (k === "z" ? -1 : 1)); return; }
     const i = KB.indexOf(k); if (i < 0 || kbDown.has(k)) return;
     ensureAudio();
-    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n);
+    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n);
     Bridge.send({ t: "note", n, v: 100 });
   });
   window.addEventListener("keyup", (e) => {
@@ -604,7 +759,8 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget }) }); }
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget,
+    pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
   function ensureAudio() { if (Bridge.mode === "web" && !Bridge.running) Bridge.startAudio().then(() => $("#start").classList.remove("show")); }
@@ -623,6 +779,7 @@
   buildPanels();
   buildMenu();
   keys.cv = $("#keys canvas");
+  buildPads();
   buildKbar();
   gripInput();
   keysInput();
@@ -635,7 +792,11 @@
     $("#ver").textContent = S.name + " " + D.version; document.title = "BLONDA " + S.name;
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
-      if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null; } catch (e) { /* */ } }
+      if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null;
+      if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
+      if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
+    if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
+    S.pads.active = -1; S.pads.armed = -1; S.pads.rec = false;
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
     S.egna = Array.isArray(st.user) ? st.user.filter((e) => e && e.name && e.values) : [];
@@ -644,6 +805,7 @@
     buildPanels();
     onPreset(S.preset);
     buildFoot();
+    buildPads(); Bridge.send({ t: "follow", on: S.pads.follow });
     buildKbar(); S.glid.sent = -1; updGlid(); if (S.mpe) Bridge.send({ t: "glid", m: S.glid.m, v: 0 }); else sendGlid(); applyKeysHeight();
     Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
     // layoutens mätvärden till appen (iOS skriver dem till en fil som CI läser); efter en stund och igen senare
@@ -654,12 +816,14 @@
     if (Bridge.needsGesture) $("#start").classList.add("show");
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };
-  Bridge.on.params = (v) => { for (const id in v) setParam(id, v[id], false); };
+  Bridge.on.params = (v) => { for (const id in v) setParam(id, v[id], false); if ("arp" in v) updPads(); };
   Bridge.on.preset = (i) => { if (i !== S.preset) onPreset(i); };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
     S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
     if (m.scope) S.m.scope = m.scope;
+    S.m.fr = m.fr ?? -1; S.m.fm = m.fm || 0; S.m.an = m.an ?? -1;
+    if (S.pads.armed >= 0 && m.keys) for (let w = 0; w < 4; w++) for (let b = 0; b < 32; b++) if ((m.keys[w] >>> b) & 1) padLagg(w * 32 + b);
     flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, nc: m.nc });
   };
   $("#start").addEventListener("click", () => { ensureAudio(); });
@@ -676,5 +840,6 @@
   window.addEventListener("resize", () => { applyKeysHeight(); knobEls.forEach((k) => k._draw()); });
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
-  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower };   // för tester
+  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn } };   // för tester
 })();

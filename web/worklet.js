@@ -26,6 +26,8 @@ class BrisProcessor extends AudioWorkletProcessor {
       case "tempo": e.bris_set_tempo(m.bpm); break;
       case "play": e.bris_set_playing(m.on ? 1 : 0); break;
       case "glid": e.bris_set_glid(m.m | 0, +m.v || 0); break;
+      case "pad": e.bris_pad_clear(); for (const n of (m.n || [])) e.bris_pad_note(n | 0, m.v | 0 || 100); break;
+      case "follow": e.bris_set_follow(m.on ? 1 : 0); break;
       case "pattern":
         e.bris_pattern_begin(m.rate);
         for (const n of m.notes) e.bris_pattern_add(n[0], n[1], n[2], n[3]);
@@ -45,12 +47,13 @@ class BrisProcessor extends AudioWorkletProcessor {
     if (out[1]) R.set(new Float32Array(mem, e.bris_buf_r(), n));
     if (++this.n >= 6) {
       this.n = 0;
-      const m = new Float32Array(mem, e.bris_meters(), 9);
+      const m = new Float32Array(mem, e.bris_meters(), 20);
       const sc = new Float32Array(mem, e.bris_scope(), this.scopeLen);
       const w = m[7] | 0;
       const scope = new Float32Array(this.scopeLen);
       scope.set(sc.subarray(w)); scope.set(sc.subarray(0, w), this.scopeLen - w);   // äldst först
-      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, glid: m[8], scope });
+      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, glid: m[8], scope,
+        keys: [0, 1, 2, 3].map((k) => (m[9 + 2 * k] | 0) + (m[10 + 2 * k] | 0) * 65536), fr: m[17] | 0, fm: m[18] | 0, an: m[19] | 0 });
     }
     return true;
   }

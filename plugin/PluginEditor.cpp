@@ -107,6 +107,7 @@ void BrisEditor::sendState() {
     o->setProperty("params", juce::var(pv));
     o->setProperty("preset", proc.currentPreset());
     o->setProperty("glid", proc.getGlidMode());
+    o->setProperty("follow", proc.getFollow());
     o->setProperty("mpe", (bool)BRIS_MPE);   // BRIS MPE: varje finger får egen slide
     o->setProperty("user", proc.loadUserPresets());
     o->setProperty("pattern", proc.getPattern());
@@ -154,6 +155,10 @@ void BrisEditor::onMessage(const juce::var& m) {
         proc.saveUserPresets(m.getProperty("list", {}));
     } else if (t == "slide") {
         proc.uiSlide((int)m.getProperty("n", 60), (float)(double)m.getProperty("v", 0.0));
+    } else if (t == "pad") {
+        proc.uiPad(m.getProperty("n", {}), (int)m.getProperty("v", 100));
+    } else if (t == "follow") {
+        proc.uiFollow((bool)m.getProperty("on", false));
     } else if (t == "glid") {
         proc.uiGlid((int)m.getProperty("m", 0), (float)(double)m.getProperty("v", 0.0));
     } else if (t == "play") {
@@ -199,6 +204,8 @@ void BrisEditor::timerCallback() {
         o->setProperty("t", "m");
         o->setProperty("env", s.m.env); o->setProperty("lfo", s.m.lfo); o->setProperty("pk", std::max(s.m.peakL, s.m.peakR));
         o->setProperty("mask", s.m.voiceMask); o->setProperty("step", s.m.step); o->setProperty("nc", (int)(s.m.noteCount % 1000000u)); o->setProperty("glid", s.m.glid);
+        juce::Array<juce::var> ks; for (auto k : s.m.keys) ks.add((juce::int64)k);
+        o->setProperty("keys", ks); o->setProperty("fr", s.m.followRoot); o->setProperty("fm", s.m.followMask); o->setProperty("an", s.m.arpNote);
         juce::Array<juce::var> sc; sc.ensureStorageAllocated(blonda::app::kScopeLen);
         for (int i = 0; i < blonda::app::kScopeLen; i += 2) sc.add(s.m.scope[i]);
         o->setProperty("scope", sc);

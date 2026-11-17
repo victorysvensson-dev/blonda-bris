@@ -108,6 +108,8 @@ const Bridge = (() => {
       case "play": post({ t: "play", on: m.on }); break;
       case "tempo": st.tempo = m.bpm; post({ t: "tempo", bpm: m.bpm }); save(); break;
       case "glid": post({ t: "glid", m: m.m, v: m.v }); break;
+      case "pad": post({ t: "pad", n: m.n || [], v: m.v || 100 }); break;
+      case "follow": st.follow = !!m.on; post({ t: "follow", on: !!m.on }); save(); break;
       case "ui": st.ui = m.s; save(); break;
       case "user": try { localStorage.setItem(SPAR + "-egna", JSON.stringify(m.list || [])); } catch (e) { /* privat läge */ } break;
       case "panic": post({ t: "alloff" }); break;
@@ -122,7 +124,8 @@ const Bridge = (() => {
     if (fresh) st.params = presetValues(st.preset);
     post({ t: "tempo", bpm: st.tempo || 120 });
     if (st.pattern) post({ t: "pattern", rate: st.pattern.rate, notes: st.pattern.notes });
-    on.state && on.state({ t: "state", params: vals(), preset: st.preset, pattern: st.pattern, tempo: st.tempo || 120, hostTempo: false, playing: false, ui: st.ui, standalone: false, web: true, user: egna() });
+    post({ t: "follow", on: !!st.follow });
+    on.state && on.state({ t: "state", params: vals(), preset: st.preset, pattern: st.pattern, tempo: st.tempo || 120, hostTempo: false, playing: false, ui: st.ui, standalone: false, web: true, user: egna(), follow: !!st.follow });
   }
 
   return { mode: "web", on, send, start, startAudio, needsGesture: true, get running() { return !!(ctx && ctx.state === "running"); } };

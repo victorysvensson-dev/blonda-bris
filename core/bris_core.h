@@ -1,7 +1,8 @@
 // BLONDA BRIS – ljudkärnan som delas av alla skal (AU/VST3/Standalone/AUv3 via JUCE, webben via WebAssembly).
 //
-// BRIS-motorn från blonda-motor (oförändrad) + två BLONDA-effekter efter den (VIBE för drive, RUM för reverb)
-// + en liten frasspelare (rullen i gränssnittet) + mätare till växten och vågen.
+// BRIS-motorn från blonda-motor (oförändrad) + BLONDA-effekter efter den (VIBE för drive, RUM för reverb,
+// MOOD sist för atmosfärer) + ARP och ackordpads (med FOLLOW: tangenterna följer ackordets skala)
+// + en liten frasspelare + mätare till växten och vågen.
 //
 // Kärnan är enkeltrådad: allt anropas från ljudtråden. Skalen ser till att händelser från gränssnittet
 // kommer fram dit (kö / meddelanden). Ingen allokering efter konstruktorn.
@@ -19,6 +20,7 @@
 #if BRIS_MPE
 #include "brismpe/brismpe.h"
 #endif
+#include "mood/mood_ljud.h"
 #include "rum/rum_ljud.h"
 #include "vibe/vibe_ljud.h"
 #include "kategorier.h"
@@ -35,19 +37,25 @@ using Synth = bris::Bris;
 
 // ------------------------------------------------------------------ parametrar
 // BRIS-parametrarna (utom UI_ONLY "hyll") i blonda-motors ordning, sedan kExtra.
+constexpr int kMaxParams = 96;
 struct CoreParams {
     static constexpr int kNumBris = syn::kNumParams;
     int count = 0;
-    ParamInfo info[64]{};
-    int brisIdx[64]{};
+    ParamInfo info[kMaxParams]{};
+    int brisIdx[kMaxParams]{};
+    int moodIdx[kMaxParams]{};   // MOOD-ratt (index i effekten) för parametrarna "mo...", annars -1
     CoreParams() {
         for (int i = 0; i < syn::kNumParams; ++i) {
             if (std::strcmp(syn::kParams[i].id, "hyll") == 0) continue;
-            info[count] = syn::kParams[i]; brisIdx[count] = i; ++count;
+            info[count] = syn::kParams[i]; brisIdx[count] = i; moodIdx[count] = -1; ++count;
         }
         for (int i = 0; i < kNumExtra; ++i) {
-            info[count] = ParamInfo{kExtra[i].id, kExtra[i].name, kExtra[i].min, kExtra[i].max, kExtra[i].def, false, false};
-            brisIdx[count] = -1; ++count;
+            info[count] = ParamInfo{kExtra[i].id, kExtra[i].name, kExtra[i].min, kExtra[i].max, kExtra[i].def, kExtra[i].integer, false};
+            brisIdx[count] = -1; moodIdx[count] = -1;
+            if (kExtra[i].id[0] == 'm' && kExtra[i].id[1] == 'o')
+                for (int j = 0; j < mood::kNumParams; ++j)
+                    if (std::strcmp(mood::kParams[j].id, kExtra[i].id + 2) == 0) moodIdx[count] = j;
+            ++count;
         }
     }
     int find(const char* id) const {
@@ -75,12 +83,17 @@ struct Meters {
     int step = -1;          // frasens steg som spelas nu (-1 = stoppad)
     uint32_t noteCount = 0; // räknas upp vid varje not på (för pollenkorn i växten)
     float glid = 0;         // glidets värde just nu 0..1 (tangenterna eller MPE-slide), för reglagen som följer med
+    uint32_t keys[4]{};     // tangenter som hålls just nu (skärmen och MIDI, före FOLLOW) – för inspelning av pads
+    int followRoot = -1;    // FOLLOW: ackordets grundton 0..11 (-1 = inget ackord än)
+    int followMask = 0;     // FOLLOW: skalans toner (bit 0..11, absoluta tonklasser)
+    int arpNote = -1;       // tonen arpen spelar nu (-1 = ingen)
     float scope[kScopeLen]{};
 };
 
 class Core {
 public:
-    Core() : rum_(rum::kName, rum::kParams, rum::kNumParams), vibe_(vibe::kName, vibe::kParams, vibe::kNumParams) {
+    Core() : rum_(rum::kName, rum::kParams, rum::kNumParams), vibe_(vibe::kName, vibe::kParams, vibe::kNumParams),
+             mood_(mood::kName, mood::kParams, mood::kNumParams) {
         const CoreParams& cp = coreParams();
         for (int i = 0; i < cp.count; ++i) val_[i] = cp.info[i].def;
         // effekternas fasta inställningar
@@ -94,22 +107,59 @@ public:
         iDrive_ = vibe_.findParam("drive"); iOut_ = vibe_.findParam("outdb");
         for (int k = 0; k < kNumGlid; ++k) glidIdx_[k] = cp.find(kGlid[k].param);
         iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr"); iSlm_ = cp.find("slm");
+        iArp_ = cp.find("arp"); iArpM_ = cp.find("arpm"); iArpR_ = cp.find("arpr"); iArpO_ = cp.find("arpo"); iArpG_ = cp.find("arpg");
+        for (int n = 0; n < 128; ++n) keyOut_[n] = -1;
+        for (int i = 0; i < cp.count; ++i) if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], val_[i]);
         applyExtra();
     }
 
     void prepare(double sr) {
         sr_ = sr;
-        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr);
+        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr);
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); }
+    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); }
 
     // ---------------------------------------------------------------- toner / MIDI
+    // En tangent (skärmen eller MIDI) trycks/släpps. FOLLOW rättar tonen till ackordets skala; med ARP blir
+    // tangenterna arpens toner (om ingen pad hålls – då spelar tangenterna vanligt ovanpå padens arp).
+    void noteOn(int n, int v) {
+        if (n < 0 || n > 127) return;
+        if (keyOut_[n] >= 0) noteOff(n);
+        const int o = (follow_ && fRoot_ >= 0) ? snap(n) : n;
+        keyOut_[n] = o; keyVel_[n] = std::max(1, std::min(127, v));
+        meters_.keys[n >> 5] |= 1u << (n & 31);
+        keyDirect_[n] = !(arpOn() && nPad_ == 0);
+        if (keyDirect_[n]) voiceOn(o, keyVel_[n]);
+        ++meters_.noteCount;
+    }
+    void noteOff(int n) {
+        if (n < 0 || n > 127 || keyOut_[n] < 0) return;
+        if (keyDirect_[n]) voiceOff(keyOut_[n]);
+        keyOut_[n] = -1; keyDirect_[n] = false;
+        meters_.keys[n >> 5] &= ~(1u << (n & 31));
+    }
+    // Ackordpads: padNote lägger till en ton i padens ackord (spelas direkt, eller av arpen), padClear släpper det.
+    void padNote(int n, int v) {
+        if (n < 0 || n > 127 || pad_[n]) return;
+        pad_[n] = true; padVel_[n] = std::max(1, std::min(127, v)); ++nPad_;
+        if (!arpOn()) voiceOn(n, padVel_[n]);
+        ++meters_.noteCount;
+        deriveScale();
+    }
+    void padClear() {
+        for (int n = 0; n < 128; ++n) if (pad_[n]) { pad_[n] = false; if (!arpOn()) voiceOff(n); }
+        nPad_ = 0;
+    }
+    // FOLLOW: tangenterna rättas till skalan för det senaste ackordet som spelats på en pad.
+    void setFollow(bool on) { follow_ = on; }
+    bool follow() const { return follow_; }
+
 #if BRIS_MPE
     // Tangenterna på skärmen i BRIS MPE: varje ton får en egen MPE-kanal (2-16), så att fingrets slide (uiSlide)
     // bara påverkar den tonen.
-    void noteOn(int n, int v) {
+    void synthOn(int n, int v) {
         if (n < 0 || n > 127) return;
         if (uiCh_[n] > 0) synth_.noteOffCh(uiCh_[n], n);
         int ch = -1;
@@ -118,20 +168,27 @@ public:
         uiNext_ = ch % 15;
         uiCh_[n] = ch; ++uiUsed_[ch];
         synth_.channelBend(ch, 0); synth_.channelSlide(ch, 0); synth_.channelPressure(ch, 0);
-        synth_.noteOnCh(ch, n, v); ++meters_.noteCount;
+        synth_.noteOnCh(ch, n, v);
     }
-    void noteOff(int n) {
+    void synthOff(int n) {
         if (n < 0 || n > 127 || uiCh_[n] <= 0) return;
         synth_.noteOffCh(uiCh_[n], n); --uiUsed_[uiCh_[n]]; uiCh_[n] = 0;
     }
-    void uiSlide(int n, double v) { if (n >= 0 && n <= 127 && uiCh_[n] > 0) synth_.channelSlide(uiCh_[n], v); }
+    void uiSlide(int n, double v) {
+        if (n < 0 || n > 127 || keyOut_[n] < 0) return;
+        const int o = keyOut_[n];
+        if (uiCh_[o] > 0) synth_.channelSlide(uiCh_[o], v);
+    }
 #else
-    void noteOn(int n, int v) { synth_.noteOn(n, v); ++meters_.noteCount; }
-    void noteOff(int n) { synth_.noteOff(n); }
+    void synthOn(int n, int v) { synth_.noteOn(n, v); }
+    void synthOff(int n) { synth_.noteOff(n); }
     void uiSlide(int, double) {}   // bara BRIS MPE har slide per ton
 #endif
     void allNotesOff() {
         synth_.allNotesOff(); clearSeqNotes(); clearExpr();
+        for (int n = 0; n < 128; ++n) { keyOut_[n] = -1; keyDirect_[n] = false; pad_[n] = false; voiceRef_[n] = 0; }
+        nPad_ = 0; arpNote_ = -1; arpPos_ = 0.0; arpOff_ = 0.0; arpIdx_ = -1; arpDir_ = 1;
+        for (auto& k : meters_.keys) k = 0;
 #if BRIS_MPE
         for (int n = 0; n < 128; ++n) uiCh_[n] = 0;
         for (int c = 0; c < 16; ++c) uiUsed_[c] = 0;
@@ -151,11 +208,14 @@ public:
         return;
 #endif
         if (ty == 0x90 && d2 > 0) {
-            ++meters_.noteCount; ++chNotes_[ch]; lastCh_ = ch;
+            ++chNotes_[ch]; lastCh_ = ch;
             if (ch != 0) { mpe_ = true; applyBend(ch); }   // MPE skickar tonens böj före tonen: använd den
+            if (!mpe_) { noteOn(d1, d2); return; }          // vanlig klaviatur: som tangenterna (FOLLOW, ARP)
+            ++meters_.noteCount;
         } else if (ty == 0x80 || ty == 0x90) {
             if (chNotes_[ch] > 0 && --chNotes_[ch] == 0) { slide_[ch] = 0; press_[ch] = 0; }
             updExpr();
+            if (keyOut_[d1 & 127] >= 0) { noteOff(d1); return; }
         } else if (ty == 0xB0 && d1 == 74) {          // MPE slide (eller ljushet på vanliga klaviaturer)
             slide_[ch] = d2 / 127.0; updExpr(); return;
         } else if (ty == 0xB0 && (d1 == 101 || d1 == 100)) {
@@ -171,7 +231,7 @@ public:
             if (ch == lastCh_) applyBend(ch);
             return;
         } else if (ty == 0xB0 && (d1 == 120 || d1 == 123)) {
-            clearExpr();
+            allNotesOff();
         }
         synth_.midi(s, d1, d2);
     }
@@ -186,9 +246,12 @@ public:
         const ParamInfo& p = cp.info[i];
         v = std::min(p.max, std::max(p.min, v));
         if (p.integer) v = std::round(v);
+        const bool arpVar = arpOn();
         val_[i] = v;
         if (cp.brisIdx[i] >= 0) synth_.setParam(cp.brisIdx[i], v);
+        else if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], v);
         else applyExtra();
+        if (arpVar != arpOn()) arpToggled();
         if (glidMode_ > 0 && glidApplied_ > 0.0) applyGlid();   // parametern som glider får glidet ovanpå
     }
 
@@ -237,7 +300,7 @@ public:
     // Byt ljud direkt i ljudtråden (webben). Använder presetValues – bara där det inte finns en separat ljudtråd
     // som kan störas, eller där anroparen äger kärnan helt.
     void loadPreset(int index) {
-        double cur[64], nv[64];
+        double cur[kMaxParams], nv[kMaxParams];
         for (int i = 0; i < numParams(); ++i) cur[i] = val_[i];
         presetValues(index, cur, nv);
         for (int i = 0; i < numParams(); ++i) setParam(i, nv[i]);
@@ -250,7 +313,7 @@ public:
         pattern_.rate = pattern_.rate == 2 ? 2 : 4;
         pattern_.count = std::max(0, std::min(kMaxSeqNotes, pattern_.count));
     }
-    void setTempo(double bpm) { bpm_ = std::min(300.0, std::max(30.0, bpm)); rum_.setTempo(bpm_); vibe_.setTempo(bpm_); }
+    void setTempo(double bpm) { bpm_ = std::min(300.0, std::max(30.0, bpm)); rum_.setTempo(bpm_); vibe_.setTempo(bpm_); mood_.setTempo(bpm_); }
     double tempo() const { return bpm_; }
     void setPlaying(bool on) {
         if (on == playing_) return;
@@ -280,11 +343,13 @@ public:
                 chunk = std::min(chunk, std::max(1, (int)std::ceil(seqPos_)));
                 seqPos_ -= chunk;
             }
+            if (arpOn()) chunk = arpRun(chunk);
             synth_.process(L + done, R + done, chunk);
             done += chunk;
         }
         if (driveOn_) vibe_.process(L, R, n);
         if (rvbOn_) rum_.process(L, R, n);
+        mood_.process(L, R, n);   // alltid: mikrolooper lyssnar även när den är av (båda av = ljudet oförändrat)
 
         // mätare
         float pl = meters_.peakL * 0.9f, pr = meters_.peakR * 0.9f;
@@ -300,6 +365,7 @@ public:
 #else
         meters_.glid = (float)glidSm_;
 #endif
+        meters_.followRoot = fRoot_; meters_.followMask = fMask_; meters_.arpNote = arpNote_;
     }
 
     const Meters& meters() const { return meters_; }
@@ -307,6 +373,106 @@ public:
     Synth& synth() { return synth_; }
 
 private:
+    // ---------------------------------------------------------------- röster (tangenter, pads, arp delar på dem)
+    void voiceOn(int o, int v) {
+        if (o < 0 || o > 127) return;
+        if (voiceRef_[o]++ > 0) synthOff(o);   // samma ton igen: starta om
+        synthOn(o, v);
+    }
+    void voiceOff(int o) {
+        if (o < 0 || o > 127 || voiceRef_[o] <= 0) return;
+        if (--voiceRef_[o] == 0) synthOff(o);
+    }
+
+    // ---------------------------------------------------------------- ARP
+    bool arpOn() const { return iArp_ >= 0 && val_[iArp_] > 0.5; }
+    // Arpens toner: padens ackord om en pad hålls, annars tangenterna som inte spelar direkt. Stigande ordning.
+    int arpSource(int* nt, int* vel) const {
+        int c = 0;
+        if (nPad_ > 0) { for (int n = 0; n < 128; ++n) if (pad_[n]) { nt[c] = n; vel[c++] = padVel_[n]; } }
+        else {
+            bool used[128]{}; int uv[128]{};
+            for (int k = 0; k < 128; ++k) if (keyOut_[k] >= 0 && !keyDirect_[k]) { used[keyOut_[k]] = true; uv[keyOut_[k]] = keyVel_[k]; }
+            for (int n = 0; n < 128; ++n) if (used[n]) { nt[c] = n; vel[c++] = uv[n]; }
+        }
+        return c;
+    }
+    void arpStop() { if (arpNote_ >= 0) { voiceOff(arpNote_); arpNote_ = -1; } }
+    // ARP slogs på/av medan något hölls: tonerna byter mellan att spelas direkt och av arpen
+    void arpToggled() {
+        if (arpOn()) {
+            for (int n = 0; n < 128; ++n) if (pad_[n]) voiceOff(n);
+            if (nPad_ == 0) for (int k = 0; k < 128; ++k) if (keyOut_[k] >= 0 && keyDirect_[k]) { voiceOff(keyOut_[k]); keyDirect_[k] = false; }
+            arpPos_ = 0.0; arpIdx_ = -1; arpDir_ = 1;
+        } else {
+            arpStop();
+            for (int n = 0; n < 128; ++n) if (pad_[n]) voiceOn(n, padVel_[n]);
+            for (int k = 0; k < 128; ++k) if (keyOut_[k] >= 0 && !keyDirect_[k]) { voiceOn(keyOut_[k], keyVel_[k]); keyDirect_[k] = true; }
+        }
+    }
+    // Kör arpen fram till nästa händelse (steg eller släpp) och returnerar hur många sampel som får renderas nu.
+    int arpRun(int chunk) {
+        static const double kDiv[6] = {1.0, 2.0, 3.0, 4.0, 6.0, 8.0};   // 1/4 1/8 1/8T 1/16 1/16T 1/32
+        int nt[128], vel[128];
+        const int cnt = arpSource(nt, vel);
+        if (cnt == 0) { arpStop(); arpPos_ = 0.0; arpIdx_ = -1; arpDir_ = 1; return chunk; }   // nästa ton direkt när något hålls
+        const double stepLen = sr_ * 60.0 / bpm_ / kDiv[std::max(0, std::min(5, (int)val_[iArpR_]))];
+        if (arpNote_ >= 0 && arpOff_ <= 0.0) arpStop();
+        if (arpPos_ <= 0.0) {
+            const int oct = std::max(1, std::min(4, (int)val_[iArpO_])), tot = cnt * oct, mode = (int)val_[iArpM_];
+            if (mode == 0) arpIdx_ = (arpIdx_ + 1) % tot;
+            else if (mode == 1) arpIdx_ = (arpIdx_ < 0 || arpIdx_ >= tot) ? tot - 1 : (arpIdx_ - 1 + tot) % tot;
+            else if (mode == 2) {
+                if (tot == 1) arpIdx_ = 0;
+                else {
+                    if (arpIdx_ < 0) { arpIdx_ = 0; arpDir_ = 1; }
+                    else { if (arpIdx_ + arpDir_ >= tot || arpIdx_ + arpDir_ < 0) arpDir_ = -arpDir_; arpIdx_ = std::min(tot - 1, std::max(0, arpIdx_ + arpDir_)); }
+                }
+            } else {
+                rng_ ^= rng_ << 13; rng_ ^= rng_ >> 17; rng_ ^= rng_ << 5;
+                arpIdx_ = (int)(rng_ % (uint32_t)tot);
+            }
+            const int note = std::min(127, nt[arpIdx_ % cnt] + 12 * (arpIdx_ / cnt));
+            arpStop();
+            voiceOn(note, vel[arpIdx_ % cnt]); arpNote_ = note; ++meters_.noteCount;
+            arpPos_ += stepLen;
+            arpOff_ = std::max(1.0, std::min(1.0, val_[iArpG_]) * stepLen);
+        }
+        int c = std::min(chunk, std::max(1, (int)std::ceil(arpPos_)));
+        if (arpNote_ >= 0 && arpOff_ > 0.0) c = std::min(c, std::max(1, (int)std::ceil(arpOff_)));
+        arpPos_ -= c; arpOff_ -= c;
+        return c;
+    }
+
+    // ---------------------------------------------------------------- FOLLOW: skalan ur padens ackord
+    void deriveScale() {
+        int low = -1, rel = 0;
+        for (int n = 0; n < 128; ++n) if (pad_[n]) { if (low < 0) low = n; }
+        if (low < 0) return;
+        for (int n = 0; n < 128; ++n) if (pad_[n]) rel |= 1 << ((n - low) % 12);
+        auto has = [rel](int i) { return (rel >> i) & 1; };
+        // dur, mixolydisk, lydisk, moll (eolisk), dorisk, frygisk, lokrisk – relativt grundtonen
+        const int ION = 0xAB5, MIX = 0x6B5, LYD = 0xAD5, AEO = 0x5AD, DOR = 0x6AD, PHR = 0x5AB, LOC = 0x56B;
+        int sc;
+        if (has(4)) sc = has(10) ? MIX : ((has(6) && !has(7)) ? LYD : ION);
+        else if (has(3)) sc = (has(6) && !has(7)) ? LOC : (has(9) ? DOR : (has(1) ? PHR : AEO));
+        else sc = has(10) ? MIX : ION;
+        sc |= rel;
+        const int root = low % 12;
+        fRoot_ = root;
+        fMask_ = ((sc << root) | (sc >> (12 - root))) & 0xFFF;
+    }
+    int snap(int n) const {
+        if (fMask_ == 0) return n;
+        const int pc = n % 12;
+        if ((fMask_ >> pc) & 1) return n;
+        for (int d = 1; d < 12; ++d) {
+            if ((fMask_ >> ((pc + d) % 12)) & 1) return std::min(127, n + d);
+            if ((fMask_ >> ((pc - d + 12) % 12)) & 1) return std::max(0, n - d);
+        }
+        return n;
+    }
+
     void updExpr() {
         double sl = 0, pr = 0;
         for (int c = 0; c < 16; ++c) if (chNotes_[c] > 0) { sl = std::max(sl, slide_[c]); if (c != 0) pr = std::max(pr, press_[c]); }
@@ -382,6 +548,7 @@ private:
     Synth synth_;
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
+    GenEffect<mood::Dsp> mood_;
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
     int glidIdx_[kNumGlid]{}, iRate_ = -1, glidMode_ = 0;
     double glidTarget_ = 0.0, glidSm_ = 0.0, glidApplied_ = 0.0;
@@ -396,7 +563,14 @@ private:
     int uiCh_[128]{}, uiUsed_[16]{}, uiNext_ = 0;   // tangenterna på skärmen: kanal per ton
 #endif
     bool rvbOn_ = false, driveOn_ = false;
-    double val_[64]{};
+    double val_[kMaxParams]{};
+    // tangenter, pads, arp, FOLLOW
+    int keyOut_[128]{}, keyVel_[128]{}, padVel_[128]{}, voiceRef_[128]{}, nPad_ = 0;
+    bool keyDirect_[128]{}, pad_[128]{}, follow_ = false;
+    int fRoot_ = -1, fMask_ = 0;
+    int iArp_ = -1, iArpM_ = -1, iArpR_ = -1, iArpO_ = -1, iArpG_ = -1, arpNote_ = -1, arpIdx_ = -1, arpDir_ = 1;
+    double arpPos_ = 0.0, arpOff_ = 0.0;
+    uint32_t rng_ = 2463534242u;
     double sr_ = 48000.0, bpm_ = 120.0;
 
     Pattern pattern_{};

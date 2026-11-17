@@ -21,6 +21,19 @@ EXTRA = [
     ("rsize", "Reverb Size", 0.0, 1.0, 0.55),
     ("drive", "Drive", 0.0, 1.0, 0.0),
 ]
+# MOOD (effekten mood ur blonda-motor) – alla dess rattar med prefixet "mo", i effektens ordning.
+MOOD = json.load(open(os.path.join(ROT, "External/blonda-motor/motorer/mood/mood.json"), encoding="utf-8"))
+for _p in MOOD["params"]:
+    EXTRA.append(("mo" + _p["id"], "MOOD " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"]))
+# ARP: av/på, läge (UP DOWN UP-DOWN RANDOM), takt (1/4 1/8 1/8T 1/16 1/16T 1/32), oktaver, gate.
+EXTRA += [
+    ("arp", "Arp", 0.0, 1.0, 0.0, True),
+    ("arpm", "Arp Mode", 0.0, 3.0, 0.0, True),
+    ("arpr", "Arp Rate", 0.0, 5.0, 3.0, True),
+    ("arpo", "Arp Octaves", 1.0, 4.0, 1.0, True),
+    ("arpg", "Arp Gate", 0.05, 1.0, 0.6, False),
+]
+EXTRA = [e if len(e) == 6 else e + (False,) for e in EXTRA]
 
 # Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...
 # (läge 0 = av). param = parametern som får glidet ovanpå sig, djup = andel av parameterns omfång vid fullt glid,
@@ -142,10 +155,10 @@ def main():
     h.append("    " + ", ".join(str(vix[vaxt_av[n]]) for n in namn))
     h += ["};", "", "// ljudlistans ordning (växt för växt)", "inline constexpr unsigned char kBrowseOrder[kNumFactory] = {"]
     h.append("    " + ", ".join(map(str, ordning)))
-    h += ["};", "", "struct ExtraParam { const char* id; const char* name; double min, max, def; };",
+    h += ["};", "", "struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };",
           f"constexpr int kNumExtra = {len(EXTRA)};", "inline constexpr ExtraParam kExtra[kNumExtra] = {"]
     for e in EXTRA:
-        h.append(f'    {{"{e[0]}", "{e[1]}", {e[2]}, {e[3]}, {e[4]}}},')
+        h.append(f'    {{"{e[0]}", "{e[1]}", {e[2]}, {e[3]}, {e[4]}, {"true" if e[5] else "false"}}},')
     h += ["};", "", "// glid på tangenterna / MPE-slide (läge = index + 1)",
           "struct GlidInfo { const char* id; const char* name; const char* param; double depth; bool rate; };",
           f"constexpr int kNumGlid = {len(GLID)};", f"constexpr double kGlidRate = {GLID_TAKT};",
@@ -159,7 +172,7 @@ def main():
     params = [dict(id=p["id"], name=p["name"], min=p["min"], max=p["max"], def_=p["default"], int=p["integer"])
               for p in BRIS["params"] if p["id"] not in BRIS["uiOnly"]]
     for e in EXTRA:
-        params.append(dict(id=e[0], name=e[1], min=e[2], max=e[3], def_=e[4], int=False))
+        params.append(dict(id=e[0], name=e[1], min=e[2], max=e[3], def_=e[4], int=bool(e[5])))
     for p in params:
         p["def"] = p.pop("def_")
     presets = []

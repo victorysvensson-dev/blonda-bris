@@ -31,12 +31,38 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
     4, 20, 35, 38, 46, 47, 53, 63, 65, 66, 87, 7, 18, 28, 29, 57, 67, 86, 1, 16, 21, 24, 41, 42, 44, 48, 51, 56, 79, 80, 8, 14, 37, 68, 69, 10, 12, 13, 26, 36, 45, 58, 60, 64, 74, 75, 76, 84, 85, 5, 15, 22, 25, 34, 43, 49, 55, 62, 70, 71, 72, 73, 9, 11, 50, 59, 77, 78, 6, 31, 33, 83, 89, 2, 3, 19, 30, 39, 52, 61, 88, 17, 23, 27, 32, 40, 54, 81, 82, 0
 };
 
-struct ExtraParam { const char* id; const char* name; double min, max, def; };
-constexpr int kNumExtra = 3;
+struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
+constexpr int kNumExtra = 29;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
-    {"rvb", "Reverb", 0.0, 1.0, 0.2},
-    {"rsize", "Reverb Size", 0.0, 1.0, 0.55},
-    {"drive", "Drive", 0.0, 1.0, 0.0},
+    {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
+    {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
+    {"drive", "Drive", 0.0, 1.0, 0.0, false},
+    {"mowet", "MOOD Wet", 0.0, 1.0, 0.0, true},
+    {"mofrz", "MOOD Freeze", 0.0, 1.0, 0.0, true},
+    {"mowmode", "MOOD Wet Mode", 0.0, 2.0, 0.0, true},
+    {"motime", "MOOD Time", 0.0, 1.0, 0.55, false},
+    {"mowmod", "MOOD Modify", 0.0, 1.0, 0.6, false},
+    {"moblend", "MOOD Mix", 0.0, 1.0, 0.5, false},
+    {"moclk", "MOOD Clock", 0.0, 1.0, 0.75, false},
+    {"moloop", "MOOD Micro-Loop", 0.0, 1.0, 0.0, true},
+    {"modub", "MOOD Overdub", 0.0, 1.0, 0.0, true},
+    {"molmode", "MOOD Loop Mode", 0.0, 2.0, 1.0, true},
+    {"molen", "MOOD Length", 0.0, 1.0, 1.0, false},
+    {"molmod", "MOOD Loop Modify", 0.0, 1.0, 0.6875, false},
+    {"morout", "MOOD Routing", 0.0, 2.0, 1.0, true},
+    {"mosprd", "MOOD Spread", 0.0, 1.0, 0.0, true},
+    {"motone", "MOOD Tone", 0.0, 1.0, 0.2, false},
+    {"mowidth", "MOOD Stereo Width", 0.0, 1.0, 0.75, false},
+    {"mofade", "MOOD Fade", 0.0, 1.0, 0.9, false},
+    {"mohalf", "MOOD Loop Length", 0.0, 1.0, 0.0, true},
+    {"mobal", "MOOD Level Balance", 0.0, 1.0, 0.5, false},
+    {"modir", "MOOD Direct Micro-Loop", 0.0, 1.0, 0.5, false},
+    {"mosmth", "MOOD Smooth Clock", 0.0, 1.0, 0.0, true},
+    {"arp", "Arp", 0.0, 1.0, 0.0, true},
+    {"arpm", "Arp Mode", 0.0, 3.0, 0.0, true},
+    {"arpr", "Arp Rate", 0.0, 5.0, 3.0, true},
+    {"arpo", "Arp Octaves", 1.0, 4.0, 1.0, true},
+    {"arpg", "Arp Gate", 0.05, 1.0, 0.6, false},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

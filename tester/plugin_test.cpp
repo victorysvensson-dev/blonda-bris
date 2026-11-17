@@ -1,5 +1,6 @@
 // Testar pluggens ljuddel (samma kod som AU/VST3/AUv3): MIDI ger ljud, alla program fungerar, tillstånd sparas
 // och läses tillbaka, automation når ljudet, rullen spelar.
+#include <set>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_events/juce_events.h>
 #include "../plugin/PluginProcessor.h"
@@ -56,6 +57,8 @@ int main() {
     p.setPattern(juce::var(pat.get()));
     p.uiState = "{\"tab\":\"fx\"}";
     p.uiGlid(3, 0.0f);
+    p.uiFollow(true);
+    p.setParamFromUi(p.findParam("motime"), 0.81);
     juce::MemoryBlock mb; p.getStateInformation(mb);
     std::unique_ptr<juce::AudioProcessor> base2(createPluginFilter());
     auto& q = *dynamic_cast<BrisProcessor*>(base2.get());
@@ -65,6 +68,8 @@ int main() {
     KRAV(q.uiState == p.uiState, "tillstånd: gränssnitt");
     KRAV(q.getGlidMode() == 3, "tillstånd: glidläget (%d)", q.getGlidMode());
     KRAV(q.supportsMPE(), "pluggen anmäler MPE till värdprogrammet");
+    KRAV(q.getFollow(), "tillstånd: FOLLOW");
+    KRAV(std::abs(q.paramValue(q.findParam("motime")) - 0.81) < 1e-3, "tillstånd: MOOD TIME %.3f", q.paramValue(q.findParam("motime")));
     // egna ljud: sparas i en fil och läses tillbaka (filen återställs efteråt)
     {
         const auto f = BrisProcessor::userPresetFile();
@@ -116,7 +121,28 @@ int main() {
     // gränssnittets tangenter
     p.uiNote(true, 64, 100); render(p, 0.1); BrisProcessor::MeterSnap s3; p.readMeters(s3);
     KRAV(s3.m.voiceMask != 0, "tangent i gränssnittet spelar");
-    p.uiNote(false, 64, 0);
+    p.uiNote(false, 64, 0); render(p, 3);
+
+    // ackordpad från gränssnittet, med ARP och FOLLOW (C-dur): pianots C# blir C eller D
+    {
+        p.setParamFromUi(p.findParam("cut"), 0.6); p.setParamFromUi(p.findParam("ar"), 0.2);   // glidtestet lämnade filtret stängt
+        p.uiFollow(true);
+        juce::Array<juce::var> ack { 48, 52, 55 };
+        p.uiPad(juce::var(ack), 100); render(p, 0.1); BrisProcessor::MeterSnap s4; p.readMeters(s4);
+        KRAV(s4.m.voiceMask != 0 && s4.m.followRoot == 0 && s4.m.followMask == 0xAB5, "pad spelar och ger FOLLOW-skalan (%d %03x)", s4.m.followRoot, (unsigned)s4.m.followMask);
+        p.setParamFromUi(p.findParam("arp"), 1);
+        std::set<int> hort;   // arpens toner, avlästa i små bitar (gaten gör att den ibland är tyst)
+        for (int k = 0; k < 40; ++k) { render(p, 0.03); if (p.readMeters(s4) && s4.m.arpNote >= 0) hort.insert(s4.m.arpNote); }
+        KRAV(hort == std::set<int>({48, 52, 55}), "ARP spelar padens ackord (%d toner)", (int)hort.size());
+        p.uiPad(juce::var(juce::Array<juce::var>()), 100); p.setParamFromUi(p.findParam("arp"), 0); render(p, 4); p.readMeters(s4);
+        KRAV(s4.m.voiceMask == 0 && s4.m.arpNote < 0, "pad och ARP tystnar (%d)", s4.m.voiceMask);
+        // MOOD: freeze håller reverben efter tonen
+        p.setParamFromUi(p.findParam("mowet"), 1); p.setParamFromUi(p.findParam("motime"), 0.7);
+        p.uiNote(true, 60, 110); render(p, 0.5); p.setParamFromUi(p.findParam("mofrz"), 1); p.uiNote(false, 60, 0);
+        render(p, 4); const double frys = render(p, 0.5);
+        KRAV(frys > 0.003, "MOOD FREEZE håller ljudet (rms %.4f)", frys);
+        p.setParamFromUi(p.findParam("mofrz"), 0); p.setParamFromUi(p.findParam("mowet"), 0); p.uiFollow(false);
+    }
 
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;

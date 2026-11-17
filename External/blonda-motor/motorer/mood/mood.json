@@ -1,0 +1,229 @@
+{
+ "effekt": "mood",
+ "namn": "BLONDA MOOD",
+ "kalla": "generator/mood.py",
+ "params": [
+  {
+   "id": "wet",
+   "name": "Wet",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  },
+  {
+   "id": "frz",
+   "name": "Freeze",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  },
+  {
+   "id": "wmode",
+   "name": "Wet Mode",
+   "min": 0.0,
+   "max": 2.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "REVERB",
+    "DELAY",
+    "SLIP"
+   ]
+  },
+  {
+   "id": "time",
+   "name": "Time",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.55,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "wmod",
+   "name": "Modify",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.6,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "blend",
+   "name": "Mix",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "clk",
+   "name": "Clock",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.75,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "loop",
+   "name": "Micro-Loop",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  },
+  {
+   "id": "dub",
+   "name": "Overdub",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  },
+  {
+   "id": "lmode",
+   "name": "Loop Mode",
+   "min": 0.0,
+   "max": 2.0,
+   "default": 1.0,
+   "integer": true,
+   "labels": [
+    "ENV",
+    "TAPE",
+    "STRETCH"
+   ]
+  },
+  {
+   "id": "len",
+   "name": "Length",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 1.0,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "lmod",
+   "name": "Loop Modify",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.6875,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "rout",
+   "name": "Routing",
+   "min": 0.0,
+   "max": 2.0,
+   "default": 1.0,
+   "integer": true,
+   "labels": [
+    "IN",
+    "BOTH",
+    "LOOP"
+   ]
+  },
+  {
+   "id": "sprd",
+   "name": "Spread",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  },
+  {
+   "id": "tone",
+   "name": "Tone",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.2,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "width",
+   "name": "Stereo Width",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.75,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "fade",
+   "name": "Fade",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.9,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "half",
+   "name": "Loop Length",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "FULL",
+    "HALF"
+   ]
+  },
+  {
+   "id": "bal",
+   "name": "Level Balance",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "dir",
+   "name": "Direct Micro-Loop",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.5,
+   "integer": false,
+   "labels": null
+  },
+  {
+   "id": "smth",
+   "name": "Smooth Clock",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0,
+   "integer": true,
+   "labels": [
+    "OFF",
+    "ON"
+   ]
+  }
+ ]
+}

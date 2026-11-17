@@ -13,7 +13,7 @@ Core* core = nullptr;
 float bufL[128], bufR[128];
 Pattern pend;
 // mätare som worklet läser direkt ur minnet: env, lfo, peakL, peakR, voiceMask, step, noteCount, scopeWrite
-float meters[9];
+float meters[20];   // 0-8 som förut, 9-16 tangenterna (8 x 16 bitar), 17 FOLLOW-grundton, 18 FOLLOW-skala, 19 arpens ton
 }
 
 EXPORT(bris_init) void bris_init(double sr) {
@@ -28,6 +28,8 @@ EXPORT(bris_process) void bris_process(int n) {
     const auto& m = core->meters();
     meters[0] = m.env; meters[1] = m.lfo; meters[2] = m.peakL; meters[3] = m.peakR;
     meters[4] = (float)m.voiceMask; meters[5] = (float)m.step; meters[6] = (float)m.noteCount; meters[7] = (float)core->scopeWrite(); meters[8] = m.glid;
+    for (int k = 0; k < 8; ++k) meters[9 + k] = (float)((m.keys[k >> 1] >> ((k & 1) * 16)) & 0xFFFF);
+    meters[17] = (float)m.followRoot; meters[18] = (float)m.followMask; meters[19] = (float)m.arpNote;
 }
 EXPORT(bris_meters) float* bris_meters() { return meters; }
 EXPORT(bris_scope) const float* bris_scope() { return core->meters().scope; }
@@ -35,6 +37,9 @@ EXPORT(bris_scope_len) int bris_scope_len() { return blonda::app::kScopeLen; }
 
 EXPORT(bris_note_on) void bris_note_on(int n, int v) { core->noteOn(n, v); }
 EXPORT(bris_note_off) void bris_note_off(int n) { core->noteOff(n); }
+EXPORT(bris_pad_note) void bris_pad_note(int n, int v) { core->padNote(n, v); }
+EXPORT(bris_pad_clear) void bris_pad_clear() { core->padClear(); }
+EXPORT(bris_set_follow) void bris_set_follow(int on) { core->setFollow(on != 0); }
 EXPORT(bris_midi) void bris_midi(int s, int d1, int d2) { core->midi((uint8_t)s, (uint8_t)d1, (uint8_t)d2); }
 EXPORT(bris_all_off) void bris_all_off() { core->allNotesOff(); }
 
