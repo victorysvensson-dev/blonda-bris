@@ -21,6 +21,13 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.7.1
+
+- PLAY: reglagen till höger är CUTOFF, CHORUS och REVERB.
+- AUDIO / MIDI SETTINGS i den fristående appen öppnar en egen ruta över gränssnittet (MIDI-ingångar av/på,
+  Bluetooth MIDI, utgång, samplingsfrekvens, buffert) som stängs med krysset eller ett tryck utanför. Förut öppnades
+  JUCE:s gråa sida, som inte gick att stänga på iPad.
+
 ## MOOD (från 1.7.0)
 
 Sidan MOOD är effekten `mood` ur blonda-motor, gjord i Chase Bliss MOOD MKII:s anda för att bygga atmosfärer.

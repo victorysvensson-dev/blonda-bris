@@ -14,6 +14,8 @@ private:
     void onMessage(const juce::var& m);
     void send(const juce::var& m) { web.emitEventIfBrowserIsVisible("bris", m); }
     void sendState();
+    void sendDevices();                       // AUDIO / MIDI-rutan (fristående appen)
+    void setDevice(const juce::var& m);
     std::optional<juce::WebBrowserComponent::Resource> getResource(const juce::String& url);
 
     BrisProcessor& proc;

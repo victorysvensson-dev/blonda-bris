@@ -171,9 +171,61 @@ void BrisEditor::onMessage(const juce::var& m) {
     } else if (t == "panic") {
         proc.allNotesOff();
     } else if (t == "settings") {
-        if (auto* holder = juce::StandalonePluginHolder::getInstance())
-            juce::MessageManager::callAsync([holder] { holder->showAudioSettingsDialog(); });
+        sendDevices();   // gränssnittet visar en egen ruta (inte JUCE:s gråa sida, som inte gick att stänga på iPad)
+    } else if (t == "setdev") {
+        setDevice(m);
     }
+}
+
+// ---------------------------------------------------------------- AUDIO / MIDI i den fristående appen
+// Gränssnittet ritar rutan; här läses och ändras ljudenheten och MIDI-ingångarna i appens AudioDeviceManager.
+void BrisEditor::sendDevices() {
+    auto* holder = juce::StandalonePluginHolder::getInstance();
+    if (holder == nullptr) return;
+    auto& dm = holder->deviceManager;
+    auto* o = new juce::DynamicObject();
+    o->setProperty("t", "devs");
+    juce::Array<juce::var> midi;
+    for (const auto& d : juce::MidiInput::getAvailableDevices()) {
+        auto* e = new juce::DynamicObject();
+        e->setProperty("id", d.identifier); e->setProperty("name", d.name); e->setProperty("on", dm.isMidiInputDeviceEnabled(d.identifier));
+        midi.add(juce::var(e));
+    }
+    o->setProperty("midi", midi);
+    o->setProperty("bt", juce::BluetoothMidiDevicePairingDialogue::isAvailable());
+    const auto setup = dm.getAudioDeviceSetup();
+    o->setProperty("out", setup.outputDeviceName);
+    juce::Array<juce::var> outs, rates, bufs;
+    if (auto* type = dm.getCurrentDeviceTypeObject())
+        for (const auto& n : type->getDeviceNames(false)) outs.add(n);
+    if (auto* dev = dm.getCurrentAudioDevice()) {
+        for (auto r : dev->getAvailableSampleRates()) rates.add(r);
+        for (auto b : dev->getAvailableBufferSizes()) bufs.add(b);
+        o->setProperty("sr", dev->getCurrentSampleRate());
+        o->setProperty("buf", dev->getCurrentBufferSizeSamples());
+    }
+    o->setProperty("outs", outs); o->setProperty("rates", rates); o->setProperty("bufs", bufs);
+    send(juce::var(o));
+}
+
+void BrisEditor::setDevice(const juce::var& m) {
+    auto* holder = juce::StandalonePluginHolder::getInstance();
+    if (holder == nullptr) return;
+    auto& dm = holder->deviceManager;
+    const auto what = m.getProperty("what", "").toString();
+    if (what == "midi") {
+        dm.setMidiInputDeviceEnabled(m.getProperty("id", "").toString(), (bool)m.getProperty("on", false));
+    } else if (what == "bt") {
+        juce::BluetoothMidiDevicePairingDialogue::open();
+    } else {
+        auto setup = dm.getAudioDeviceSetup();
+        if (what == "out") setup.outputDeviceName = m.getProperty("v", "").toString();
+        else if (what == "sr") setup.sampleRate = (double)m.getProperty("v", 48000.0);
+        else if (what == "buf") setup.bufferSize = (int)m.getProperty("v", 512);
+        dm.setAudioDeviceSetup(setup, true);
+    }
+    holder->saveAudioDeviceState();
+    sendDevices();
 }
 
 void BrisEditor::timerCallback() {

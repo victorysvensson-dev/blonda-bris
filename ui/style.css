@@ -254,3 +254,24 @@ main { position: relative; }
   .tab-mood .slider .tr { height: 24px; }
   .tab-mood main { gap: 12px; }
 }
+
+/* ---------------------------------------------------------------- AUDIO / MIDI (fristående appen) */
+#dev { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; padding: 20px;
+  background: color-mix(in srgb, var(--bg) 45%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+#dev.open { display: flex; animation: padsin .25s ease-out; }
+#dev .kort { width: min(520px, 100%); max-height: 100%; overflow-y: auto; background: rgba(255, 255, 255, .78); border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 22px; box-shadow: 0 18px 60px rgba(60, 40, 30, .12); padding: 20px 24px 26px; }
+#dev .topp { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+#dev .topp .ttl { margin: 0; }
+#dev .stang { width: 34px; height: 34px; display: grid; place-items: center; opacity: .6; }
+#dev .stang .ic { width: 16px; height: 16px; }
+#dev .sekt { margin-top: 18px; }
+#dev .rub { font-size: 9.5px; letter-spacing: .3em; color: var(--mute); margin-bottom: 10px; }
+#dev .rad { width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--faint); font-size: 11px; letter-spacing: .2em; text-align: left; }
+#dev .rad span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#dev .rad em { font-style: normal; font-size: 9.5px; letter-spacing: .28em; color: var(--mute); }
+#dev .rad i { width: 6px; height: 6px; border-radius: 50%; border: 1.1px solid var(--line); flex: none; }
+#dev .rad.on i { background: var(--a); border-color: var(--a); }
+#dev .rad.on em { color: var(--a); }
+#dev .tom { font-size: 10px; letter-spacing: .24em; color: var(--mute); }
+#dev .choice { flex-wrap: wrap; gap: 8px 18px; justify-content: flex-start; }

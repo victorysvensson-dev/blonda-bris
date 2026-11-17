@@ -109,6 +109,21 @@ with sync_playwright() as p:
             pg.click("#pads .pbar .hold"); pg.click("#pads .pbar .stang"); pg.wait_for_timeout(300)
             krav(pg.evaluate("getComputedStyle(document.querySelector('#pads')).display") == "none", "PADS stängs")
             pg.evaluate("__bris.setParam('arpr', 3, true); __bris.setParam('arpo', 1, true)")
+            # PLAY: CUTOFF, CHORUS och REVERB till höger
+            pg.click("#tabs button[data-tab=play]"); pg.wait_for_timeout(200)
+            lab = pg.evaluate("[...document.querySelectorAll('#right .slider .lab')].map(e => e.textContent).join(',')")
+            krav(lab.startswith("CUTOFF") and "CHORUS" in lab and "REVERB" in lab and "RESONANCE" not in lab, f"PLAY: CUTOFF, CHORUS, REVERB ({lab})")
+            # AUDIO / MIDI-rutan (fristående appen): egen ruta som går att stänga
+            pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200)
+            pg.evaluate("""Bridge.on.devs({ t: 'devs', midi: [{ id: 'a', name: 'KeyStep 37', on: true }, { id: 'b', name: 'Bluetooth: Roli', on: false }], bt: true,
+                out: 'iPad', outs: ['iPad'], rates: [44100, 48000], sr: 48000, bufs: [64, 128, 256, 512], buf: 256 })"""); pg.wait_for_timeout(300)
+            dv = pg.evaluate("({ vis: getComputedStyle(document.querySelector('#dev')).display, rad: document.querySelectorAll('#dev .rad').length, on: document.querySelectorAll('#dev .rad.on').length, sr: document.querySelector('#dev .choice .opt.on').textContent })")
+            krav(dv["vis"] == "flex" and dv["rad"] == 3 and dv["on"] == 1 and "48" in dv["sr"], f"AUDIO / MIDI-rutan visar enheterna ({dv})")
+            pg.screenshot(path=f"{UT}/audio_midi.png")
+            pg.click("#dev .stang"); pg.wait_for_timeout(200)
+            krav(pg.evaluate("getComputedStyle(document.querySelector('#dev')).display") == "none", "AUDIO / MIDI stängs med krysset")
+            pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200); pg.mouse.click(8, 300); pg.wait_for_timeout(200)
+            krav(pg.evaluate("getComputedStyle(document.querySelector('#dev')).display") == "none", "AUDIO / MIDI stängs med tryck utanför")
             pg.click("#tabs button[data-tab=play]")
             # ratt: dra cutoff
             before = pg.evaluate("__bris.S.v.cut")

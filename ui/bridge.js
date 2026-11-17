@@ -8,7 +8,7 @@ const Bridge = (() => {
   const D = window.BRIS_DATA;
   const idx = {};
   D.params.forEach((p, i) => (idx[p.id] = i));
-  const on = { state: null, params: null, meters: null, preset: null, info: null };
+  const on = { state: null, params: null, meters: null, preset: null, info: null, devs: null };
   const juce = !!(window.__JUCE__ && window.__JUCE__.backend);
 
   // ------------------------------------------------------------------ JUCE
@@ -21,6 +21,7 @@ const Bridge = (() => {
       else if (m.t === "preset") on.preset && on.preset(m.i);
       else if (m.t === "m") on.meters && on.meters(m);
       else if (m.t === "info") on.info && on.info(m);
+      else if (m.t === "devs") on.devs && on.devs(m);
     });
     return {
       mode: "juce", on,

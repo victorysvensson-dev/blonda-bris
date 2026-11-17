@@ -26,7 +26,7 @@
 
   // ---------------------------------------------------------------- sidorna
   const PAGES = [
-    { id: "play", name: "PLAY", rt: "TONE", right: [["s", "cut", "CUTOFF"], ["s", "res", "RESONANCE"], ["s", "rvb", "SPACE"]] },
+    { id: "play", name: "PLAY", rt: "TONE", right: [["s", "cut", "CUTOFF"], ["s", "chorus", "CHORUS"], ["s", "rvb", "REVERB"]] },
     { id: "osc", name: "OSC", wave: "osc", kt: "OSC", knobs: [["pw", "PW"], ["sub", "SUB"], ["detune", "DETUNE"], ["porta", "GLIDE"]],
       rt: "VOICE", right: [["c", "vform", ["SAW", "PULSE", "BOTH"]], ["c", "lage", ["STEREO", "POLY", "MONO", "UNISON"]], ["s", "uniint", "INTERVAL"], ["s", "bendr", "BEND"]] },
     { id: "filter", name: "FILTER", wave: "filter", kt: "ENVELOPE", knobs: [["fa", "A"], ["fd", "D"], ["fs", "S"], ["fr", "R"]],
@@ -535,11 +535,51 @@
     const mo = el("button", "", S.motion ? "MOTION ON" : "MOTION OFF");
     mo.onclick = () => { setMotion(!S.motion); saveUi(); buildFoot(); };
     f.append(mo);
-    if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => Bridge.send({ t: "settings" }); f.append(b); }
+    if (S.standalone) { const b = el("button", "", "AUDIO / MIDI SETTINGS"); b.onclick = () => { closeMenu(); oppnaDev(); }; f.append(b); }
     if (S.web) f.append(el("span", "", S.midi.length ? "MIDI IN · " + S.midi.join(", ").toUpperCase() : "MIDI IN · CONNECT A KEYBOARD"));
     const pan = el("button", "", "ALL NOTES OFF"); pan.onclick = () => { Bridge.send({ t: "panic" }); S.pads.active = -1; updPads(); }; f.append(pan);
     f.append(el("span", "", `BLONDA ${S.name || "BRIS"} ${D.version} · ${D.presets.length} SOUNDS`));
   }
+  // ---------------------------------------------------------------- AUDIO / MIDI (fristående appen): egen ruta
+  // Pluggen svarar på "settings" med enheterna ("devs"); ändringar skickas som "setdev" och rutan ritas om.
+  let devTimer = 0;
+  function oppnaDev() {
+    let d = $("#dev");
+    if (!d) {
+      d = el("div", ""); d.id = "dev";
+      d.innerHTML = '<div class="kort"><div class="topp"><span class="ttl">AUDIO / MIDI</span><button class="stang" aria-label="Close">'
+        + '<svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="inn"><span class="tom">…</span></div></div>';
+      d.addEventListener("pointerdown", (e) => { if (e.target === d) stangDev(); });
+      d.querySelector(".stang").onclick = stangDev;
+      document.getElementById("app").append(d);
+    }
+    d.classList.add("open");
+    Bridge.send({ t: "settings" });
+    clearInterval(devTimer); devTimer = setInterval(() => Bridge.send({ t: "settings" }), 2000);   // nya MIDI-enheter syns
+  }
+  function stangDev() { const d = $("#dev"); if (d) d.classList.remove("open"); clearInterval(devTimer); }
+  Bridge.on.devs = (m) => {
+    const d = $("#dev"); if (!d || !d.classList.contains("open")) return;
+    const inn = d.querySelector(".inn"); inn.innerHTML = "";
+    const sekt = (namn) => { const s = el("div", "sekt"); s.append(el("div", "rub", namn)); inn.append(s); return s; };
+    const val = (s, lista, nu, fmt, f) => { const c = el("div", "choice"); lista.forEach((v) => {
+      const b = el("button", "opt" + (String(v) === String(nu) ? " on" : ""), `<i></i>${fmt(v)}`); b.onclick = () => f(v); c.append(b); }); s.append(c); };
+    const mi = sekt("MIDI IN");
+    if (!(m.midi || []).length) mi.append(el("span", "tom", "NO MIDI DEVICES · CONNECT A KEYBOARD"));
+    (m.midi || []).forEach((x) => {
+      const b = el("button", "rad" + (x.on ? " on" : ""), `<i></i><span>${String(x.name).toUpperCase()}</span><em>${x.on ? "ON" : "OFF"}</em>`);
+      b.onclick = () => Bridge.send({ t: "setdev", what: "midi", id: x.id, on: !x.on }); mi.append(b);
+    });
+    if (m.bt) { const b = el("button", "rad", "<i></i><span>BLUETOOTH MIDI</span><em>PAIR</em>"); b.onclick = () => Bridge.send({ t: "setdev", what: "bt" }); mi.append(b); }
+    if ((m.outs || []).length > 1) val(sekt("OUTPUT"), m.outs, m.out, (v) => String(v).toUpperCase(), (v) => Bridge.send({ t: "setdev", what: "out", v }));
+    if ((m.rates || []).length) val(sekt("SAMPLE RATE"), m.rates, m.sr, (v) => (v / 1000).toFixed(v % 1000 ? 1 : 0) + " KHZ", (v) => Bridge.send({ t: "setdev", what: "sr", v }));
+    if ((m.bufs || []).length) {
+      const bufs = m.bufs.length > 6 ? m.bufs.filter((b) => [64, 128, 256, 512, 1024, 2048].includes(b) || b === m.buf) : m.bufs;
+      val(sekt("BUFFER"), bufs, m.buf, (v) => String(v), (v) => Bridge.send({ t: "setdev", what: "buf", v }));
+    }
+  };
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") stangDev(); });
+
   function openMenu() { $("#menu").classList.add("open"); const on = $("#list .it.on"); if (on) on.scrollIntoView({ block: "center" }); }
   function closeMenu() { $("#menu").classList.remove("open"); }
 
@@ -841,5 +881,5 @@
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
   window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
-    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn } };   // för tester
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev } };   // för tester
 })();
