@@ -645,16 +645,13 @@
       if (!iSkala(k.n)) { g.fillStyle = "rgba(43,37,33,0.10)"; roundRect(g, x, 0.5, kw, h - 1, 7); g.fill(); }
       else if (fm && k.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},0.8)`; g.beginPath(); g.arc(x + kw / 2, h - 18, 2.4, 0, TAU); g.fill(); }
     }
-    // svarta tangenter: bläck, rundade nertill, med luft runt sig
+    // svarta tangenter: en jämn ljusare bläckfärg, rundade nertill, med luft runt sig
     for (const b of L.blacks) {
       const v = lv(b.n), rr = Math.min(6, b.w / 2.4);
       g.globalCompositeOperation = "destination-out"; g.fillStyle = "#000";
       roundRect(g, b.x - GAP, -1, b.w + GAP * 2, b.h + GAP + 1, rr + GAP); g.fill();
       g.globalCompositeOperation = "source-over";
-      const gr = g.createLinearGradient(0, 0, 0, b.h);
-      gr.addColorStop(0, "rgba(43,37,33,0.70)"); gr.addColorStop(1, "rgba(43,37,33,0.56)");
-      g.fillStyle = gr; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();
-      g.fillStyle = "rgba(255,255,255,0.10)"; roundRect(g, b.x + b.w * 0.2, b.h - 7, b.w * 0.6, 2, 1); g.fill();
+      g.fillStyle = "rgba(43,37,33,0.5)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill();   // en jämn färg, ingen tonning
       if (v > 0) { g.fillStyle = `rgba(${rgb},${0.9 * v})`; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
       if (!iSkala(b.n)) { g.fillStyle = "rgba(246,241,238,0.55)"; roundRect(g, b.x, 0, b.w, b.h, rr); g.fill(); }
       else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, b.h - 12, 2.2, 0, TAU); g.fill(); }
@@ -825,6 +822,39 @@
   keysInput();
   $("#menuBtn").onclick = openMenu; $("#menuClose").onclick = closeMenu; $("#menu .shade").onclick = closeMenu;
   document.addEventListener("pointerdown", () => ensureAudio(), { capture: true });
+
+  // ---------------------------------------------------------------- multitouch
+  // iOS skickar inget klick när ett annat finger redan ligger på skärmen (t.ex. på tangenterna), så knapparna
+  // reagerar på sina egna pekhändelser i stället: tryck och släpp på samma knapp = klick, oavsett andra fingrar.
+  // Fotknapparna (WET FREEZE LOOP DUB) och padsen slår om redan när fingret trycker ner, som på pedalen.
+  const tryck = new Map();   // pointerId -> { b, x, y }
+  const snabbKlick = (b) => { b._snabb = performance.now(); b.click(); };
+  document.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (!b || b.disabled || b.classList.contains("pad")) return;
+    if (b.classList.contains("fs")) { e.preventDefault(); snabbKlick(b); return; }
+    tryck.set(e.pointerId, { b, x: e.clientX, y: e.clientY });
+  }, true);
+  document.addEventListener("pointermove", (e) => {
+    const t = tryck.get(e.pointerId);
+    if (t && Math.hypot(e.clientX - t.x, e.clientY - t.y) > 12) tryck.delete(e.pointerId);   // skrollar i listan
+  }, true);
+  document.addEventListener("pointerup", (e) => {
+    const t = tryck.get(e.pointerId); tryck.delete(e.pointerId);
+    if (!t || !t.b.isConnected) return;
+    const r = t.b.getBoundingClientRect();
+    if (e.clientX >= r.left - 6 && e.clientX <= r.right + 6 && e.clientY >= r.top - 6 && e.clientY <= r.bottom + 6) snabbKlick(t.b);
+  }, true);
+  document.addEventListener("pointercancel", (e) => tryck.delete(e.pointerId), true);
+  // webbläsarens eget klick efter vårt (eller fördröjt) räknas inte en gång till
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (b && e.isTrusted && b._snabb && performance.now() - b._snabb < 1000) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  // ingen markering eller kopiera-meny när man håller kvar ett finger (utom i textfältet)
+  const iText = (e) => e.target.closest && e.target.closest("input, textarea");
+  document.addEventListener("selectstart", (e) => { if (!iText(e)) e.preventDefault(); });
+  document.addEventListener("contextmenu", (e) => { if (!iText(e)) e.preventDefault(); });
 
   Bridge.on.state = (st) => {
     S.standalone = !!st.standalone; S.web = !!st.web; S.mpe = !!st.mpe;

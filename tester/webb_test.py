@@ -210,6 +210,43 @@ with sync_playwright() as p:
             pg.evaluate("__bris.off(60)")
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()
+    # Multitouch (iPhone): ett finger håller en ton medan andra fingrar trycker FREEZE, WET och andra knappar
+    ctx = b.new_context(viewport={"width": 393, "height": 852}, device_scale_factor=3, has_touch=True, is_mobile=True)
+    pg = ctx.new_page(); cdp = ctx.new_cdp_session(pg)
+    pg.goto(URL); pg.evaluate("document.fonts.ready"); pg.wait_for_timeout(900); pg.tap("#start"); pg.wait_for_timeout(400)
+    def touch(typ, pts): cdp.send("Input.dispatchTouchEvent", {"type": typ, "touchPoints": [{"x": x, "y": y, "id": i} for i, x, y in pts]})
+    def mitt(sel):
+        r = pg.locator(sel).first.bounding_box(); return r["x"] + r["width"] / 2, r["y"] + r["height"] / 2
+    pg.evaluate("__bris.tab('mood')"); pg.wait_for_timeout(300)
+    kr = pg.locator("#keys canvas").bounding_box(); kx, ky = kr["x"] + kr["width"] * 0.3, kr["y"] + kr["height"] * 0.85
+    touch("touchStart", [(1, kx, ky)]); pg.wait_for_timeout(150)
+    krav(pg.evaluate("[...__bris.keys.lit].length") == 1, "multitouch: första fingret spelar en ton")
+    fx, fy = mitt("#fsw .fs[data-id=mofrz]"); wx, wy = mitt("#fsw .fs[data-id=mowet]")
+    # (CDP: touchStart anger alla aktiva fingrar, touchEnd det finger som lyfts)
+    touch("touchStart", [(1, kx, ky), (2, wx, wy)]); touch("touchEnd", [(2, wx, wy)])
+    touch("touchStart", [(1, kx, ky), (3, fx, fy)]); touch("touchEnd", [(3, fx, fy)])
+    pg.wait_for_timeout(200)
+    v = pg.evaluate("({ wet: __bris.S.v.mowet, frz: __bris.S.v.mofrz, lit: [...__bris.keys.lit].length })")
+    krav(v["wet"] == 1 and v["frz"] == 1 and v["lit"] == 1, f"multitouch: WET och FREEZE trycks medan en ton hålls ({v})")
+    cx, cy = mitt("#left .choice .opt >> nth=1")   # DELAY med ett annat finger
+    touch("touchStart", [(1, kx, ky), (4, cx, cy)]); touch("touchEnd", [(4, cx, cy)]); pg.wait_for_timeout(150)
+    krav(pg.evaluate("__bris.S.v.mowmode") == 1, "multitouch: lägesknappen fungerar medan en ton hålls")
+    tx, ty = mitt("#tabs2 button[data-tab=play]:visible, #tabs button[data-tab=play]:visible")
+    touch("touchStart", [(1, kx, ky), (5, tx, ty)]); touch("touchEnd", [(5, tx, ty)]); pg.wait_for_timeout(250)
+    krav(pg.evaluate("__bris.S.tab") == "play" and pg.evaluate("[...__bris.keys.lit].length") == 1, "multitouch: flikarna fungerar medan en ton hålls")
+    touch("touchEnd", [(1, kx, ky)]); pg.wait_for_timeout(150)
+    krav(pg.evaluate("[...__bris.keys.lit].length") == 0, "multitouch: tonen släpps när fingret lyfts")
+    # ett vanligt tryck räknas en gång (inte två)
+    pg.evaluate("__bris.tab('mood')"); pg.wait_for_timeout(200)
+    pg.tap("#fsw .fs[data-id=moloop]"); pg.wait_for_timeout(300)
+    krav(pg.evaluate("__bris.S.v.moloop") == 1, "ett tryck på LOOP slår på den en gång")
+    pg.tap("#left .choice .opt >> nth=2"); pg.wait_for_timeout(300)
+    krav(pg.evaluate("__bris.S.v.mowmode") == 2, "ett tryck på SLIP väljer den")
+    sel = pg.evaluate("getComputedStyle(document.querySelector('#right .rbox .ttl')).webkitUserSelect")
+    krav(sel == "none", f"ingen markering av text ({sel})")
+    for id_ in ("moloop", "mowet", "mofrz"): pg.evaluate(f"__bris.setParam('{id_}', 0, true)")
+    pg.evaluate("__bris.setParam('mowmode', 0, true)")
+    ctx.close()
     b.close()
     # Blommorna i lager: bakre och främre lager tillsammans ska bli exakt blomman (inga tätare halvgenomskinliga
     # partier där lagren möts). Klockan och slumpen fryses, så att stoftet och rörelsen är lika i båda bilderna.

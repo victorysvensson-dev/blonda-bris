@@ -21,6 +21,14 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.7.2
+
+- Multitouch: alla knappar (fotknapparna, FREEZE, flikar, val) fungerar medan andra fingrar spelar. iOS skickar
+  inget klick när ett finger redan ligger på skärmen, så knapparna reagerar på sina egna pekhändelser.
+  Fotknapparna slår om redan när fingret trycker ner, som på pedalen.
+- Ingen textmarkering eller kopiera-meny när man håller kvar ett finger (utom i namnfältet).
+- De svarta tangenterna är ljusare och har en jämn färg utan tonning.
+
 ## 1.7.1
 
 - PLAY: reglagen till höger är CUTOFF, CHORUS och REVERB.
