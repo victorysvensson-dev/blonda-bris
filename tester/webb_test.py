@@ -116,21 +116,72 @@ with sync_playwright() as p:
             pg.click("#tabs button[data-tab=play]"); pg.wait_for_timeout(200)
             lab = pg.evaluate("[...document.querySelectorAll('#right .slider .lab')].map(e => e.textContent).join(',')")
             krav(lab.startswith("CUTOFF") and "CHORUS" in lab and "REVERB" in lab and "RESONANCE" not in lab, f"PLAY: CUTOFF, CHORUS, REVERB ({lab})")
-            # ljuset: en tangent som spelas lyser upp (varm kägla ur tangentbordet), av med LIGHT OFF
+            # det vanliga ljuset är borttaget (1.10): att spela ritar inget ljus i det vanliga läget
             kb = pg.locator("#keys canvas").bounding_box()
-            pg.mouse.move(kb["x"] + kb["width"] * 0.47, kb["y"] + kb["height"] * 0.85); pg.mouse.down(); pg.wait_for_timeout(400)
             def ljusbild():   # ljusets duk som bild (toDataURL, så att sidan inte varnar för upprepade läsningar)
                 import base64
-                u = pg.evaluate("document.querySelector('#ljus').toDataURL('image/png')")
+                u = pg.evaluate("document.querySelector('#ljus') ? document.querySelector('#ljus').toDataURL('image/png') : ''")
+                if not u: return np.zeros((2, 2, 4), np.int16)
                 return np.asarray(Image.open(io.BytesIO(base64.b64decode(u.split(',')[1]))).convert("RGBA"), np.int16)
-            lb = ljusbild()
-            ljus = dict(n=int((lb[..., 3] > 8).sum()), varm=int(((lb[..., 3] > 8) & (lb[..., 0] > lb[..., 2] + 20)).sum()), tot=int(lb.shape[0] * lb.shape[1]))
-            pg.screenshot(path=f"{UT}/ljus.png")
-            pg.mouse.up()
-            krav(ljus["n"] > ljus["tot"] * 0.5 and ljus["varm"] > 1000, f"ljuset lyser när man spelar ({ljus})")
-            pg.wait_for_timeout(2500)
-            diag = pg.evaluate("({ v: [...__bris.ljus().v], keys: [...(__bris.S.m.keys || [])], an: __bris.S.m.an, lit: [...__bris.keys.lit], lvl: [...__bris.keys.lvl] })")
-            krav(int(ljusbild()[..., 3].max()) == 0, f"ljuset klingar av när man släppt ({diag})")
+            pg.mouse.move(kb["x"] + kb["width"] * 0.47, kb["y"] + kb["height"] * 0.85); pg.mouse.down(); pg.wait_for_timeout(400)
+            krav(int(ljusbild()[..., 3].max()) == 0, "vanliga läget: inget ljus när man spelar")
+            pg.mouse.up(); pg.wait_for_timeout(300)
+            krav(pg.locator("#mfoot button:has-text('LIGHT')").count() == 0, "vanliga läget: LIGHT finns inte i menyn")
+            # den hemliga patchen: fem tryck på versionen låser upp KRISTALL och byter till glasscenen
+            p0 = pg.evaluate("__bris.S.preset")
+            krav(pg.locator("#list .grp.hemlig").count() == 0, "KRISTALL syns inte i listan förrän den är upplåst")
+            pg.evaluate("for (let i = 0; i < 4; i++) document.querySelector('#ver').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+            krav(not pg.evaluate("__bris.S.hemlig"), "fyra tryck på versionen låser inte upp")
+            pg.evaluate("document.querySelector('#ver').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+            pg.wait_for_function("__bris.kristall() && __bris.kristall().klar()", timeout=15000); pg.wait_for_timeout(300)
+            kr = pg.evaluate("""({ kr: __bris.S.kristall, hem: __bris.S.hemlig, cls: document.documentElement.classList.contains('kristall'),
+                preset: __bris.S.preset, ljud: BRIS_DATA.kristall.ljud, gl: __bris.kristall().webgl,
+                cv: getComputedStyle(document.querySelector('#kristall')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility,
+                bg: getComputedStyle(document.body).backgroundColor, namn: document.querySelector('.browser .nm').textContent })""")
+            krav(kr["kr"] and kr["hem"] and kr["cls"] and kr["preset"] == kr["ljud"] and kr["cv"] == "block" and kr["blomma"] == "hidden" and "KRISTALL" in kr["namn"], f"fem tryck: KRISTALL väljs, mörkt läge, glasscenen i stället för blomman ({kr})")
+            krav(kr["gl"], "glasscenen ritas med WebGL")
+            m0 = pg.evaluate("__bris.kristall().matt()")
+            pg.screenshot(path=f"{UT}/kristall_tom.png")
+            # spela längst till vänster (lila) och längst till höger (bärnsten): scenen lyser upp på olika sätt
+            def spela(n, ms=500):
+                pg.evaluate(f"__bris.note({n}, 110)"); pg.wait_for_timeout(ms)
+                m = pg.evaluate("__bris.kristall().matt()"); lb = ljusbild()
+                return m, lb
+            mv, lbv = spela(48)   # C3, lila, till vänster
+            pg.screenshot(path=f"{UT}/kristall_vanster.png")
+            pg.evaluate("__bris.off(48)"); pg.wait_for_timeout(1600)
+            mt = pg.evaluate("__bris.kristall().matt()")
+            mh, lbh = spela(81)   # A5, bärnsten, till höger
+            pg.evaluate("__bris.off(81)"); pg.wait_for_timeout(1600)
+            krav(mv["ljus"] > m0["ljus"] * 1.15 and mh["ljus"] > m0["ljus"] * 1.15, f"glasscenen lyser upp när man spelar ({m0} -> {mv}, {mh})")
+            krav(mh["varm"] > mv["varm"] + 2, f"en bärnstenston lyser varmare än en lila ({mv['varm']:.1f} / {mh['varm']:.1f})")
+            krav(abs(mt["ljus"] - m0["ljus"]) < 1.5, f"glasscenen släcks när tonen släpps ({m0['ljus']:.1f} / {mt['ljus']:.1f})")
+            def stralar(lb):
+                a = lb[..., 3] > 20
+                return dict(n=int(a.sum()), lila=int((a & (lb[..., 2] > lb[..., 0] + 30)).sum()), barn=int((a & (lb[..., 0] > lb[..., 2] + 30)).sum()),
+                            x=float(np.nonzero(a)[1].mean() / lb.shape[1]) if a.any() else -1)
+            sv, sh = stralar(lbv), stralar(lbh)
+            krav(sv["lila"] > 1000 and sv["barn"] < sv["lila"] * 0.1 and sh["barn"] > 1000 and sv["x"] < 0.4 and sh["x"] > 0.6, f"strålarna kommer ur tangenten i tonens färg ({sv}, {sh})")
+            pg.wait_for_function("__bris.ljus().tomt", timeout=5000)   # ljuset klingar av på ca 1,5 s
+            krav(int(ljusbild()[..., 3].max()) == 0, "strålarna släcks helt när tonen släpps")
+            # ett ackord över hela tangentbordet, som på bilden
+            for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)")
+            pg.wait_for_timeout(700); pg.screenshot(path=f"{UT}/kristall_ackord.png")
+            for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
+            pg.wait_for_timeout(300)
+            pg.click("#menuBtn"); pg.wait_for_timeout(300)
+            krav(pg.locator("#list .grp.hemlig .it.on").count() == 1, "menyn: SECRET · KRISTALL överst och vald")
+            pg.screenshot(path=f"{UT}/kristall_meny.png")
+            pg.click("#list .grp:not(.hemlig):not(.egna) .it >> nth=0"); pg.wait_for_timeout(500)
+            ut = pg.evaluate("({ kr: __bris.S.kristall, cls: document.documentElement.classList.contains('kristall'), cv: getComputedStyle(document.querySelector('#kristall')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility, hem: __bris.S.hemlig })")
+            krav(not ut["kr"] and not ut["cls"] and ut["cv"] == "none" and ut["blomma"] != "hidden" and ut["hem"], f"ett annat ljud lämnar KRISTALL (förblir upplåst) ({ut})")
+            pg.click("#list .grp.hemlig .it"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("__bris.S.kristall"), "KRISTALL kan väljas igen i menyn")
+            pg.click("#menuClose"); pg.wait_for_timeout(200)
+            pg.click(".browser .arr >> nth=1"); pg.wait_for_timeout(300)
+            krav(not pg.evaluate("__bris.S.kristall"), "pilen till nästa ljud lämnar KRISTALL")
+            pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
+
             # AUDIO / MIDI-rutan (fristående appen): egen ruta som går att stänga
             pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200)
             pg.evaluate("""Bridge.on.devs({ t: 'devs', midi: [{ id: 'a', name: 'KeyStep 37', on: true }, { id: 'b', name: 'Bluetooth: Roli', on: false }], bt: true,
@@ -226,6 +277,20 @@ with sync_playwright() as p:
             pg.screenshot(path=f"{UT}/{namn}_pads.png")
             pg.evaluate("__bris.pads.open(false)")
             pg.evaluate("__bris.off(60)")
+        # huvudet: loggan, flikarna och versionen överlappar inte varandra (versionen kan bli längre, t.ex. 1.10.0)
+        hv = pg.evaluate("""(() => { const text = (e) => { const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); };   // själva texten, inte rutan
+            const r = (q) => { const e = document.querySelector(q); if (!e || !e.offsetParent) return null; const b = text(e); return [b.left, b.right]; };
+            const t = [...document.querySelectorAll('header #tabs button')].filter((e) => e.offsetParent).map(text);
+            return { logo: r('header .logo'), ver: r('#ver'), tabs: t.length ? [Math.min(...t.map((b) => b.left)), Math.max(...t.map((b) => b.right))] : null }; })()""")
+        fri = lambda a, b: a is None or b is None or a[1] + 4 <= b[0] or b[1] + 4 <= a[0]
+        krav(fri(hv["logo"], hv["tabs"]) and fri(hv["tabs"], hv["ver"]) and fri(hv["logo"], hv["ver"]), f"{namn}: loggan, flikarna och versionen överlappar inte ({hv})")
+        # den hemliga patchen i varje storlek: glasscenen, strålarna och det mörka tangentbordet får plats
+        pg.evaluate("__bris.S.hemlig = true; __bris.tab('play'); __bris.valjKristall()")
+        pg.wait_for_function("__bris.kristall().klar()", timeout=15000)
+        for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)")
+        pg.wait_for_timeout(700); pg.screenshot(path=f"{UT}/{namn}_kristall.png")
+        for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
+        pg.evaluate("__bris.selectPreset(1)"); pg.wait_for_timeout(300)
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()
     # Multitouch (iPhone): ett finger håller en ton medan andra fingrar trycker FREEZE, WET och andra knappar

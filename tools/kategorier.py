@@ -48,6 +48,9 @@ GLID = [
 ]
 GLID_TAKT = 0.6   # lrate minst så här medan man glider (0.1 * 1000^0.6 = ca 6 Hz)
 
+# den hemliga patchen (glasscenen) spelar det här fabriksljudet
+KRISTALL_LJUD = "Vintage Saw"
+
 # Växterna. Ordningen = ordningen i ljudlistan. id används av växtritaren i ui/vaxter.js.
 # fx = (rvb, rsize, drive) som sätts när man väljer ett ljud av växten.
 VAXTER = [
@@ -192,6 +195,10 @@ def main():
                 glid=dict(rate=GLID_TAKT, targets=[dict(id=g[0], name=g[1], short=g[2], param=g[3], depth=g[4], rate=g[5]) for g in GLID]),
                 phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip(),
                 version=open(os.path.join(ROT, "VERSION")).read().strip())
+    # den hemliga patchen: glasscenen (tools/kristall.py + kristall_bilder.py) och ljudet den spelar
+    kr = os.path.join(ROT, "ui/kristall/kristall.json")
+    if os.path.exists(kr):
+        data["kristall"] = dict(json.load(open(kr, encoding="utf-8")), ljud=namn.index(KRISTALL_LJUD), namn="KRISTALL")
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
           "window.BRIS_DATA = " + json.dumps(data, ensure_ascii=True, separators=(",", ":")) + ";\n")
     open(os.path.join(ROT, "ui/data.js"), "w", encoding="utf-8").write(js)

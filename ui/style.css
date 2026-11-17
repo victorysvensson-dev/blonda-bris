@@ -219,6 +219,8 @@ main { position: relative; }
 /* låg höjd (iPhone liggande, AUv3 i GarageBand): tätare */
 @media (max-height: 560px) and (orientation: landscape) {
   header { height: 50px; }
+  #tabs { gap: clamp(12px, 2.4vw, 40px); }   /* iPhone liggande: flikarna och versionen får plats bredvid varandra */
+  #ver { letter-spacing: .22em; }
   .panel { gap: 14px; }
   .sliders { gap: 6px; }
   .slider .tr { height: 22px; }
@@ -280,3 +282,16 @@ main { position: relative; }
 
 /* ljuset som strålar upp ur tangentbordet (ritas i app.js) */
 #ljus { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+
+/* ---------------------------------------------------------------- den hemliga patchen (KRISTALL)
+   Mörkt läge med glasscenen (kristall.js). Bakgrund och accent sätts av applyTheme. */
+#kristall { display: none; }
+html.kristall { --ink: #e9e4f4; --mute: #8f87a8; --faint: rgba(233, 228, 244, .07); --line: rgba(233, 228, 244, .16); color-scheme: dark; }
+html.kristall #app { background: radial-gradient(ellipse 55% 50% at 50% 45%, rgba(120, 80, 220, .10), rgba(120, 80, 220, 0) 70%); }
+html.kristall #fsw .fs { background: rgba(22, 19, 34, .6); }
+html.kristall .pad { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
+html.kristall #menu .shade { background: rgba(11, 10, 19, .6); }
+html.kristall #menu .sheet { background: color-mix(in srgb, var(--bg) 94%, white); }
+html.kristall #start { background: rgba(11, 10, 19, .45); }
+html.kristall #start div { background: rgba(255, 255, 255, .06); }
+html.kristall #dev .kort { background: rgba(24, 21, 36, .92); border-color: rgba(255, 255, 255, .1); }

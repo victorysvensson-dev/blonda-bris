@@ -21,6 +21,23 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.10.0
+
+- Den hemliga patchen KRISTALL: tryck fem gånger på versionen uppe till höger. Då blir BRIS mörk och blomman byts
+  mot en glasscen (kuber, klot, ring, pyramid, kupol och en räfflad våg i glas, och mässingskuber) som är renderad på
+  riktigt i Blender/Cycles med brytning, regnbågsskimmer och reflexer i golvet (tools/kristall.py). Scenen är
+  renderad en gång per ljusposition längs tangentbordet, och appen blandar renderingarna efter var man spelar
+  (ljus är linjärt), så att glaset lyser upp, skimrar och speglar sig på rätt ställe (ui/kristall.js). Varje ton
+  lyser lila eller bärnsten (F–A bärnsten, resten lila), med en stråle upp ur tangenten och ett mörkt tangentbord
+  där de spelade tangenterna glöder. KRISTALL spelar Vintage Saw och ligger sedan överst i ljudlistan (SECRET);
+  ett annat ljud lämnar den.
+- Det varma ljuset ur tangenterna i det vanliga läget är borttaget (LIGHT i menyn finns inte längre). Koden finns
+  kvar och används av KRISTALL.
+- Rättat: på iPhone liggande krockade versionen med ARP-fliken (versionen blev längre); webbtestet kollar nu att
+  logga, flikar och version aldrig överlappar i någon storlek.
+- Rättat: toner som hölls från en klaviatur (MIDI) eller av arpen klingade av redan när de tändes, så att
+  tangenterna bara lyste svagt. Nu lyser de fullt så länge tonen hålls.
+
 ## 1.9.0
 
 - Ljuset (ersätter skrivmaskinen från 1.8.0): där man spelar strålar ett varmt ljus upp ur tangentbordet över

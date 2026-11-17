@@ -291,8 +291,10 @@ void main() {
 
     let frys = null;   // tester: fast tid, inget stoft, prickarna på plats (blomman ritas likadant varje gång)
     let act = 0, rorelse = true;   // aktivitet 0..1 och MOTION (av = inga animationer)
+    let vila = false;              // den hemliga patchen visar glasscenen: blomman ritas inte alls då
     function frame(now) {
       requestAnimationFrame(frame);
+      if (vila) { last = now; return; }
       let dt = Math.min(0.05, (now - last) / 1000); last = now;
       let t = (now - t0) / 1000;
       if (frys !== null && curImg && fade >= 1) { dt = 0; t = frys; lph = 0; envS = 0; pkS = 0; act = 0; dust.length = 0; spawnAcc = 0; lastNc = sig.nc; }
@@ -438,6 +440,10 @@ void main() {
       preload(list) { list.forEach((p) => load(p)); },
       frys(tSek) { frys = tSek; },     // tester
       rorelse(pa) { rorelse = !!pa; },  // MOTION på/av
+      vila(pa) {                        // glasscenen tar över scenen: dukarna döljs och ritas inte
+        vila = !!pa;
+        for (const c of [back, glCv, front]) if (c) c.style.visibility = vila ? "hidden" : "";
+      },
       klar() { return !!curImg && fade >= 1 && (!cur || !cur.lager || (!!curMask && (!!gl || !!(lagerCache && lagerCache.klar)))); },
     };
   }

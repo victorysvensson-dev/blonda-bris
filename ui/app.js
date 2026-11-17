@@ -17,12 +17,18 @@
     kz: 1, kh: null,
     motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
     egna: [], eget: null,
-    hid: false, ljus: true,   // ljuset som strålar upp från tangenterna man spelar   // MOOD: de dolda rattarna (som pedalens hidden options)
+    hid: false,               // MOOD: de dolda rattarna (som pedalens hidden options)
+    ljus: false,              // det varma ljuset ur tangenterna i det vanliga läget (av sedan 1.10; koden finns kvar)
+    hemlig: false, kristall: false,   // den hemliga patchen: upplåst / vald (glasscenen, mörkt läge)
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
   const plantOf = (i) => D.plants[D.presets[i].plant];
+  let INK = "43,37,33";   // text och linjer som ritas i dukarna (ljust i det mörka läget)
+  // den hemliga patchen: accent, bakgrund och ljusets två färger (lila och bärnsten, per ton)
+  const KR = { accent: "#a47cff", bg: "#0b0a13", lila: [150, 100, 255], barn: [255, 172, 82], lilaL: [0.42, 0.20, 1.0], barnL: [1.0, 0.52, 0.16] };
+  const krBarn = (n) => { const pc = ((n % 12) + 12) % 12; return pc >= 5 && pc <= 9; };   // F–A bärnsten, resten lila
 
   // ---------------------------------------------------------------- sidorna
   const PAGES = [
@@ -122,7 +128,7 @@
       const p = P[id], x = (v - p.min) / (p.max - p.min);
       const r = s / 2 - 2.5, a0 = PI * 0.75, a1 = PI * 2.25;
       g.lineCap = "round"; g.lineWidth = 1.4;
-      g.strokeStyle = "rgba(43,37,33,0.16)"; g.beginPath(); g.arc(s / 2, s / 2, r, a0, a1); g.stroke();
+      g.strokeStyle = `rgba(${INK},0.16)`; g.beginPath(); g.arc(s / 2, s / 2, r, a0, a1); g.stroke();
       const acc = getComputedStyle(document.documentElement).getPropertyValue("--a").trim();
       g.strokeStyle = acc; g.lineWidth = 2;
       const mid = p.min < 0 ? a0 + (a1 - a0) / 2 : a0;
@@ -295,6 +301,7 @@
     br._upd = () => {
       const pr = D.presets[S.preset], pl = plantOf(S.preset);
       if (S.eget) { cur.textContent = "MY SOUND"; nm.textContent = S.eget; return; }
+      if (S.kristall) { cur.textContent = "SECRET 01"; nm.textContent = D.kristall.namn + " · " + pr.name.toUpperCase(); return; }
       cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase();
     };
     browserEl = br; br._upd();
@@ -444,17 +451,25 @@
 
   // ---------------------------------------------------------------- ljud och växt
   function applyTheme() {
-    const pl = plantOf(S.preset);
+    const pl = plantOf(S.preset), kr = S.kristall && !!D.kristall;
     const r = document.documentElement.style;
-    const rgb = hexRgb(pl.color);
-    r.setProperty("--a", pl.color); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", pl.bg);
-    const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = pl.bg;
-    flower.set(pl, pl.color);
+    const col = kr ? KR.accent : pl.color, bg = kr ? KR.bg : pl.bg, rgb = hexRgb(col);
+    r.setProperty("--a", col); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", bg);
+    document.documentElement.classList.toggle("kristall", kr);
+    INK = kr ? "233,228,244" : "43,37,33";
+    const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = bg;
+    flower.set(pl, pl.color); flower.vila(kr);
+    if (kristall) kristall.visa(kr);
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
-    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.dataset.i !== undefined && !S.eget && +b.dataset.i === S.preset));
+    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("kr") ? S.kristall : b.dataset.i !== undefined && !S.eget && !S.kristall && +b.dataset.i === S.preset));
   }
-  function selectPreset(i) { S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
+  function selectPreset(i) { S.eget = null; S.kristall = false; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
+  // den hemliga patchen: ett vanligt fabriksljud med glasscenen och det mörka läget; ett annat ljud lämnar den
+  function valjKristall() {
+    if (!D.kristall) return;
+    selectPreset(D.kristall.ljud); S.kristall = true; applyTheme(); buildMenu(); saveUi();
+  }
   function onPreset(i) { S.preset = i; applyTheme(); }
   function step(d) { const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]); }
 
@@ -480,12 +495,19 @@
       });
       g.append(it); list.append(g);
     }
+    if (S.hemlig && D.kristall) {
+      const g = el("div", "grp hemlig");
+      g.append(el("div", "gh", `<i style="background:${KR.accent}"></i>SECRET <span>· ${D.kristall.namn}</span>`));
+      const it = el("div", "items");
+      const b = el("button", "it kr" + (S.kristall ? " on" : ""), D.kristall.namn); b.onclick = () => { valjKristall(); };
+      it.append(b); g.append(it); list.append(g);
+    }
     D.plants.forEach((pl, pi) => {
       const g = el("div", "grp");
       g.append(el("div", "gh", `<i style="background:${pl.color}"></i>${pl.cat} <span>· ${pl.name}</span>`));
       const it = el("div", "items");
       D.order.filter((i) => D.presets[i].plant === pi).forEach((i) => {
-        const b = el("button", "it" + (!S.eget && i === S.preset ? " on" : ""), D.presets[i].name); b.dataset.i = i;
+        const b = el("button", "it" + (!S.eget && !S.kristall && i === S.preset ? " on" : ""), D.presets[i].name); b.dataset.i = i;
         b.onclick = () => { selectPreset(i); };
         it.append(b);
       });
@@ -532,9 +554,6 @@
       f.append(inp, ok, av); inp.focus(); inp.select();
     };
     f.append(spara);
-    const lj = el("button", "", S.ljus ? "LIGHT ON" : "LIGHT OFF");
-    lj.onclick = () => { S.ljus = !S.ljus; saveUi(); buildFoot(); };
-    f.append(lj);
     const mo = el("button", "", S.motion ? "MOTION ON" : "MOTION OFF");
     mo.onclick = () => { setMotion(!S.motion); saveUi(); buildFoot(); };
     f.append(mo);
@@ -620,23 +639,27 @@
     if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), rgb = hexRgb(cssVar("--a"));
-    for (const n of keys.lit) keys.lvl.set(n, 1);
-    if (S.m.keys) for (let w = 0; w < 4; w++) { const k = S.m.keys[w] >>> 0; if (k) for (let b = 0; b < 32; b++) if ((k >>> b) & 1) keys.lvl.set(w * 32 + b, 1); }
-    if (S.m.an >= 0) keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7));   // arpens ton
+    // tonerna som hålls just nu: fingrarna, klaviaturen (MIDI) och arpens ton. De lyser fullt och klingar av först
+    // när de släpps (tidigare klingade MIDI-tonerna av redan i samma bildruta som de tändes).
+    const held = keys.held = new Set(keys.lit);
+    if (S.m.keys) for (let w = 0; w < 4; w++) { const k = S.m.keys[w] >>> 0; if (k) for (let b = 0; b < 32; b++) if ((k >>> b) & 1) held.add(w * 32 + b); }
+    for (const n of held) keys.lvl.set(n, 1);
+    if (S.m.an >= 0) { held.add(S.m.an); keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7)); }   // arpens ton
     // FOLLOW: tangenterna utanför ackordets skala tonas ner, grundtonen får en prick
     const fm = S.pads.follow && S.m.fm ? S.m.fm : 0, iSkala = (n) => !fm || ((fm >> (n % 12)) & 1);
     const tnu = performance.now(), kdt = Math.min(0.5, Math.max(0, (tnu - (keys.t || tnu)) / 1000)); keys.t = tnu;
     const kner = S.motion ? Math.exp(-kdt / 0.13) : 0;   // tangentens sken klingar av efter tid, inte bildrutor
-    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * kner; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
+    for (const [n, v] of keys.lvl) { if (!held.has(n)) { const nv = v * kner; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
     // glid per ton (för att rita linjen där fingret glider)
     const gl = new Map();
     for (const d of keys.down.values()) gl.set(d.n, d);
     // oktaven
     g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillStyle = "rgba(43,37,33,0.42)"; g.font = "400 15px 'BLONDA Mono'";
+    g.fillStyle = `rgba(${INK},0.42)`; g.font = "400 15px 'BLONDA Mono'";
     g.fillText("+", GUT / 2 - 5, h * 0.2); g.fillText("−", GUT / 2 - 5, h * 0.8);
-    g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.34)"; g.fillText("C" + (3 + S.oct), GUT / 2 - 5, h * 0.5);
+    g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = `rgba(${INK},0.34)`; g.fillText("C" + (3 + S.oct), GUT / 2 - 5, h * 0.5);
+    if (S.kristall) tangenterKristall(g, L, h, lv, iSkala); else {
     // ett sammanhängande tangentbord: en ljus bädd med mjuk skugga, vita tangenter med tunna skiljelinjer,
     // tonnamn på C, och svarta tangenter i mörk taupe med rak överkant, rundad underkant och en ljus fas nertill
     const bx = GUT, bw = L.w, bh = h - 9, br = 12;
@@ -653,16 +676,16 @@
         g.fillStyle = gr; g.fillRect(x, 0, kw, bh);
         g.fillStyle = `rgba(${rgb},${v})`; g.beginPath(); g.arc(x + kw / 2, bh - 24, 3.2, 0, TAU); g.fill();
       }
-      if (!iSkala(k.n)) { g.fillStyle = "rgba(43,37,33,0.07)"; g.fillRect(x, 0, kw, bh); }
+      if (!iSkala(k.n)) { g.fillStyle = `rgba(${INK},0.07)`; g.fillRect(x, 0, kw, bh); }
       else if (fm && k.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},0.8)`; g.beginPath(); g.arc(x + kw / 2, bh - 24, 2.4, 0, TAU); g.fill(); }
       if (k.n % 12 === 0 && kw > 26) {   // tonnamn på C
-        g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = "rgba(43,37,33,0.42)"; g.textAlign = "left";
+        g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = `rgba(${INK},0.42)`; g.textAlign = "left";
         g.fillText("C" + (Math.floor(k.n / 12) - 1), x + Math.min(14, kw * 0.22), bh - 26);
       }
-      if (k.x > bx + 1) { g.fillStyle = "rgba(43,37,33,0.11)"; g.fillRect(Math.round(k.x) - 0.5, 0, 1, bh); }
+      if (k.x > bx + 1) { g.fillStyle = `rgba(${INK},0.11)`; g.fillRect(Math.round(k.x) - 0.5, 0, 1, bh); }
     }
     // en svag skugga i överkanten, som om tangenterna går in under en kant
-    const ts = g.createLinearGradient(0, 0, 0, 9); ts.addColorStop(0, "rgba(43,37,33,0.07)"); ts.addColorStop(1, "rgba(43,37,33,0)");
+    const ts = g.createLinearGradient(0, 0, 0, 9); ts.addColorStop(0, `rgba(${INK},0.07)`); ts.addColorStop(1, `rgba(${INK},0)`);
     g.fillStyle = ts; g.fillRect(bx, 0, bw, 9);
     for (const b of L.blacks) {
       const v = lv(b.n), rr = Math.min(5, b.w / 3), bh2 = b.h;
@@ -680,6 +703,7 @@
       else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, bh2 - 18, 2.2, 0, TAU); g.fill(); }
     }
     g.restore();
+    }
     drawLjus(L, lv);
     // glidet: en tunn linje från där fingret tryckte till där det är nu, och en prick som lyser starkare ju högre
     if (S.glid.m > 0) for (const d of gl.values()) {
@@ -692,6 +716,58 @@
       g.fillStyle = `rgba(${rgb},${0.18 * d.up})`; g.beginPath(); g.arc(cx, y1, 9 + 7 * d.up, 0, TAU); g.fill();
       g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(cx, y1, 3, 0, TAU); g.fill();
     }
+  }
+  // den hemliga patchens tangentbord: mörkt glas, och de spelade tangenterna glöder i tonens färg (lila / bärnsten)
+  function tangenterKristall(g, L, h, lv, iSkala) {
+    const bx = GUT, bw = L.w, bh = h - 9, br = 12;
+    const kc = (n) => (krBarn(n) ? KR.barn : KR.lila).join(",");
+    g.save();
+    g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 22; g.shadowOffsetY = 8;
+    g.fillStyle = "rgb(16,14,24)"; roundRect(g, bx, 0, bw, bh, br); g.fill();
+    g.restore();
+    g.save(); roundRect(g, bx, 0, bw, bh, br); g.clip();
+    for (const k of L.whites) {
+      const v = lv(k.n), x = k.x, kw = k.w;
+      const gr = g.createLinearGradient(0, 0, 0, bh);
+      gr.addColorStop(0, "rgb(24,22,34)"); gr.addColorStop(0.8, "rgb(20,18,29)"); gr.addColorStop(1, "rgb(30,28,41)");
+      g.fillStyle = gr; g.fillRect(x, 0, kw, bh);
+      if (v > 0) {   // tangenten lyser inifrån, starkast nertill där ljuset kommer ut
+        const c = kc(k.n), lg = g.createLinearGradient(0, bh, 0, 0);
+        lg.addColorStop(0, `rgba(${c},${0.95 * v})`); lg.addColorStop(0.45, `rgba(${c},${0.55 * v})`); lg.addColorStop(1, `rgba(${c},${0.22 * v})`);
+        g.fillStyle = lg; g.fillRect(x + 1, 0, kw - 2, bh);
+        const kg = g.createRadialGradient(x + kw / 2, bh, 0, x + kw / 2, bh, kw * 0.9);
+        kg.addColorStop(0, `rgba(255,248,240,${0.85 * v})`); kg.addColorStop(1, "rgba(255,248,240,0)");
+        g.fillStyle = kg; g.fillRect(x, bh - kw, kw, kw);
+      }
+      if (!iSkala(k.n)) { g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(x, 0, kw, bh); }
+      if (k.n % 12 === 0 && kw > 26) {
+        g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = v > 0.3 ? "rgba(20,14,30,0.7)" : "rgba(233,228,244,0.42)"; g.textAlign = "left";
+        g.fillText("C" + (Math.floor(k.n / 12) - 1), x + Math.min(14, kw * 0.22), bh - 26);
+      }
+      if (k.x > bx + 1) { g.fillStyle = "rgba(255,255,255,0.07)"; g.fillRect(Math.round(k.x) - 0.5, 0, 1, bh); }
+    }
+    const ts = g.createLinearGradient(0, 0, 0, 12); ts.addColorStop(0, "rgba(0,0,0,0.5)"); ts.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = ts; g.fillRect(bx, 0, bw, 12);
+    for (const b of L.blacks) {
+      const v = lv(b.n), rr = Math.min(5, b.w / 3), bh2 = b.h;
+      g.save();
+      g.shadowColor = "rgba(0,0,0,0.6)"; g.shadowBlur = 8; g.shadowOffsetY = 4;
+      const gr = g.createLinearGradient(0, 0, 0, bh2);
+      gr.addColorStop(0, "rgb(10,9,15)"); gr.addColorStop(1, "rgb(22,20,30)");
+      g.fillStyle = gr; nedRund(g, b.x, -1, b.w, bh2 + 1, rr); g.fill();
+      g.restore();
+      g.fillStyle = "rgba(255,255,255,0.10)"; nedRund(g, b.x + 1.5, bh2 - 9, b.w - 3, 7.5, rr - 1); g.fill();   // fasen nertill
+      g.fillStyle = "rgba(255,255,255,0.05)"; g.fillRect(b.x + 1.5, 0, 1, bh2 - 10);
+      if (v > 0) {
+        const c = kc(b.n), lg = g.createLinearGradient(0, bh2, 0, 0);
+        lg.addColorStop(0, `rgba(${c},${0.95 * v})`); lg.addColorStop(1, `rgba(${c},${0.45 * v})`);
+        g.fillStyle = lg; nedRund(g, b.x + 1, -1, b.w - 2, bh2, rr); g.fill();
+        g.fillStyle = `rgba(255,248,240,${0.6 * v})`; nedRund(g, b.x + b.w * 0.3, bh2 * 0.15, b.w * 0.4, bh2 * 0.7, rr); g.fill();
+      }
+      if (!iSkala(b.n)) { g.fillStyle = "rgba(0,0,0,0.4)"; nedRund(g, b.x, -1, b.w, bh2 + 1, rr); g.fill(); }
+    }
+    g.restore();
+    g.strokeStyle = "rgba(255,255,255,0.08)"; g.lineWidth = 1; roundRect(g, bx + 0.5, 0.5, bw - 1, bh - 1, br); g.stroke();   // glasets kant
   }
   // ---------------------------------------------------------------- ljuset
   // Som en lampa vid skrivmaskinens anslag: där man spelar strålar ett varmt ljus upp ur tangentbordet över blomman,
@@ -706,19 +782,30 @@
     if (cv.width !== Math.round(W * sk) || cv.height !== Math.round(Hh * sk)) { cv.width = Math.round(W * sk); cv.height = Math.round(Hh * sk); }
     // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
     const pa = new Set();
-    if (S.ljus) for (const n of keys.lvl.keys()) if (lv(n) >= 0.99 || keys.lit.has(n)) pa.add(n);
-    if (S.ljus && S.m.an >= 0) pa.add(S.m.an);
+    const paL = S.kristall || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
+    if (paL && keys.held) for (const n of keys.held) pa.add(n);
     // efter tid, inte bildrutor (60 eller 120 Hz, eller en långsam webbläsare, ska kännas likadant)
     const nu = performance.now(), dt = Math.min(0.5, Math.max(0, (nu - (ljus.t || nu)) / 1000)); ljus.t = nu;
     const upp = S.motion ? 1 - Math.exp(-dt / 0.045) : 1, ner = S.motion ? Math.exp(-dt / 0.32) : 0;
     for (const n of pa) ljus.v.set(n, (ljus.v.get(n) || 0) + (1 - (ljus.v.get(n) || 0)) * upp);
     for (const [n, v] of ljus.v) if (!pa.has(n)) { const nv = v * ner; if (nv < 0.01) ljus.v.delete(n); else ljus.v.set(n, nv); }
     const g = cv.getContext("2d");
+    const r = keys.cv.getBoundingClientRect();
+    const pos = (n) => { const k = L.whites.find((x) => x.n === n) || L.blacks.find((x) => x.n === n); return k ? r.left + k.x + k.w / 2 : null; };
+    // glasscenen: ljuspassen blandas efter var tonerna ligger på tangentbordet och färgas per ton
+    if (kristall && S.kristall) {
+      const lista = [];
+      // var tonen ligger på tangentbordet, även utanför det som syns (då lyser scenens kant åt det hållet)
+      const vit = (n) => Math.floor(n / 12) * 7 + [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6][n % 12];
+      const w0 = L.whites.length ? vit(L.whites[0].n) : 0, nv = Math.max(1, L.whites.length);
+      for (const [n, v] of ljus.v) lista.push({ f: Math.min(1, Math.max(0, (vit(n) - w0 + 0.5) / nv)), v, c: krBarn(n) ? KR.barnL : KR.lilaL });
+      const sig = lista.map((l) => l.f.toFixed(3) + ":" + l.v.toFixed(3)).join();
+      if (sig !== ljus.sig) { ljus.sig = sig; kristall.ljus(lista); }
+    }
     if (!ljus.v.size) { if (!ljus.tomt) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); ljus.tomt = true; } return; }   // hela duken (utan halveringen)
     ljus.tomt = false;
     g.setTransform(sk, 0, 0, sk, 0, 0); g.clearRect(0, 0, W, Hh);
-    const r = keys.cv.getBoundingClientRect();
-    const pos = (n) => { const k = L.whites.find((x) => x.n === n) || L.blacks.find((x) => x.n === n); return k ? r.left + k.x + k.w / 2 : null; };
+    if (S.kristall) { stralar(g, r, pos); return; }
     let A = 0; for (const v of ljus.v.values()) A = Math.max(A, v);
     // skuggan över allt, jämn (en svag lutning över hela höjden ger synliga trappsteg i 8 bitar)
     g.fillStyle = `rgba(58,42,34,${0.1 * A})`; g.fillRect(0, 0, W, Hh);
@@ -749,6 +836,38 @@
       g.fillStyle = pl; g.fillRect(x - kr, ky - kr, kr * 2, kr * 2);
     }
     g.filter = "none";
+    g.globalCompositeOperation = "source-over";
+  }
+
+  // den hemliga patchens strålar: smala, färgade ljuspelare ur de spelade tangenterna upp genom scenen, med ett
+  // mjukt sken runt omkring, ett bloss där strålen lämnar tangenten och ett sken över tangenterna ("lighter" = ljus
+  // som läggs till). En pelare är en radiell gradient som sträcks på höjden: den tonar ut åt sidorna och uppåt.
+  function stralar(g, r, pos) {
+    const y0 = r.top + 1, hojd = Math.max(200, y0 * 0.88);
+    g.globalCompositeOperation = "lighter";
+    for (const [n, v] of ljus.v) {
+      const x = pos(n); if (x === null) continue;
+      const c = (krBarn(n) ? KR.barn : KR.lila).join(",");
+      const pelare = (bredd, a) => {
+        g.save(); g.beginPath(); g.rect(x - bredd, y0 - hojd, bredd * 2, hojd); g.clip();
+        g.translate(x, y0); g.scale(1, hojd / bredd);
+        const rg = g.createRadialGradient(0, 0, 0, 0, 0, bredd);
+        rg.addColorStop(0, `rgba(${c},${a})`); rg.addColorStop(0.35, `rgba(${c},${a * 0.45})`); rg.addColorStop(1, `rgba(${c},0)`);
+        g.fillStyle = rg; g.fillRect(-bredd, -bredd, bredd * 2, bredd);
+        g.restore();
+      };
+      pelare(90, 0.22 * v); pelare(30, 0.42 * v); pelare(6, 0.9 * v); pelare(1.6, 0.9 * v);
+      const bl = g.createRadialGradient(x, y0, 0, x, y0, 130);   // blosset där strålen kommer ut
+      bl.addColorStop(0, `rgba(255,246,236,${0.6 * v})`); bl.addColorStop(0.12, `rgba(${c},${0.45 * v})`); bl.addColorStop(1, `rgba(${c},0)`);
+      g.fillStyle = bl; g.fillRect(x - 130, y0 - 130, 260, 260);
+      const fl = g.createLinearGradient(x - 170, 0, x + 170, 0);   // en tunn linje längs tangentbordets kant
+      fl.addColorStop(0, `rgba(${c},0)`); fl.addColorStop(0.5, `rgba(${c},${0.4 * v})`); fl.addColorStop(1, `rgba(${c},0)`);
+      g.fillStyle = fl; g.fillRect(x - 170, y0 - 1.5, 340, 3);
+      const kh = r.height, ky = y0 + kh * 0.55, kr = Math.max(90, kh * 0.9);
+      const pl = g.createRadialGradient(x, ky, 0, x, ky, kr);    // skenet över tangenterna runt omkring
+      pl.addColorStop(0, `rgba(${c},${0.28 * v})`); pl.addColorStop(1, `rgba(${c},0)`);
+      g.fillStyle = pl; g.fillRect(x - kr, ky - kr, kr * 2, kr * 2);
+    }
     g.globalCompositeOperation = "source-over";
   }
 
@@ -880,7 +999,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, ljus: S.ljus,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemlig: S.hemlig, kristall: S.kristall,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -896,6 +1015,14 @@
   // ---------------------------------------------------------------- start
   const flower = Blommor.create($("#fBack"), $("#fGl"), $("#fFront"), D.blommor);
   flower.preload([...new Set(D.plants.map((p) => p.photo))]);
+  const kristall = D.kristall && typeof Kristall !== "undefined" ? Kristall.create($("#stage"), D.kristall, "kristall/") : null;
+  // upplåsningen: tryck fem gånger på versionen uppe till höger (inom tre sekunder)
+  const ver = { n: 0, t: 0 };
+  $("#ver").addEventListener("pointerdown", (e) => {
+    const nu = performance.now(); if (nu - ver.t > 3000) ver.n = 0;
+    ver.t = nu; ver.n++;
+    if (ver.n >= 5 && D.kristall) { ver.n = 0; S.hemlig = true; valjKristall(); }
+  });
   let envSm = 0;
   $("#ver").textContent = "BRIS " + D.version;
   buildTabs();
@@ -949,13 +1076,14 @@
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
       if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null;
-      if (typeof u.ljus === "boolean") S.ljus = u.ljus;
+      S.hemlig = !!u.hemlig; S.kristall = !!u.kristall && S.hemlig && !!D.kristall;
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
     if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
     S.pads.active = -1; S.pads.armed = -1; S.pads.rec = false;
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
+    if (S.kristall && D.kristall && S.preset !== D.kristall.ljud) S.kristall = false;   // ljudet byttes utanför (t.ex. i Logic)
     S.egna = Array.isArray(st.user) ? st.user.filter((e) => e && e.name && e.values) : [];
     if (S.eget && !S.egna.some((e) => e.name === S.eget)) S.eget = null;
     setMotion(S.motion); buildMenu();
@@ -974,7 +1102,7 @@
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };
   Bridge.on.params = (v) => { for (const id in v) setParam(id, v[id], false); if ("arp" in v) updPads(); };
-  Bridge.on.preset = (i) => { if (i !== S.preset) onPreset(i); };
+  Bridge.on.preset = (i) => { if (i !== S.preset) { if (S.kristall) { S.kristall = false; buildMenu(); } onPreset(i); } };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
     S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
@@ -991,6 +1119,7 @@
     envSm += (S.m.env - envSm) * 0.12;
     drawWave(now / 1000);
     drawKeys();
+    if (kristall) kristall.tick();
     sendGlid();
     updateMods();
   }
@@ -999,5 +1128,5 @@
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
   window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
-    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus };   // för tester
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => kristall, valjKristall };   // för tester
 })();
