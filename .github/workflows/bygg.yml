@@ -40,7 +40,7 @@ jobs:
           node tester/wasm_test.mjs dist/web/bris.wasm ./dump
       - name: Webbversionen i Chrome
         run: |
-          pip install -q playwright
+          pip install -q playwright numpy pillow
           python3 -m playwright install --with-deps chromium > /dev/null
           python3 tester/webb_test.py dist/web
       - name: Pluggens ljuddel (samma kod som AU/VST3/AUv3)
@@ -174,7 +174,7 @@ jobs:
           xcodebuild -project build-ios-mpe/BLONDA_BRIS.xcodeproj -scheme BlondaBris_Standalone -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath dd-mpe CODE_SIGNING_ALLOWED=NO build 2>&1 \
             | grep -E "error:|BUILD (SUCCEEDED|FAILED)" | head -40
-          find dd-mpe -name "BLONDA BRIS MPE.app" -path "*iphonesimulator*" | grep -q . || { echo "BLONDA BRIS MPE.app saknas"; exit 1; }
+          find build-ios-mpe dd-mpe -name "BLONDA BRIS MPE.app" | grep -q . || { echo "BLONDA BRIS MPE.app saknas"; exit 1; }
       - name: Kör i simulatorn och ta skärmdumpar
         continue-on-error: true
         timeout-minutes: 28
