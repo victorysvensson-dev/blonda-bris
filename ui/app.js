@@ -17,7 +17,7 @@
     kz: 1, kh: null,
     motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
     egna: [], eget: null,
-    hid: false, skriv: true,   // skrivmaskinen som skriver det man spelar   // MOOD: de dolda rattarna (som pedalens hidden options)
+    hid: false, ljus: true,   // ljuset som strålar upp från tangenterna man spelar   // MOOD: de dolda rattarna (som pedalens hidden options)
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
@@ -360,62 +360,10 @@
     return NOTNAMN[bas] + "…";
   }
   const tonNamn = (n) => NOTNAMN[n % 12] + (Math.floor(n / 12) - 1);   // som tangenterna: 48 = C3
-  // ---------------------------------------------------------------- skrivmaskinen
-  // Det man spelar skrivs med skrivmaskin längst ner över blomman: tonnamnen (eller ackordets namn när flera toner
-  // slås an samtidigt) slås an vid en fast punkt och pappret flyttas åt vänster, som en vagn. Efter en paus blir det
-  // ny rad; gamla rader glider upp och bleknar. Varje tecken får lite olika svärta och läge, som riktigt bläck.
-  const skriv = { buf: [], b0: 0, t: 0, rad: null, senast: 0, egna: new Map(), radT: 0 };
-  function skrivTon(n, fran) {   // fran = "ui" (skärmen/datorns tangenter) eller "midi" (via mätarna)
-    if (!S.skriv) return;
-    const nu = performance.now();
-    if (fran === "midi" && nu - (skriv.egna.get(n) || 0) < 400) return;   // redan skriven från skärmen
-    if (fran === "ui") skriv.egna.set(n, nu);
-    if (skriv.buf.length && nu - skriv.b0 > 60) skrivUt();   // förra ackordet är klart även om timern är sen
-    if (!skriv.buf.length) skriv.b0 = nu;
-    skriv.buf.push(n);
-    clearTimeout(skriv.t); skriv.t = setTimeout(skrivUt, 45);   // toner inom 45 ms = ett ackord
-  }
-  function skrivUt() {
-    clearTimeout(skriv.t);
-    const nt = [...new Set(skriv.buf)].sort((a, b) => a - b); skriv.buf = [];
-    if (!nt.length) return;
-    const ak = nt.length >= 3 ? ackordNamn(nt) : "";
-    skrivOrd(ak && !ak.endsWith("…") ? ak : nt.map(tonNamn).join(" "));
-  }
-  function skrivOrd(ord) {
-    const box = $("#skriv"); if (!box || !S.skriv || $("#stage").clientHeight < 150) return;   // inte när blomman är liten
-    const nu = performance.now();
-    if (!skriv.rad || nu - skriv.senast > 2200 || skriv.rad.textContent.length > 46) {   // ny rad
-      box.querySelectorAll(".rad").forEach((r) => { const k = +(r.dataset.k || 0) + 1; r.dataset.k = k; r.style.setProperty("--k", k); if (k > 3) r.remove(); });
-      skriv.rad = el("div", "rad"); skriv.rad.dataset.k = 0; skriv.rad.style.setProperty("--k", 0);
-      box.querySelector(".rader").append(skriv.rad);
-    } else skriv.rad.append(document.createTextNode(" "));
-    skriv.senast = nu;
-    const rand = (a, b) => a + Math.random() * (b - a);
-    for (const ch of ord) {
-      const c = el("span", "ch", ch === " " ? "&nbsp;" : ch);
-      if (S.motion) c.style.cssText = `--r:${rand(-2.2, 2.2).toFixed(2)}deg;--y:${rand(-0.7, 0.7).toFixed(2)}px;--o:${rand(0.62, 1).toFixed(2)}`;
-      skriv.rad.append(c);
-    }
-    if (S.motion && Math.random() < 0.18) {   // en liten bläckfläck då och då
-      const f = el("i", "flack"); f.style.cssText = `--fx:${rand(-30, 6).toFixed(0)}px;--fy:${rand(-14, 10).toFixed(0)}px;--fs:${rand(1.2, 2.6).toFixed(1)}px`;
-      skriv.rad.append(f);
-    }
-    box.classList.add("aktiv");
-    clearTimeout(skriv.radT); skriv.radT = setTimeout(() => box.classList.remove("aktiv"), 2600);
-  }
-  function buildSkriv() {
-    let b = $("#skriv"); if (b) return;
-    b = el("div", ""); b.id = "skriv";
-    b.innerHTML = '<div class="rader"></div><div class="vagn"><i></i></div>';
-    $("#stage").append(b);
-  }
-
   function padSpela(k) {
     const nt = S.pads.list[k] || [];
     S.pads.active = k;
     Bridge.send({ t: "pad", n: nt, v: 100 });
-    if (nt.length) { nt.forEach((n) => skriv.egna.set(n, performance.now())); skrivOrd(ackordNamn(nt)); }
     updPads();
   }
   function padSlapp() { if (S.pads.active < 0) return; S.pads.active = -1; Bridge.send({ t: "pad", n: [] }); updPads(); }
@@ -584,9 +532,9 @@
       f.append(inp, ok, av); inp.focus(); inp.select();
     };
     f.append(spara);
-    const sk = el("button", "", S.skriv ? "TYPEWRITER ON" : "TYPEWRITER OFF");
-    sk.onclick = () => { S.skriv = !S.skriv; if (!S.skriv) { const b = $("#skriv .rader"); if (b) b.innerHTML = ""; skriv.rad = null; } saveUi(); buildFoot(); };
-    f.append(sk);
+    const lj = el("button", "", S.ljus ? "LIGHT ON" : "LIGHT OFF");
+    lj.onclick = () => { S.ljus = !S.ljus; saveUi(); buildFoot(); };
+    f.append(lj);
     const mo = el("button", "", S.motion ? "MOTION ON" : "MOTION OFF");
     mo.onclick = () => { setMotion(!S.motion); saveUi(); buildFoot(); };
     f.append(mo);
@@ -673,10 +621,13 @@
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const L = keyLayout(), rgb = hexRgb(cssVar("--a"));
     for (const n of keys.lit) keys.lvl.set(n, 1);
+    if (S.m.keys) for (let w = 0; w < 4; w++) { const k = S.m.keys[w] >>> 0; if (k) for (let b = 0; b < 32; b++) if ((k >>> b) & 1) keys.lvl.set(w * 32 + b, 1); }
     if (S.m.an >= 0) keys.lvl.set(S.m.an, Math.max(keys.lvl.get(S.m.an) || 0, 0.7));   // arpens ton
     // FOLLOW: tangenterna utanför ackordets skala tonas ner, grundtonen får en prick
     const fm = S.pads.follow && S.m.fm ? S.m.fm : 0, iSkala = (n) => !fm || ((fm >> (n % 12)) & 1);
-    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = S.motion ? v * 0.88 : 0; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
+    const tnu = performance.now(), kdt = Math.min(0.5, Math.max(0, (tnu - (keys.t || tnu)) / 1000)); keys.t = tnu;
+    const kner = S.motion ? Math.exp(-kdt / 0.13) : 0;   // tangentens sken klingar av efter tid, inte bildrutor
+    for (const [n, v] of keys.lvl) { if (!keys.lit.has(n)) { const nv = v * kner; if (nv < 0.01) keys.lvl.delete(n); else keys.lvl.set(n, nv); } }
     const lv = (n) => keys.lvl.get(n) || 0;
     // glid per ton (för att rita linjen där fingret glider)
     const gl = new Map();
@@ -729,6 +680,7 @@
       else if (fm && b.n % 12 === S.m.fr) { g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(b.x + b.w / 2, bh2 - 18, 2.2, 0, TAU); g.fill(); }
     }
     g.restore();
+    drawLjus(L, lv);
     // glidet: en tunn linje från där fingret tryckte till där det är nu, och en prick som lyser starkare ju högre
     if (S.glid.m > 0) for (const d of gl.values()) {
       if (d.up <= 0.01) continue;
@@ -741,6 +693,65 @@
       g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(cx, y1, 3, 0, TAU); g.fill();
     }
   }
+  // ---------------------------------------------------------------- ljuset
+  // Som en lampa vid skrivmaskinens anslag: där man spelar strålar ett varmt ljus upp ur tangentbordet över blomman,
+  // och resten av skärmen skuggas en aning, så att ljuset syns. Ljuset tonar upp snabbt och klingar av långsamt.
+  const ljus = { cv: null, v: new Map(), tomt: true, t: 0 };
+  function drawLjus(L, lv) {
+    if (!ljus.cv) {
+      ljus.cv = el("canvas", ""); ljus.cv.id = "ljus";
+      document.getElementById("app").append(ljus.cv);
+    }
+    const cv = ljus.cv, W = innerWidth, Hh = innerHeight, sk = 0.5;   // halv upplösning räcker för mjukt ljus
+    if (cv.width !== Math.round(W * sk) || cv.height !== Math.round(Hh * sk)) { cv.width = Math.round(W * sk); cv.height = Math.round(Hh * sk); }
+    // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
+    const pa = new Set();
+    if (S.ljus) for (const n of keys.lvl.keys()) if (lv(n) >= 0.99 || keys.lit.has(n)) pa.add(n);
+    if (S.ljus && S.m.an >= 0) pa.add(S.m.an);
+    // efter tid, inte bildrutor (60 eller 120 Hz, eller en långsam webbläsare, ska kännas likadant)
+    const nu = performance.now(), dt = Math.min(0.5, Math.max(0, (nu - (ljus.t || nu)) / 1000)); ljus.t = nu;
+    const upp = S.motion ? 1 - Math.exp(-dt / 0.045) : 1, ner = S.motion ? Math.exp(-dt / 0.32) : 0;
+    for (const n of pa) ljus.v.set(n, (ljus.v.get(n) || 0) + (1 - (ljus.v.get(n) || 0)) * upp);
+    for (const [n, v] of ljus.v) if (!pa.has(n)) { const nv = v * ner; if (nv < 0.01) ljus.v.delete(n); else ljus.v.set(n, nv); }
+    const g = cv.getContext("2d");
+    if (!ljus.v.size) { if (!ljus.tomt) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); ljus.tomt = true; } return; }   // hela duken (utan halveringen)
+    ljus.tomt = false;
+    g.setTransform(sk, 0, 0, sk, 0, 0); g.clearRect(0, 0, W, Hh);
+    const r = keys.cv.getBoundingClientRect();
+    const pos = (n) => { const k = L.whites.find((x) => x.n === n) || L.blacks.find((x) => x.n === n); return k ? r.left + k.x + k.w / 2 : null; };
+    let A = 0; for (const v of ljus.v.values()) A = Math.max(A, v);
+    // skuggan över allt, jämn (en svag lutning över hela höjden ger synliga trappsteg i 8 bitar)
+    g.fillStyle = `rgba(58,42,34,${0.1 * A})`; g.fillRect(0, 0, W, Hh);
+    const R = Math.min(Hh * 0.7, 720), y0 = r.top + 2, mjuk = Math.round(R * 0.05);
+    g.filter = `blur(${mjuk}px)`;
+    for (const [n, v] of ljus.v) {
+      const x = pos(n); if (x === null) continue;
+      // ljuskäglan: smal vid tangenten, vidgas uppåt och tonar bort
+      const strale = () => { g.beginPath(); g.moveTo(x - 14, y0); g.lineTo(x - R * 0.42, y0 - R); g.lineTo(x + R * 0.42, y0 - R); g.lineTo(x + 14, y0); g.closePath(); };
+      g.globalCompositeOperation = "destination-out";
+      let lg = g.createLinearGradient(0, y0, 0, y0 - R); lg.addColorStop(0, `rgba(0,0,0,${v})`); lg.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = lg; strale(); g.fill();
+      g.globalCompositeOperation = "source-over";
+      lg = g.createLinearGradient(0, y0, 0, y0 - R);
+      lg.addColorStop(0, `rgba(255,232,190,${0.85 * v})`); lg.addColorStop(0.3, `rgba(255,236,200,${0.45 * v})`); lg.addColorStop(0.65, `rgba(255,240,212,${0.14 * v})`); lg.addColorStop(1, "rgba(255,240,215,0)");
+      g.fillStyle = lg; strale(); g.fill();
+      // det varma skenet där ljuset kommer ut, precis ovanför tangentbordet
+      const hs = g.createRadialGradient(x, y0 - 8, 0, x, y0 - 8, 110);
+      hs.addColorStop(0, `rgba(255,236,200,${0.8 * v})`); hs.addColorStop(1, "rgba(255,240,212,0)");
+      g.fillStyle = hs; g.fillRect(x - 110, y0 - 118, 220, 116);
+      // och ljuset faller ner över tangenterna runt den spelade, som lampans sken på pappret
+      const kh = r.height, ky = y0 + kh * 0.45, kr = Math.max(90, kh * 1.05);
+      g.globalCompositeOperation = "destination-out";
+      let pl = g.createRadialGradient(x, ky, 0, x, ky, kr); pl.addColorStop(0, `rgba(0,0,0,${v})`); pl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = pl; g.fillRect(x - kr, ky - kr, kr * 2, kr * 2);
+      g.globalCompositeOperation = "source-over";
+      pl = g.createRadialGradient(x, ky, 0, x, ky, kr); pl.addColorStop(0, `rgba(255,238,206,${0.42 * v})`); pl.addColorStop(1, "rgba(255,240,215,0)");
+      g.fillStyle = pl; g.fillRect(x - kr, ky - kr, kr * 2, kr * 2);
+    }
+    g.filter = "none";
+    g.globalCompositeOperation = "source-over";
+  }
+
   function setOct(o) {
     o = clamp(o, -3, 3); if (o === S.oct) return;
     for (const d of keys.down.values()) Bridge.send({ t: "off", n: d.n });
@@ -808,7 +819,7 @@
     const release = (pid) => { const d = keys.down.get(pid); if (!d) return; Bridge.send({ t: "off", n: d.n }); keys.lit.delete(d.n); keys.down.delete(pid); };
     const start = (pid, k, y) => {
       const v = Math.round(clamp(50 + k.y * 77, 1, 127));
-      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n); skrivTon(k.n, "ui");
+      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n);
       keys.down.set(pid, { n: k.n, x: k.x, w: k.w, black: !!k.black, y0: y, y, up: 0 });
     };
     cv.addEventListener("pointerdown", (e) => {
@@ -842,7 +853,7 @@
     if (k === "z" || k === "x") { setOct(S.oct + (k === "z" ? -1 : 1)); return; }
     const i = KB.indexOf(k); if (i < 0 || kbDown.has(k)) return;
     ensureAudio();
-    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n); skrivTon(n, "ui");
+    const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n);
     Bridge.send({ t: "note", n, v: 100 });
   });
   window.addEventListener("keyup", (e) => {
@@ -869,7 +880,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, skriv: S.skriv,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, ljus: S.ljus,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -891,7 +902,6 @@
   buildPanels();
   buildMenu();
   keys.cv = $("#keys canvas");
-  buildSkriv();
   buildPads();
   buildKbar();
   gripInput();
@@ -939,7 +949,7 @@
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
       if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null;
-      if (typeof u.skriv === "boolean") S.skriv = u.skriv;
+      if (typeof u.ljus === "boolean") S.ljus = u.ljus;
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
     if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
@@ -971,11 +981,7 @@
     if (m.scope) S.m.scope = m.scope;
     S.m.fr = m.fr ?? -1; S.m.fm = m.fm || 0; S.m.an = m.an ?? -1;
     if (S.pads.armed >= 0 && m.keys) for (let w = 0; w < 4; w++) for (let b = 0; b < 32; b++) if ((m.keys[w] >>> b) & 1) padLagg(w * 32 + b);
-    if (m.keys) {   // nya toner från en klaviatur (MIDI) skrivs också
-      const fore = S.m.keys || [0, 0, 0, 0];
-      for (let w = 0; w < 4; w++) { const ny = (m.keys[w] >>> 0) & ~(fore[w] >>> 0); if (ny) for (let b = 0; b < 32; b++) if ((ny >>> b) & 1) skrivTon(w * 32 + b, "midi"); }
-      S.m.keys = m.keys.slice();
-    }
+    if (m.keys) S.m.keys = m.keys.slice();   // tangenterna som hålls (även från en klaviatur) lyser
     flower.signals({ env: m.env, lfo: m.lfo, pk: m.pk, mask: m.mask, nc: m.nc });
   };
   $("#start").addEventListener("click", () => { ensureAudio(); });
@@ -993,5 +999,5 @@
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
   window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
-    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, skriv: { ton: skrivTon, ord: skrivOrd } };   // för tester
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus };   // för tester
 })();

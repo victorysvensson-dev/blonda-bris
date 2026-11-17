@@ -151,6 +151,7 @@ def main():
     jf = os.path.join(UT, "blommor.json")
     info = json.load(open(jf, encoding="utf-8"))
     for foto, cfg in LAGER.items():
+        if not os.path.exists(os.path.join(UT, foto + ".webp")): continue   # bilden används inte längre (se tools/kategorier.py)
         img = Image.open(os.path.join(UT, foto + ".webp")).convert("RGBA")
         w, h = img.size
         m = mask(img, cfg)

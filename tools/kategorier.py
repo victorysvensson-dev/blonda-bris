@@ -52,16 +52,16 @@ GLID_TAKT = 0.6   # lrate minst så här medan man glider (0.1 * 1000^0.6 = ca 6
 # fx = (rvb, rsize, drive) som sätts när man väljer ett ljud av växten.
 VAXTER = [
     dict(id="iris", kat="PAD", namn="IRIS", foto="lavendel", farg="#8350c5", fx=(0.35, 0.75, 0.0)),
-    dict(id="gladiolus", kat="STRINGS", namn="GLADIOLUS", foto="silke", farg="#d9562a", fx=(0.30, 0.65, 0.0)),
+    dict(id="gladiolus", kat="STRINGS", namn="GLADIOLUS", foto="guld", farg="#e0662e", fx=(0.30, 0.65, 0.0)),
     dict(id="skaggiris", kat="POLY", namn="SKÄGGIRIS", foto="iris", farg="#6a3dc0", fx=(0.20, 0.55, 0.0)),
     dict(id="kanna", kat="BRASS", namn="KANNA", foto="kanna", farg="#e2612c", fx=(0.20, 0.55, 0.05)),
     dict(id="strelitzia", kat="LEAD", namn="STRELITZIA", foto="strelitzia", farg="#e23f18", fx=(0.18, 0.50, 0.10)),
     dict(id="eukalyptus", kat="BASS", namn="EUKALYPTUS", foto="eukalyptus", farg="#5a6510", fx=(0.00, 0.40, 0.15)),
-    dict(id="solfjader", kat="PLUCK", namn="SOLFJÄDER", foto="solfjader", farg="#8c50d3", fx=(0.22, 0.50, 0.0)),
+    dict(id="solfjader", kat="PLUCK", namn="SOLFJÄDER", foto="smaragd", farg="#17806f", fx=(0.22, 0.50, 0.0)),
     dict(id="lilja", kat="BELL", namn="LILJA", foto="lilja", farg="#1f55cc", fx=(0.30, 0.60, 0.0)),
-    dict(id="amaryllis", kat="ARP", namn="AMARYLLIS", foto="orange", ton=-22, farg="#d8402e", fx=(0.18, 0.50, 0.0)),
-    dict(id="nattviol", kat="FX", namn="NATTVIOL", foto="solfjader", ton=-48, mattnad=1.05, farg="#4b4fd0", fx=(0.40, 0.85, 0.0)),
-    dict(id="vitiris", kat="INIT", namn="VIT IRIS", foto="lavendel", mattnad=0.12, farg="#7c7470", fx=(0.20, 0.55, 0.0)),
+    dict(id="amaryllis", kat="ARP", namn="AMARYLLIS", foto="magenta", farg="#c2185b", fx=(0.18, 0.50, 0.0)),
+    dict(id="nattviol", kat="FX", namn="NATTVIOL", foto="blaiiris", farg="#3a42d0", fx=(0.40, 0.85, 0.0)),
+    dict(id="vitiris", kat="INIT", namn="VIT IRIS", foto="silke", mattnad=0.12, farg="#7c7470", fx=(0.20, 0.55, 0.0)),
 ]
 
 # Vilken växt varje fabriksljud är (namn exakt som i blonda-motor).
@@ -188,7 +188,7 @@ def main():
     data = dict(params=params, presets=presets, order=ordning,
                 plants=[dict(id=v["id"], cat=v["kat"], name=v["namn"], color=v["farg"], bg=v["bg"], photo=v["foto"],
                              hue=v.get("ton", 0), sat=v.get("mattnad", 1), fx=list(v["fx"])) for v in VAXTER],
-                blommor=blom,
+                blommor={k: v for k, v in blom.items() if any(x["foto"] == k for x in VAXTER)},   # bara de som används
                 glid=dict(rate=GLID_TAKT, targets=[dict(id=g[0], name=g[1], short=g[2], param=g[3], depth=g[4], rate=g[5]) for g in GLID]),
                 phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip(),
                 version=open(os.path.join(ROT, "VERSION")).read().strip())

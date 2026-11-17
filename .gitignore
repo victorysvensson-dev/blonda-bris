@@ -2,3 +2,4 @@ build*/
 dist/
 dd/
 .DS_Store
+__pycache__/

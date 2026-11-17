@@ -21,14 +21,21 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.9.0
+
+- Ljuset (ersätter skrivmaskinen från 1.8.0): där man spelar strålar ett varmt ljus upp ur tangentbordet över
+  blomman och faller ut över tangenterna runt omkring, som lampan vid anslaget i en skrivmaskin, och resten av
+  skärmen skuggas en aning. Det tonar upp snabbt och klingar av långsamt (efter tid, lika på 60 och 120 Hz), för
+  tangenterna, arpen och MIDI. Stängs av med LIGHT i menyn.
+- Fyra nya blommor komponerade av Victorys lösa kronblad (tools/komponera.py, ark i resurser/kronblad/):
+  GLADIOLUS (guld), SOLFJÄDER (smaragd), AMARYLLIS (magenta) och NATTVIOL (blå iris). VIT IRIS använder nu
+  silkesblomman, så att ingen blomma längre är en kopia av en annan.
+
 ## 1.8.0
 
 - Nytt tangentbord: en sammanhängande ljus bädd med mjuk skugga, vita tangenter med tunna skiljelinjer och tonnamn på
   C, svarta tangenter i mörk taupe med rak överkant, rundad underkant och en ljus fas. En spelad tangent får ett sken
   nerifrån och en prick.
-- Skrivmaskinen: det man spelar skrivs med skrivmaskin över blommans nederkant. Tonnamn, eller ackordets namn när
-  flera toner slås an samtidigt. Pappret flyttas åt vänster som en vagn, gamla rader glider upp och bleknar, och
-  bläcket varierar lite. Det gäller tangenterna, padsen och MIDI. Stängs av med TYPEWRITER i menyn.
 
 ## 1.7.2
 
