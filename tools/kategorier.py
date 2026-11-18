@@ -33,6 +33,12 @@ EXTRA += [
     ("arpo", "Arp Octaves", 1.0, 4.0, 1.0, True),
     ("arpg", "Arp Gate", 0.05, 1.0, 0.6, False),
 ]
+# BAND (effekten sliten ur blonda-motor): av/på och alla dess rattar med prefixet "ta", i effektens ordning.
+# Används av den hemliga patchen KASSETTEN (media 0 = kassett).
+SLITEN = json.load(open(os.path.join(ROT, "External/blonda-motor/motorer/sliten/sliten.json"), encoding="utf-8"))
+EXTRA.append(("tape", "Tape", 0.0, 1.0, 0.0, True))
+for _p in SLITEN["params"]:
+    EXTRA.append(("ta" + _p["id"], "TAPE " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"] or _p["id"] == "media"))
 EXTRA = [e if len(e) == 6 else e + (False,) for e in EXTRA]
 
 # Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...
@@ -48,8 +54,22 @@ GLID = [
 ]
 GLID_TAKT = 0.6   # lrate minst så här medan man glider (0.1 * 1000^0.6 = ca 6 Hz)
 
-# den hemliga patchen (glasscenen) spelar det här fabriksljudet
-KRISTALL_LJUD = "Vintage Saw"
+# De hemliga patcharna. ljud = fabriksljudet de spelar (namn exakt som i blonda-motor). satt = inställningar som
+# läggs ovanpå ljudet (MOOD, bandet, rummet ...); appen sparar de gamla värdena och sätter tillbaka dem när man
+# lämnar patchen. melodi = tonklasserna (0 = C) som låser upp den när de spelas i följd, i vilken oktav som helst
+# (KRISTALL låses upp med fem tryck på versionen). scen = katalogen i ui/ med scenens bilder och data.
+HEMLIGA = [
+    dict(id="kristall", namn="KRISTALL", ljud="Vintage Saw", satt={}, melodi=None, scen="kristall"),
+    # SJÖN: ett ihåligt, mjukt anslag (Bellish, mjukare filter och längre klang), droppande eko och MOOD:s rum
+    dict(id="sjon", namn="SJÖN", ljud="Bellish", melodi=[11, 9, 2, 9], scen=None,   # B-A-D-A
+         satt={"cut": 0.5, "res": 0.35, "ad": 0.74, "ar": 0.72, "sub": 0.15, "chorus": 0.35,
+               "dmix": 0.18, "dtime": 0.55, "dfb": 0.42, "rvb": 0.3, "rsize": 0.85,
+               "mowet": 1, "mowmode": 0, "motime": 0.82, "mowmod": 0.7, "moblend": 0.38}),
+    # KASSETTEN: vintagekeys genom bandet (SLITEN, media kassett) och lite drive
+    dict(id="kassett", namn="KASSETTEN", ljud="vintagekeys", melodi=[2, 4, 0, 9, 2, 4], scen="kassett",   # D-E-C-A-D-E
+         satt={"tape": 1, "tamedia": 0, "taage": 0.55, "tawow": 0.45, "taflut": 0.35, "tasat": 0.5, "tabrus": 0.3,
+               "taavbr": 0.12, "taton": 0.42, "tabredd": 0.85, "tawet": 1, "rvb": 0.15, "rsize": 0.45, "drive": 0.08}),
+]
 
 # Växterna. Ordningen = ordningen i ljudlistan. id används av växtritaren i ui/vaxter.js.
 # fx = (rvb, rsize, drive) som sätts när man väljer ett ljud av växten.
@@ -195,10 +215,19 @@ def main():
                 glid=dict(rate=GLID_TAKT, targets=[dict(id=g[0], name=g[1], short=g[2], param=g[3], depth=g[4], rate=g[5]) for g in GLID]),
                 phrases=fraser, motor=open(os.path.join(ROT, "External/blonda-motor/VERSION")).read().strip(),
                 version=open(os.path.join(ROT, "VERSION")).read().strip())
-    # den hemliga patchen: glasscenen (tools/kristall.py + kristall_bilder.py) och ljudet den spelar
-    kr = os.path.join(ROT, "ui/kristall/kristall.json")
-    if os.path.exists(kr):
-        data["kristall"] = dict(json.load(open(kr, encoding="utf-8")), ljud=namn.index(KRISTALL_LJUD), namn="KRISTALL")
+    # de hemliga patcharna: ljudet, inställningarna ovanpå och scenens data (ui/<scen>/<scen>.json)
+    giltiga = {p["id"] for p in data["params"]}
+    data["hemliga"] = []
+    for i_, h in enumerate(HEMLIGA):
+        okand = [k for k in h["satt"] if k not in giltiga]
+        if okand: sys.exit(f"{h['id']}: okända parametrar {okand}")
+        if h["ljud"] not in namn: sys.exit(f"{h['id']}: okänt ljud {h['ljud']}")
+        e = dict(id=h["id"], namn=h["namn"], nr=i_ + 1, ljud=namn.index(h["ljud"]), satt=h["satt"], melodi=h["melodi"])
+        if h["scen"]:
+            sj = os.path.join(ROT, f"ui/{h['scen']}/{h['scen']}.json")
+            if not os.path.exists(sj): sys.exit(f"{h['id']}: saknar {sj}")
+            e["scen"] = json.load(open(sj, encoding="utf-8"))
+        data["hemliga"].append(e)
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
           "window.BRIS_DATA = " + json.dumps(data, ensure_ascii=True, separators=(",", ":")) + ";\n")
     open(os.path.join(ROT, "ui/data.js"), "w", encoding="utf-8").write(js)

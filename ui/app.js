@@ -19,7 +19,7 @@
     egna: [], eget: null,
     hid: false,               // MOOD: de dolda rattarna (som pedalens hidden options)
     ljus: false,              // det varma ljuset ur tangenterna i det vanliga läget (av sedan 1.10; koden finns kvar)
-    hemlig: false, kristall: false,   // den hemliga patchen: upplåst / vald (glasscenen, mörkt läge)
+    hemliga: [], secret: null, fore: null,   // hemliga patchar: upplåsta (id), vald (id eller null), värdena innan den valdes
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
@@ -28,8 +28,17 @@
   let INK = "43,37,33";   // text och linjer som ritas i dukarna (ljust i det mörka läget)
   // den hemliga patchen: accent, bakgrund och ljusets två färger (lila och bärnsten, per ton)
   const KR = { accent: "#a47cff", bg: "#0b0a13", lila: [150, 100, 255], barn: [255, 172, 82], lilaL: [0.42, 0.20, 1.0], barnL: [1.0, 0.52, 0.16] };
-  const KR_HALL = 0.32;   // hur starkt de hållna tangenterna lyser när arpen spelar i KRISTALL
+  const KR_HALL = 0.32;   // hur starkt de hållna tangenterna lyser när arpen spelar i en hemlig patch
   const krBarn = (n) => { const pc = ((n % 12) + 12) % 12; return pc >= 5 && pc <= 9; };   // F–A bärnsten, resten lila
+  // de hemliga patcharna (tools/kategorier.py HEMLIGA): färger och hur tangenterna glöder i var och en
+  const HEM = D.hemliga || [];
+  const hemOf = (id) => HEM.find((h) => h.id === id);
+  const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" } };
+  const hemFarg = (n) => {
+    if (S.secret === "sjon") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [Math.round(80 + 120 * t), Math.round(150 + 85 * t), 255]; }   // djupblått nertill, månljust upptill
+    if (S.secret === "kassett") return [255, 168, 72];   // VU-mätarnas varma sken
+    return krBarn(n) ? KR.barn : KR.lila;
+  };
 
   // ---------------------------------------------------------------- sidorna
   const PAGES = [
@@ -302,7 +311,7 @@
     br._upd = () => {
       const pr = D.presets[S.preset], pl = plantOf(S.preset);
       if (S.eget) { cur.textContent = "MY SOUND"; nm.textContent = S.eget; return; }
-      if (S.kristall) { cur.textContent = "SECRET 01"; nm.textContent = D.kristall.namn + " · " + pr.name.toUpperCase(); return; }
+      if (S.secret) { const h = hemOf(S.secret); cur.textContent = "SECRET " + String(h.nr).padStart(2, "0"); nm.textContent = h.namn + " · " + pr.name.toUpperCase(); return; }
       cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase();
     };
     browserEl = br; br._upd();
@@ -452,24 +461,72 @@
 
   // ---------------------------------------------------------------- ljud och växt
   function applyTheme() {
-    const pl = plantOf(S.preset), kr = S.kristall && !!D.kristall;
+    const pl = plantOf(S.preset), tema = S.secret ? TEMA[S.secret] : null, kr = !!tema;
     const r = document.documentElement.style;
-    const col = kr ? KR.accent : pl.color, bg = kr ? KR.bg : pl.bg, rgb = hexRgb(col);
+    const col = kr ? tema.accent : pl.color, bg = kr ? tema.bg : pl.bg, rgb = hexRgb(col);
     r.setProperty("--a", col); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", bg);
-    document.documentElement.classList.toggle("kristall", kr);
+    document.documentElement.classList.toggle("hemlig", kr);
+    for (const h of HEM) document.documentElement.classList.toggle("h-" + h.id, S.secret === h.id);
     INK = kr ? "233,228,244" : "43,37,33";
     const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = bg;
     flower.set(pl, pl.color); flower.vila(kr);
-    if (kristall) kristall.visa(kr);
+    for (const id in SCEN) SCEN[id].visa(S.secret === id);
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
-    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("kr") ? S.kristall : b.dataset.i !== undefined && !S.eget && !S.kristall && +b.dataset.i === S.preset));
+    document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("hem") ? S.secret === b.dataset.hem : b.dataset.i !== undefined && !S.eget && !S.secret && +b.dataset.i === S.preset));
   }
-  function selectPreset(i) { S.eget = null; S.kristall = false; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
-  // den hemliga patchen: ett vanligt fabriksljud med glasscenen och det mörka läget; ett annat ljud lämnar den
-  function valjKristall() {
-    if (!D.kristall) return;
-    selectPreset(D.kristall.ljud); S.kristall = true; applyTheme(); buildMenu(); saveUi();
+  function selectPreset(i) { lamnaHemlig(); S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
+  // en hemlig patch: ett fabriksljud med inställningar ovanpå (MOOD, bandet ...), en egen scen och det mörka läget.
+  // De gamla värdena sparas och sätts tillbaka när man lämnar den (ett annat ljud).
+  function valjHemlig(id) {
+    const h = hemOf(id); if (!h) return;
+    if (!S.hemliga.includes(id)) S.hemliga.push(id);
+    selectPreset(h.ljud);
+    S.fore = {};
+    for (const k in h.satt) { S.fore[k] = S.v[k]; setParam(k, h.satt[k], true); }
+    S.secret = id; applyTheme(); buildMenu(); saveUi();
+  }
+  // ett anslag: en ny ton från tangenterna här (direkt) eller från en klaviatur (via mätarna). Tonföljden räknas,
+  // och utan arp får den hemliga patchens scen tonen (SJÖN: en droppe; med arp är det arpens slag som blir droppar)
+  function anslag(n) {
+    melodiTon(n);
+    const sc = S.secret && SCEN[S.secret];
+    if (S.v.arp <= 0.5 && sc && sc.anslag) sc.anslag(n, fLage(n, keyLayout()), hemFarg(n));
+  }
+  // egna: tonerna härifrån (redan räknade). De ligger kvar efter släppet tills mätarna också har släppt dem, eftersom
+  // mätarna kan visa tonen först efter att den släppts (ett kort tryck) och den då annars räknas igen som klaviaturens.
+  // uiTid: när tonen spelades härifrån; mätarna räknar den inte igen inom 2,5 s (om bildrutorna kommer glest).
+  function uiNot(n, v) { Bridge.send({ t: "note", n, v }); keys.egna.set(n, Infinity); keys.uiTid.set(n, performance.now()); anslag(n); }
+  function uiOff(n) { Bridge.send({ t: "off", n }); if (keys.egna.has(n)) keys.egna.set(n, 0); }
+  // tonföljderna som låser upp: de senaste anslagen (tonklasser, högst 3 s mellan två) jämförs med patchernas melodi
+  const MEL = { buf: [] };
+  function melodiTon(n) {
+    const t = performance.now();
+    if (MEL.buf.length && t - MEL.buf[MEL.buf.length - 1].t > 3000) MEL.buf = [];   // en paus på över 3 s börjar om
+    MEL.buf = MEL.buf.concat([{ n: ((n % 12) + 12) % 12, t }]).slice(-12);
+    for (const h of HEM) {
+      if (!h.melodi || MEL.buf.length < h.melodi.length) continue;
+      const sista = MEL.buf.slice(-h.melodi.length);
+      if (sista.every((e, i) => e.n === h.melodi[i])) {
+        MEL.buf = [];
+        if (S.secret !== h.id) { const ny = !S.hemliga.includes(h.id); valjHemlig(h.id); visaHemlig(h.id, ny); }
+        return;
+      }
+    }
+  }
+  // en kort skylt mitt upptill när en hemlig patch väljs med sin tonföljd (eller versionen): SECRET 02 · SJÖN
+  function visaHemlig(id, ny = true) {
+    const h = hemOf(id); if (!h) return;
+    let t = $("#hemskylt"); if (!t) { t = el("div", "", ""); t.id = "hemskylt"; document.body.append(t); }
+    t.innerHTML = `<span>SECRET ${String(h.nr).padStart(2, "0")}${ny ? " · UNLOCKED" : ""}</span><b>${h.namn}</b>`;
+    t.classList.remove("syns"); void t.offsetWidth; t.classList.add("syns");
+    clearTimeout(visaHemlig.tid); visaHemlig.tid = setTimeout(() => t.classList.remove("syns"), 2600);
+  }
+  function lamnaHemlig() {
+    if (!S.secret) return;
+    S.secret = null;
+    if (S.fore) for (const k in S.fore) if (S.fore[k] !== undefined) setParam(k, S.fore[k], true);
+    S.fore = null;
   }
   function onPreset(i) { S.preset = i; applyTheme(); }
   function step(d) { const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]); }
@@ -496,19 +553,24 @@
       });
       g.append(it); list.append(g);
     }
-    if (S.hemlig && D.kristall) {
+    const uppl = HEM.filter((h) => S.hemliga.includes(h.id));
+    if (uppl.length) {
       const g = el("div", "grp hemlig");
-      g.append(el("div", "gh", `<i style="background:${KR.accent}"></i>SECRET <span>· ${D.kristall.namn}</span>`));
+      g.append(el("div", "gh", `<i style="background:${TEMA[S.secret || uppl[0].id].accent}"></i>SECRET <span>· ${uppl.length}</span>`));
       const it = el("div", "items");
-      const b = el("button", "it kr" + (S.kristall ? " on" : ""), D.kristall.namn); b.onclick = () => { valjKristall(); };
-      it.append(b); g.append(it); list.append(g);
+      for (const h of uppl) {
+        const b = el("button", "it hem" + (S.secret === h.id ? " on" : ""), h.namn); b.dataset.hem = h.id;
+        b.onclick = () => { valjHemlig(h.id); };
+        it.append(b);
+      }
+      g.append(it); list.append(g);
     }
     D.plants.forEach((pl, pi) => {
       const g = el("div", "grp");
       g.append(el("div", "gh", `<i style="background:${pl.color}"></i>${pl.cat} <span>· ${pl.name}</span>`));
       const it = el("div", "items");
       D.order.filter((i) => D.presets[i].plant === pi).forEach((i) => {
-        const b = el("button", "it" + (!S.eget && !S.kristall && i === S.preset ? " on" : ""), D.presets[i].name); b.dataset.i = i;
+        const b = el("button", "it" + (!S.eget && !S.secret && i === S.preset ? " on" : ""), D.presets[i].name); b.dataset.i = i;
         b.onclick = () => { selectPreset(i); };
         it.append(b);
       });
@@ -612,7 +674,7 @@
   // ovanför: FILTER, VIBRATO, TREMOLO, PWM, WAH). Till vänster oktaven: + / C3 / −.
   const GLID = [["OFF", "OFF"], ...D.glid.targets.map((t) => [t.name, t.short])];
   S.glid = { m: 1, v: 0, sent: -1 };
-  const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map() };
+  const keys = { cv: null, down: new Map(), lit: new Set(), lvl: new Map(), egna: new Map(), uiTid: new Map() };   // egna: toner som spelas härifrån (räknade som anslag)
   const GUT = 34, GAP = 3, KZ_MIN = 0.55, KZ_MAX = 2.4;
   function keyLayout() {
     const w = keys.cv.clientWidth - GUT, h = keys.cv.clientHeight;
@@ -644,9 +706,22 @@
     // när de släpps (tidigare klingade MIDI-tonerna av redan i samma bildruta som de tändes).
     const held = keys.held = new Set(keys.lit);
     if (S.m.keys) for (let w = 0; w < 4; w++) { const k = S.m.keys[w] >>> 0; if (k) for (let b = 0; b < 32; b++) if ((k >>> b) & 1) held.add(w * 32 + b); }
-    // KRISTALL med arpen igång: ljuset följer arpen. Arpens ton lyser fullt och klingar av när nästa tar över;
+    // anslagen: nya tangenter sedan förra bildrutan (fingrarna och klaviaturen). De kan låsa upp en hemlig patch
+    // (en tonföljd), och i en hemlig patch får scenen dem (SJÖN: en droppe). Med arpen igång är det arpens slag
+    // som räknas (notantalet nc räknas upp vid varje slag, även samma ton igen).
+    // (tonerna man spelar här räknas direkt när de skickas, uiNot; här kommer klaviaturens toner via mätarna)
+    for (const [n, t] of keys.egna) if (t !== Infinity && !held.has(n)) keys.egna.delete(n);   // släppt, och mätarna har släppt den
+    for (const n of held) if ((!keys.forra || !keys.forra.has(n)) && !keys.egna.has(n) && !(performance.now() - (keys.uiTid.get(n) || -1e9) < 2500)) anslag(n);
+    keys.forra = new Set(held);
+    if (S.m.an >= 0) keys.senAn = S.m.an;
+    const dn = keys.nc === undefined ? 0 : ((S.m.nc - keys.nc) >>> 0);   // slag sedan förra bildrutan (även flera)
+    keys.nc = S.m.nc;
+    const scen = S.secret && SCEN[S.secret];
+    if (S.v.arp > 0.5 && scen && scen.anslag && keys.senAn !== undefined)
+      for (let j = 0; j < Math.min(dn, 4); j++) scen.anslag(keys.senAn, fLage(keys.senAn, L), hemFarg(keys.senAn));
+    // en hemlig patch med arpen igång: ljuset följer arpen. Arpens ton lyser fullt och klingar av när nästa tar över;
     // de hållna tangenterna lyser svagt (KR_HALL) så att man ser ackordet arpen spelar.
-    const krArp = S.kristall && S.v.arp > 0.5;
+    const krArp = !!S.secret && S.v.arp > 0.5;
     if (!krArp) for (const n of held) keys.lvl.set(n, 1);
     else for (const n of held) if (!keys.lvl.has(n)) keys.lvl.set(n, KR_HALL);
     if (S.m.an >= 0) {   // arpens ton
@@ -672,7 +747,7 @@
     g.fillStyle = `rgba(${INK},0.42)`; g.font = "400 15px 'BLONDA Mono'";
     g.fillText("+", GUT / 2 - 5, h * 0.2); g.fillText("−", GUT / 2 - 5, h * 0.8);
     g.font = "500 9px 'BLONDA Mono'"; g.fillStyle = `rgba(${INK},0.34)`; g.fillText("C" + (3 + S.oct), GUT / 2 - 5, h * 0.5);
-    if (S.kristall) tangenterKristall(g, L, h, lv, iSkala); else {
+    if (S.secret) tangenterHemlig(g, L, h, lv, iSkala); else {
     // ett sammanhängande tangentbord: en ljus bädd med mjuk skugga, vita tangenter med tunna skiljelinjer,
     // tonnamn på C, och svarta tangenter i mörk taupe med rak överkant, rundad underkant och en ljus fas nertill
     const bx = GUT, bw = L.w, bh = h - 9, br = 12;
@@ -730,10 +805,11 @@
       g.fillStyle = `rgba(${rgb},1)`; g.beginPath(); g.arc(cx, y1, 3, 0, TAU); g.fill();
     }
   }
-  // den hemliga patchens tangentbord: mörkt glas, och de spelade tangenterna glöder i tonens färg (lila / bärnsten)
-  function tangenterKristall(g, L, h, lv, iSkala) {
+  // de hemliga patcharnas tangentbord: mörkt glas, och de spelade tangenterna glöder i patchens färg
+  // (KRISTALL: lila / bärnsten per ton, SJÖN: månljus, KASSETTEN: VU-mätarnas varma sken)
+  function tangenterHemlig(g, L, h, lv, iSkala) {
     const bx = GUT, bw = L.w, bh = h - 9, br = 12;
-    const kc = (n) => (krBarn(n) ? KR.barn : KR.lila).join(",");
+    const kc = (n) => hemFarg(n).join(",");
     g.save();
     g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 22; g.shadowOffsetY = 8;
     g.fillStyle = "rgb(16,14,24)"; roundRect(g, bx, 0, bw, bh, br); g.fill();
@@ -795,10 +871,11 @@
     if (cv.width !== Math.round(W * sk) || cv.height !== Math.round(Hh * sk)) { cv.width = Math.round(W * sk); cv.height = Math.round(Hh * sk); }
     // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
     const pa = new Set();
-    const paL = S.kristall || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
+    const krL = S.secret === "kristall";
+    const paL = krL || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
     // KRISTALL med arpen igång: bara arpens ton lyser, och varje nytt slag tänder den på nytt (även samma ton
     // två gånger i rad: notantalet nc räknas upp vid varje anslag); annars lyser tonerna som hålls
-    const krArp = S.kristall && S.v.arp > 0.5;
+    const krArp = krL && S.v.arp > 0.5;
     if (krArp) {
       if (S.m.an >= 0) { pa.add(S.m.an); if (S.m.nc !== ljus.nc) ljus.v.set(S.m.an, 1); }
     } else if (paL && keys.held) for (const n of keys.held) pa.add(n);
@@ -812,19 +889,16 @@
     const r = keys.cv.getBoundingClientRect();
     const pos = (n) => { const k = L.whites.find((x) => x.n === n) || L.blacks.find((x) => x.n === n); return k ? r.left + k.x + k.w / 2 : null; };
     // glasscenen: ljuspassen blandas efter var tonerna ligger på tangentbordet och färgas per ton
-    if (kristall && S.kristall) {
+    if (SCEN.kristall && krL) {
       const lista = [];
-      // var tonen ligger på tangentbordet, även utanför det som syns (då lyser scenens kant åt det hållet)
-      const vit = (n) => Math.floor(n / 12) * 7 + [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6][n % 12];
-      const w0 = L.whites.length ? vit(L.whites[0].n) : 0, nv = Math.max(1, L.whites.length);
-      for (const [n, v] of ljus.v) lista.push({ f: Math.min(1, Math.max(0, (vit(n) - w0 + 0.5) / nv)), v, c: krBarn(n) ? KR.barnL : KR.lilaL });
+      for (const [n, v] of ljus.v) lista.push({ f: fLage(n, L), v, c: krBarn(n) ? KR.barnL : KR.lilaL });
       const sig = lista.map((l) => l.f.toFixed(3) + ":" + l.v.toFixed(3)).join();
-      if (sig !== ljus.sig) { ljus.sig = sig; kristall.ljus(lista); }
+      if (sig !== ljus.sig) { ljus.sig = sig; SCEN.kristall.ljus(lista); }
     }
     if (!ljus.v.size) { if (!ljus.tomt) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); ljus.tomt = true; } return; }   // hela duken (utan halveringen)
     ljus.tomt = false;
     g.setTransform(sk, 0, 0, sk, 0, 0); g.clearRect(0, 0, W, Hh);
-    if (S.kristall) { stralar(g, r, pos); return; }
+    if (krL) { stralar(g, r, pos); return; }
     let A = 0; for (const v of ljus.v.values()) A = Math.max(A, v);
     // skuggan över allt, jämn (en svag lutning över hela höjden ger synliga trappsteg i 8 bitar)
     g.fillStyle = `rgba(58,42,34,${0.1 * A})`; g.fillRect(0, 0, W, Hh);
@@ -858,6 +932,12 @@
     g.globalCompositeOperation = "source-over";
   }
 
+  // var en ton ligger på tangentbordet 0..1 (vänster..höger), även utanför det som syns (då vid kanten)
+  function fLage(n, L) {
+    const vit = (m) => Math.floor(m / 12) * 7 + [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6][((m % 12) + 12) % 12];
+    const w0 = L.whites.length ? vit(L.whites[0].n) : 0, nv = Math.max(1, L.whites.length);
+    return Math.min(1, Math.max(0, (vit(n) - w0 + 0.5) / nv));
+  }
   // den hemliga patchens strålar: smala, färgade ljuspelare ur de spelade tangenterna upp genom scenen, med ett
   // mjukt sken runt omkring, ett bloss där strålen lämnar tangenten och ett sken över tangenterna ("lighter" = ljus
   // som läggs till). En pelare är en radiell gradient som sträcks på höjden: den tonar ut åt sidorna och uppåt.
@@ -892,7 +972,7 @@
 
   function setOct(o) {
     o = clamp(o, -3, 3); if (o === S.oct) return;
-    for (const d of keys.down.values()) Bridge.send({ t: "off", n: d.n });
+    for (const d of keys.down.values()) uiOff(d.n);
     keys.down.clear(); keys.lit.clear(); S.oct = o; updGlid(); saveUi();
   }
   // glidets värde = det högsta av fingrarna som hålls; skickas högst en gång per bildruta
@@ -954,10 +1034,10 @@
   function keysInput() {
     const cv = keys.cv;
     const kh = () => cv.clientHeight;
-    const release = (pid) => { const d = keys.down.get(pid); if (!d) return; Bridge.send({ t: "off", n: d.n }); keys.lit.delete(d.n); keys.down.delete(pid); };
+    const release = (pid) => { const d = keys.down.get(pid); if (!d) return; uiOff(d.n); keys.lit.delete(d.n); keys.down.delete(pid); };
     const start = (pid, k, y) => {
       const v = Math.round(clamp(50 + k.y * 77, 1, 127));
-      Bridge.send({ t: "note", n: k.n, v }); keys.lit.add(k.n); padLagg(k.n);
+      uiNot(k.n, v); keys.lit.add(k.n); padLagg(k.n);
       keys.down.set(pid, { n: k.n, x: k.x, w: k.w, black: !!k.black, y0: y, y, up: 0 });
     };
     cv.addEventListener("pointerdown", (e) => {
@@ -992,11 +1072,11 @@
     const i = KB.indexOf(k); if (i < 0 || kbDown.has(k)) return;
     ensureAudio();
     const n = 60 + S.oct * 12 + i; kbDown.set(k, n); keys.lit.add(n); padLagg(n);
-    Bridge.send({ t: "note", n, v: 100 });
+    uiNot(n, 100);
   });
   window.addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase(), n = kbDown.get(k); if (n === undefined) return;
-    kbDown.delete(k); keys.lit.delete(n); Bridge.send({ t: "off", n });
+    kbDown.delete(k); keys.lit.delete(n); uiOff(n);
   });
 
 
@@ -1018,7 +1098,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemlig: S.hemlig, kristall: S.kristall,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemliga: S.hemliga, secret: S.secret, fore: S.fore,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -1034,13 +1114,19 @@
   // ---------------------------------------------------------------- start
   const flower = Blommor.create($("#fBack"), $("#fGl"), $("#fFront"), D.blommor);
   flower.preload([...new Set(D.plants.map((p) => p.photo))]);
-  const kristall = D.kristall && typeof Kristall !== "undefined" ? Kristall.create($("#stage"), D.kristall, "kristall/") : null;
+  // de hemliga patcharnas scener (skapas bara om modulen och datan finns)
+  const SCEN = {};
+  for (const h of HEM) {
+    if (h.id === "kristall" && h.scen && typeof Kristall !== "undefined") SCEN.kristall = Kristall.create($("#stage"), h.scen, "kristall/");
+    if (h.id === "sjon" && typeof Sjon !== "undefined") SCEN.sjon = Sjon.create(document.body);
+    if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/");
+  }
   // upplåsningen: tryck fem gånger på versionen uppe till höger (inom tre sekunder)
   const ver = { n: 0, t: 0 };
   $("#ver").addEventListener("pointerdown", (e) => {
     const nu = performance.now(); if (nu - ver.t > 3000) ver.n = 0;
     ver.t = nu; ver.n++;
-    if (ver.n >= 5 && D.kristall) { ver.n = 0; S.hemlig = true; valjKristall(); }
+    if (ver.n >= 5 && hemOf("kristall")) { ver.n = 0; const ny = !S.hemliga.includes("kristall"); valjHemlig("kristall"); visaHemlig("kristall", ny); }
   });
   let envSm = 0;
   $("#ver").textContent = "BRIS " + D.version;
@@ -1095,14 +1181,18 @@
     if (st.params) for (const id in st.params) setParam(id, st.params[id], false);
     if (st.ui) { try { const u = JSON.parse(st.ui); if (PAGES.some((p) => p.id === u.tab)) S.tab = u.tab; S.oct = u.oct || 0; if (u.glid >= 0 && u.glid < GLID.length) S.glid.m = u.glid; if (u.kz > 0) S.kz = clamp(u.kz, KZ_MIN, KZ_MAX); if (u.kh > 0) S.kh = u.kh;
       if (typeof u.motion === "boolean") S.motion = u.motion; S.eget = u.eget || null;
-      S.hemlig = !!u.hemlig; S.kristall = !!u.kristall && S.hemlig && !!D.kristall;
+      // (1.10 sparade hemlig/kristall för den enda hemliga patchen)
+      S.hemliga = (Array.isArray(u.hemliga) ? u.hemliga : u.hemlig ? ["kristall"] : []).filter((id) => hemOf(id));
+      S.secret = u.secret !== undefined ? u.secret : u.kristall ? "kristall" : null;
+      if (S.secret && !S.hemliga.includes(S.secret)) S.secret = null;
+      S.fore = u.fore && typeof u.fore === "object" ? u.fore : null;
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
     if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
     S.pads.active = -1; S.pads.armed = -1; S.pads.rec = false;
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
-    if (S.kristall && D.kristall && S.preset !== D.kristall.ljud) S.kristall = false;   // ljudet byttes utanför (t.ex. i Logic)
+    if (S.secret && S.preset !== hemOf(S.secret).ljud) lamnaHemlig();   // ljudet byttes utanför (t.ex. i Logic)
     S.egna = Array.isArray(st.user) ? st.user.filter((e) => e && e.name && e.values) : [];
     if (S.eget && !S.egna.some((e) => e.name === S.eget)) S.eget = null;
     setMotion(S.motion); buildMenu();
@@ -1121,10 +1211,10 @@
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };
   Bridge.on.params = (v) => { for (const id in v) setParam(id, v[id], false); if ("arp" in v) updPads(); };
-  Bridge.on.preset = (i) => { if (i !== S.preset) { if (S.kristall) { S.kristall = false; buildMenu(); } onPreset(i); } };
+  Bridge.on.preset = (i) => { if (i !== S.preset) { if (S.secret) { lamnaHemlig(); buildMenu(); } onPreset(i); } };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
-    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
+    S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.pl = m.pl ?? m.pk; S.m.pr = m.pr ?? m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
     if (m.scope) S.m.scope = m.scope;
     S.m.fr = m.fr ?? -1; S.m.fm = m.fm || 0; S.m.an = m.an ?? -1;
     if (S.pads.armed >= 0 && m.keys) for (let w = 0; w < 4; w++) for (let b = 0; b < 32; b++) if ((m.keys[w] >>> b) & 1) padLagg(w * 32 + b);
@@ -1138,7 +1228,7 @@
     envSm += (S.m.env - envSm) * 0.12;
     drawWave(now / 1000);
     drawKeys();
-    if (kristall) kristall.tick();
+    for (const id in SCEN) SCEN[id].tick(S);
     sendGlid();
     updateMods();
   }
@@ -1146,6 +1236,7 @@
   window.addEventListener("resize", () => { applyKeysHeight(); knobEls.forEach((k) => k._draw()); });
   document.fonts && document.fonts.ready.then(() => knobEls.forEach((k) => k._draw()));
   Bridge.start();
-  window.__bris = { S, setParam, selectPreset, note: (n, v) => Bridge.send({ t: "note", n, v }), off: (n) => Bridge.send({ t: "off", n }), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
-    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => kristall, valjKristall };   // för tester
+  window.__bris = { S, setParam, selectPreset, note: (n, v) => uiNot(n, v), off: (n) => uiOff(n), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
+    pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => SCEN.kristall || null, scen: (id) => SCEN[id] || null,
+    valjHemlig, valjKristall: () => valjHemlig("kristall"), melodi: () => MEL.buf.map((e) => e.n) };   // för tester
 })();

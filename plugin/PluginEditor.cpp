@@ -254,7 +254,7 @@ void BrisEditor::timerCallback() {
     if (proc.readMeters(s)) {
         auto* o = new juce::DynamicObject();
         o->setProperty("t", "m");
-        o->setProperty("env", s.m.env); o->setProperty("lfo", s.m.lfo); o->setProperty("pk", std::max(s.m.peakL, s.m.peakR));
+        o->setProperty("env", s.m.env); o->setProperty("lfo", s.m.lfo); o->setProperty("pk", std::max(s.m.peakL, s.m.peakR)); o->setProperty("pl", s.m.peakL); o->setProperty("pr", s.m.peakR);
         o->setProperty("mask", s.m.voiceMask); o->setProperty("step", s.m.step); o->setProperty("nc", (int)(s.m.noteCount % 1000000u)); o->setProperty("glid", s.m.glid);
         juce::Array<juce::var> ks; for (auto k : s.m.keys) ks.add((juce::int64)k);
         o->setProperty("keys", ks); o->setProperty("fr", s.m.followRoot); o->setProperty("fm", s.m.followMask); o->setProperty("an", s.m.arpNote);

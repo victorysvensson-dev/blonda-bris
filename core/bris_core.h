@@ -22,6 +22,7 @@
 #endif
 #include "mood/mood_ljud.h"
 #include "rum/rum_ljud.h"
+#include "sliten/sliten_ljud.h"
 #include "vibe/vibe_ljud.h"
 #include "kategorier.h"
 
@@ -44,17 +45,21 @@ struct CoreParams {
     ParamInfo info[kMaxParams]{};
     int brisIdx[kMaxParams]{};
     int moodIdx[kMaxParams]{};   // MOOD-ratt (index i effekten) för parametrarna "mo...", annars -1
+    int tapeIdx[kMaxParams]{};   // SLITEN-ratt (bandet, index i effekten) för parametrarna "ta...", annars -1
     CoreParams() {
         for (int i = 0; i < syn::kNumParams; ++i) {
             if (std::strcmp(syn::kParams[i].id, "hyll") == 0) continue;
-            info[count] = syn::kParams[i]; brisIdx[count] = i; moodIdx[count] = -1; ++count;
+            info[count] = syn::kParams[i]; brisIdx[count] = i; moodIdx[count] = -1; tapeIdx[count] = -1; ++count;
         }
         for (int i = 0; i < kNumExtra; ++i) {
             info[count] = ParamInfo{kExtra[i].id, kExtra[i].name, kExtra[i].min, kExtra[i].max, kExtra[i].def, kExtra[i].integer, false};
-            brisIdx[count] = -1; moodIdx[count] = -1;
+            brisIdx[count] = -1; moodIdx[count] = -1; tapeIdx[count] = -1;
             if (kExtra[i].id[0] == 'm' && kExtra[i].id[1] == 'o')
                 for (int j = 0; j < mood::kNumParams; ++j)
                     if (std::strcmp(mood::kParams[j].id, kExtra[i].id + 2) == 0) moodIdx[count] = j;
+            if (kExtra[i].id[0] == 't' && kExtra[i].id[1] == 'a' && kExtra[i].id[2] != '\0')
+                for (int j = 0; j < sliten::kNumParams; ++j)
+                    if (std::strcmp(sliten::kParams[j].id, kExtra[i].id + 2) == 0) tapeIdx[count] = j;
             ++count;
         }
     }
@@ -93,7 +98,7 @@ struct Meters {
 class Core {
 public:
     Core() : rum_(rum::kName, rum::kParams, rum::kNumParams), vibe_(vibe::kName, vibe::kParams, vibe::kNumParams),
-             mood_(mood::kName, mood::kParams, mood::kNumParams) {
+             mood_(mood::kName, mood::kParams, mood::kNumParams), tape_(sliten::kName, sliten::kParams, sliten::kNumParams) {
         const CoreParams& cp = coreParams();
         for (int i = 0; i < cp.count; ++i) val_[i] = cp.info[i].def;
         // effekternas fasta inställningar
@@ -109,17 +114,19 @@ public:
         iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr"); iSlm_ = cp.find("slm");
         iArp_ = cp.find("arp"); iArpM_ = cp.find("arpm"); iArpR_ = cp.find("arpr"); iArpO_ = cp.find("arpo"); iArpG_ = cp.find("arpg");
         for (int n = 0; n < 128; ++n) keyOut_[n] = -1;
+        iTape_ = cp.find("tape");
         for (int i = 0; i < cp.count; ++i) if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], val_[i]);
+        for (int i = 0; i < cp.count; ++i) if (cp.tapeIdx[i] >= 0) tape_.setParam(cp.tapeIdx[i], val_[i]);
         applyExtra();
     }
 
     void prepare(double sr) {
         sr_ = sr;
-        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr);
+        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr); tape_.prepare(sr);
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); }
+    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); }
 
     // ---------------------------------------------------------------- toner / MIDI
     // En tangent (skärmen eller MIDI) trycks/släpps. FOLLOW rättar tonen till ackordets skala; med ARP blir
@@ -250,6 +257,7 @@ public:
         val_[i] = v;
         if (cp.brisIdx[i] >= 0) synth_.setParam(cp.brisIdx[i], v);
         else if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], v);
+        else if (cp.tapeIdx[i] >= 0) tape_.setParam(cp.tapeIdx[i], v);
         else applyExtra();
         if (arpVar != arpOn()) arpToggled();
         if (glidMode_ > 0 && glidApplied_ > 0.0) applyGlid();   // parametern som glider får glidet ovanpå
@@ -313,7 +321,7 @@ public:
         pattern_.rate = pattern_.rate == 2 ? 2 : 4;
         pattern_.count = std::max(0, std::min(kMaxSeqNotes, pattern_.count));
     }
-    void setTempo(double bpm) { bpm_ = std::min(300.0, std::max(30.0, bpm)); rum_.setTempo(bpm_); vibe_.setTempo(bpm_); mood_.setTempo(bpm_); }
+    void setTempo(double bpm) { bpm_ = std::min(300.0, std::max(30.0, bpm)); rum_.setTempo(bpm_); vibe_.setTempo(bpm_); mood_.setTempo(bpm_); tape_.setTempo(bpm_); }
     double tempo() const { return bpm_; }
     void setPlaying(bool on) {
         if (on == playing_) return;
@@ -349,6 +357,7 @@ public:
         }
         if (driveOn_) vibe_.process(L, R, n);
         if (rvbOn_) rum_.process(L, R, n);
+        if (tapeOn_) tape_.process(L, R, n);   // bandet (SLITEN): av = ljudet orört
         mood_.process(L, R, n);   // alltid: mikrolooper lyssnar även när den är av (båda av = ljudet oförändrat)
 
         // mätare
@@ -521,6 +530,9 @@ private:
         if (rvb > 0.0005 && !rvbOn_) rum_.reset();
         if (drive > 0.0005 && !driveOn_) vibe_.reset();
         rvbOn_ = rvb > 0.0005; driveOn_ = drive > 0.0005;
+        const bool tape = iTape_ >= 0 && val_[iTape_] > 0.5;
+        if (tape && !tapeOn_) tape_.reset();
+        tapeOn_ = tape;
     }
 
     void advanceStep() {
@@ -549,6 +561,7 @@ private:
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
     GenEffect<mood::Dsp> mood_;
+    GenEffect<sliten::Dsp> tape_;   // bandet (BLONDA SLITEN), för den hemliga patchen KASSETTEN
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
     int glidIdx_[kNumGlid]{}, iRate_ = -1, glidMode_ = 0;
     double glidTarget_ = 0.0, glidSm_ = 0.0, glidApplied_ = 0.0;
@@ -562,7 +575,8 @@ private:
 #if BRIS_MPE
     int uiCh_[128]{}, uiUsed_[16]{}, uiNext_ = 0;   // tangenterna på skärmen: kanal per ton
 #endif
-    bool rvbOn_ = false, driveOn_ = false;
+    bool rvbOn_ = false, driveOn_ = false, tapeOn_ = false;
+    int iTape_ = -1;
     double val_[kMaxParams]{};
     // tangenter, pads, arp, FOLLOW
     int keyOut_[128]{}, keyVel_[128]{}, padVel_[128]{}, voiceRef_[128]{}, nPad_ = 0;

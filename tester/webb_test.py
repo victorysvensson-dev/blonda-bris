@@ -27,7 +27,10 @@ def krav(c, msg):
 
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
-    for namn, vp, mobil in [("dator", (1670, 940), False), ("ipad_staende", (820, 1180), True), ("ipad13_staende", (1032, 1376), True), ("ipad_liggande", (1180, 820), True), ("iphone", (393, 852), True), ("iphone_se", (375, 667), True), ("iphone_liggande", (852, 393), True), ("auv3_lag", (1024, 360), False)]:
+    VYER = [("dator", (1670, 940), False), ("ipad_staende", (820, 1180), True), ("ipad13_staende", (1032, 1376), True), ("ipad_liggande", (1180, 820), True), ("iphone", (393, 852), True), ("iphone_se", (375, 667), True), ("iphone_liggande", (852, 393), True), ("auv3_lag", (1024, 360), False)]
+    if os.environ.get("BRIS_VY"):   # felsökning: bara några storlekar, t.ex. BRIS_VY=dator
+        VYER = [v for v in VYER if v[0] in os.environ["BRIS_VY"].split(",")]
+    for namn, vp, mobil in VYER:
         ctx = b.new_context(viewport={"width": vp[0], "height": vp[1]}, device_scale_factor=2, has_touch=mobil)
         pg = ctx.new_page()
         logs = []
@@ -131,11 +134,11 @@ with sync_playwright() as p:
             p0 = pg.evaluate("__bris.S.preset")
             krav(pg.locator("#list .grp.hemlig").count() == 0, "KRISTALL syns inte i listan förrän den är upplåst")
             pg.evaluate("for (let i = 0; i < 4; i++) document.querySelector('#ver').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
-            krav(not pg.evaluate("__bris.S.hemlig"), "fyra tryck på versionen låser inte upp")
+            krav(not pg.evaluate("__bris.S.hemliga.includes('kristall')"), "fyra tryck på versionen låser inte upp")
             pg.evaluate("document.querySelector('#ver').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
             pg.wait_for_function("__bris.kristall() && __bris.kristall().klar()", timeout=15000); pg.wait_for_timeout(300)
-            kr = pg.evaluate("""({ kr: __bris.S.kristall, hem: __bris.S.hemlig, cls: document.documentElement.classList.contains('kristall'),
-                preset: __bris.S.preset, ljud: BRIS_DATA.kristall.ljud, gl: __bris.kristall().webgl,
+            kr = pg.evaluate("""({ kr: __bris.S.secret === 'kristall', hem: __bris.S.hemliga.includes('kristall'), cls: document.documentElement.classList.contains('h-kristall'),
+                preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === 'kristall').ljud, gl: __bris.kristall().webgl,
                 cv: getComputedStyle(document.querySelector('#kristall')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility,
                 bg: getComputedStyle(document.body).backgroundColor, namn: document.querySelector('.browser .nm').textContent })""")
             krav(kr["kr"] and kr["hem"] and kr["cls"] and kr["preset"] == kr["ljud"] and kr["cv"] == "block" and kr["blomma"] == "hidden" and "KRISTALL" in kr["namn"], f"fem tryck: KRISTALL väljs, mörkt läge, glasscenen i stället för blomman ({kr})")
@@ -172,13 +175,15 @@ with sync_playwright() as p:
             # med arpen igång följer ljuset arpen: en ton i taget, de hållna tangenterna lyser svagt
             pg.evaluate("__bris.setParam('arp', 1, true)")
             for n in (60, 64, 67): pg.evaluate(f"__bris.note({n}, 100)")
-            pg.wait_for_timeout(400)
+            pg.wait_for_function("[60, 64, 67].every((n) => __bris.keys.held && __bris.keys.held.has(n))", timeout=5000)   # mätarna visar ackordet
+            pg.wait_for_timeout(300)
             prov = []
             for i in range(24):
                 prov.append(pg.evaluate("({ v: Object.fromEntries([...__bris.ljus().v]), k: Object.fromEntries([...__bris.keys.lvl]) })")); pg.wait_for_timeout(90)
             starkast = [max(p_["v"], key=lambda n: p_["v"][n]) for p_ in prov if p_["v"]]
             alla = sum(1 for p_ in prov if all(p_["v"].get(str(n), 0) >= 0.9 for n in (60, 64, 67)))
             svag = min(min(p_["k"].get(str(n), 0) for n in (60, 64, 67)) for p_ in prov)
+            if svag < 0.3: print("  (tangenternas nivå:", [p_["k"] for p_ in prov if min(p_["k"].get(str(n), 0) for n in (60, 64, 67)) < 0.3][:3], ")")
             krav(len(set(starkast)) >= 2 and alla == 0 and svag >= 0.3, f"KRISTALL + ARP: ljuset följer arpen (starkast {starkast}, alla tre fullt {alla} gånger, svagast {svag:.2f})")
             pg.screenshot(path=f"{UT}/kristall_arp.png")
             pg.evaluate("__bris.setParam('arp', 0, true)"); pg.wait_for_timeout(700)
@@ -190,14 +195,78 @@ with sync_playwright() as p:
             krav(pg.locator("#list .grp.hemlig .it.on").count() == 1, "menyn: SECRET · KRISTALL överst och vald")
             pg.screenshot(path=f"{UT}/kristall_meny.png")
             pg.click("#list .grp:not(.hemlig):not(.egna) .it >> nth=0"); pg.wait_for_timeout(500)
-            ut = pg.evaluate("({ kr: __bris.S.kristall, cls: document.documentElement.classList.contains('kristall'), cv: getComputedStyle(document.querySelector('#kristall')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility, hem: __bris.S.hemlig })")
+            ut = pg.evaluate("({ kr: __bris.S.secret === 'kristall', cls: document.documentElement.classList.contains('h-kristall'), cv: getComputedStyle(document.querySelector('#kristall')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility, hem: __bris.S.hemliga.includes('kristall') })")
             krav(not ut["kr"] and not ut["cls"] and ut["cv"] == "none" and ut["blomma"] != "hidden" and ut["hem"], f"ett annat ljud lämnar KRISTALL (förblir upplåst) ({ut})")
-            pg.click("#list .grp.hemlig .it"); pg.wait_for_timeout(300)
-            krav(pg.evaluate("__bris.S.kristall"), "KRISTALL kan väljas igen i menyn")
+            pg.click("#list .grp.hemlig .it[data-hem=kristall]"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("__bris.S.secret === 'kristall'"), "KRISTALL kan väljas igen i menyn")
             pg.click("#menuClose"); pg.wait_for_timeout(200)
             pg.click(".browser .arr >> nth=1"); pg.wait_for_timeout(300)
-            krav(not pg.evaluate("__bris.S.kristall"), "pilen till nästa ljud lämnar KRISTALL")
+            krav(not pg.evaluate("__bris.S.secret === 'kristall'"), "pilen till nästa ljud lämnar KRISTALL")
             pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
+            # tonföljderna: B-A-D-A låser upp SJÖN, D-E-C-A-D-E KASSETTEN (fel följd låser inte upp)
+            def spela_foljd(toner, ms=260):
+                for n in toner:
+                    pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(ms); pg.evaluate(f"__bris.off({n})"); pg.wait_for_timeout(120)
+                pg.wait_for_timeout(500)
+            spela_foljd([59, 57, 62, 60])
+            krav(not pg.evaluate("__bris.S.hemliga.includes('sjon')") and pg.evaluate("__bris.S.secret") is None, "fel tonföljd (B-A-D-C) låser inte upp")
+            mo0 = pg.evaluate("__bris.S.v.mowet")
+            spela_foljd([71, 69, 62, 69])   # B-A-D-A i en annan oktav
+            sj = pg.evaluate("""({ s: __bris.S.secret, upp: __bris.S.hemliga.includes('sjon'), mowet: __bris.S.v.mowet, cut: __bris.S.v.cut,
+                preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === 'sjon').ljud,
+                cv: getComputedStyle(document.querySelector('#sjon')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility,
+                skylt: document.querySelector('#hemskylt') ? document.querySelector('#hemskylt').textContent : '',
+                syns: document.querySelector('#hemskylt') && document.querySelector('#hemskylt').classList.contains('syns') })""")
+            krav(sj["s"] == "sjon" and sj["upp"] and sj["mowet"] == 1 and abs(sj["cut"] - 0.5) < 1e-9 and sj["preset"] == sj["ljud"] and sj["cv"] == "block" and sj["blomma"] == "hidden",
+                 f"B-A-D-A låser upp och väljer SJÖN (ljud, MOOD-rummet, vattnet) ({sj})")
+            krav(sj["syns"] and "SJÖN" in sj["skylt"] and "SECRET 02" in sj["skylt"], f"skylten visar SECRET 02 · SJÖN ({sj['skylt']})")
+            pg.wait_for_timeout(2600)
+            m0 = pg.evaluate("__bris.scen('sjon').matt()")
+            for n in (52, 64, 76): pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(150)
+            pg.wait_for_timeout(450)
+            m1 = pg.evaluate("__bris.scen('sjon').matt()")
+            pg.screenshot(path=f"{UT}/sjon_droppar.png")
+            for n in (52, 64, 76): pg.evaluate(f"__bris.off({n})")
+            krav(m1["droppar"] >= m0["droppar"] + 3 and m1["vatten"] > m0["vatten"] * 1.03, f"SJÖN: varje ton släpper en droppe och ringarna syns ({m0} -> {m1})")
+            pg.evaluate("__bris.setParam('arp', 1, true)")
+            for n in (60, 64, 67): pg.evaluate(f"__bris.note({n}, 100)")
+            d0 = pg.evaluate("__bris.scen('sjon').matt().droppar"); pg.wait_for_timeout(1500); d1 = pg.evaluate("__bris.scen('sjon').matt().droppar")
+            pg.screenshot(path=f"{UT}/sjon_regn.png")
+            for n in (60, 64, 67): pg.evaluate(f"__bris.off({n})")
+            pg.evaluate("__bris.setParam('arp', 0, true)")
+            krav(d1 >= min(24, d0 + 3), f"SJÖN + ARP: arpens slag blir regn ({d0} -> {d1} droppar)")
+            # KASSETTEN
+            spela_foljd([62, 64, 60, 57, 62, 64])
+            ka = pg.evaluate("""({ s: __bris.S.secret, upp: __bris.S.hemliga, tape: __bris.S.v.tape, media: __bris.S.v.tamedia, mowet: __bris.S.v.mowet,
+                preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === 'kassett').ljud,
+                cv: getComputedStyle(document.querySelector('#kassett')).display, sjon: getComputedStyle(document.querySelector('#sjon')).display,
+                namn: document.querySelector('.browser .nm').textContent })""")
+            krav(ka["s"] == "kassett" and ka["tape"] == 1 and ka["media"] == 0 and ka["preset"] == ka["ljud"] and ka["cv"] == "block" and ka["sjon"] == "none" and "KASSETTEN" in ka["namn"],
+                 f"D-E-C-A-D-E låser upp och väljer KASSETTEN (bandet på, kassett) ({ka}, senaste toner {pg.evaluate('__bris.melodi()')})")
+            krav(ka["mowet"] == mo0, f"att byta från SJÖN sätter tillbaka MOOD ({mo0} / {ka['mowet']})")
+            pg.wait_for_function("__bris.scen('kassett').klar()", timeout=10000)
+            a0 = pg.evaluate("__bris.scen('kassett').matt()"); pg.wait_for_timeout(1000); a1 = pg.evaluate("__bris.scen('kassett').matt()")
+            dv, dh = a1["vinkel"][0] - a0["vinkel"][0], a1["vinkel"][1] - a0["vinkel"][1]
+            krav(dv > 0.5 and dh > dv * 1.2 and a1["s"] > a0["s"] and a1["varv"] > a0["varv"], f"KASSETTEN: spolarna snurrar, den tunna (högra) fortare, bandet flyttas ({dv:.2f} / {dh:.2f} rad)")
+            nal0 = a1["nal"]
+            for n in (48, 55, 60, 64, 67): pg.evaluate(f"__bris.note({n}, 120)")
+            pg.wait_for_timeout(900); a2 = pg.evaluate("__bris.scen('kassett').matt()")
+            pg.screenshot(path=f"{UT}/kassett_spelar.png")
+            for n in (48, 55, 60, 64, 67): pg.evaluate(f"__bris.off({n})")
+            krav(a2["nal"][0] > nal0[0] + 8 and a2["nal"][1] > nal0[1] + 8, f"KASSETTEN: VU-nålarna slår ut när man spelar ({nal0} -> {a2['nal']})")
+            pg.evaluate("__bris.setParam('mofrz', 1, true)"); pg.wait_for_timeout(1500)
+            f0 = pg.evaluate("__bris.scen('kassett').matt()"); pg.wait_for_timeout(500); f1 = pg.evaluate("__bris.scen('kassett').matt()")
+            krav(f1["fart"] < 0.05 and abs(f1["vinkel"][1] - f0["vinkel"][1]) < 0.15, f"KASSETTEN: FREEZE stoppar bandet ({f1['fart']:.3f})")
+            pg.evaluate("__bris.setParam('mofrz', 0, true)"); pg.wait_for_timeout(1500)
+            krav(pg.evaluate("__bris.scen('kassett').matt().fart") > 0.95, "KASSETTEN: bandet går igen när FREEZE släpps")
+            pg.click("#menuBtn"); pg.wait_for_timeout(300)
+            hm = pg.evaluate("[...document.querySelectorAll('#list .grp.hemlig .it')].map((b) => b.dataset.hem + (b.classList.contains('on') ? '*' : ''))")
+            krav(hm == ["kristall", "sjon", "kassett*"], f"menyn: SECRET med alla tre, KASSETTEN vald ({hm})")
+            pg.screenshot(path=f"{UT}/hemliga_meny.png")
+            pg.click("#menuClose"); pg.wait_for_timeout(200)
+            pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
+            ut = pg.evaluate("({ s: __bris.S.secret, tape: __bris.S.v.tape, mowet: __bris.S.v.mowet, cls: document.documentElement.classList.contains('hemlig'), cv: getComputedStyle(document.querySelector('#kassett')).display })")
+            krav(ut["s"] is None and ut["tape"] == 0 and ut["mowet"] == mo0 and not ut["cls"] and ut["cv"] == "none", f"ett vanligt ljud lämnar KASSETTEN och stänger av bandet ({ut})")
 
             # AUDIO / MIDI-rutan (fristående appen): egen ruta som går att stänga
             pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200)
@@ -302,11 +371,17 @@ with sync_playwright() as p:
         fri = lambda a, b: a is None or b is None or a[1] + 4 <= b[0] or b[1] + 4 <= a[0]
         krav(fri(hv["logo"], hv["tabs"]) and fri(hv["tabs"], hv["ver"]) and fri(hv["logo"], hv["ver"]), f"{namn}: loggan, flikarna och versionen överlappar inte ({hv})")
         # den hemliga patchen i varje storlek: glasscenen, strålarna och det mörka tangentbordet får plats
-        pg.evaluate("__bris.S.hemlig = true; __bris.tab('play'); __bris.valjKristall()")
+        pg.evaluate("__bris.tab('play'); __bris.valjHemlig('kristall')")
         pg.wait_for_function("__bris.kristall().klar()", timeout=15000)
         for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)")
         pg.wait_for_timeout(700); pg.screenshot(path=f"{UT}/{namn}_kristall.png")
         for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
+        for hid in ("sjon", "kassett"):
+            pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(400)
+            if hid == "kassett": pg.wait_for_function("__bris.scen('kassett').klar()", timeout=15000)
+            for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(100)
+            pg.wait_for_timeout(500); pg.screenshot(path=f"{UT}/{namn}_{hid}.png")
+            for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
         pg.evaluate("__bris.selectPreset(1)"); pg.wait_for_timeout(300)
         krav(not logs, f"{namn}: inga fel i konsolen" + ("" if not logs else ": " + " | ".join(logs[:5])))
         ctx.close()

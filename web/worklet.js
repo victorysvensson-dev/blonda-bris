@@ -52,7 +52,7 @@ class BrisProcessor extends AudioWorkletProcessor {
       const w = m[7] | 0;
       const scope = new Float32Array(this.scopeLen);
       scope.set(sc.subarray(w)); scope.set(sc.subarray(0, w), this.scopeLen - w);   // äldst först
-      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, glid: m[8], scope,
+      this.port.postMessage({ t: "m", env: m[0], lfo: m[1], pk: Math.max(m[2], m[3]), pl: m[2], pr: m[3], mask: m[4] | 0, step: m[5] | 0, nc: m[6] | 0, glid: m[8], scope,
         keys: [0, 1, 2, 3].map((k) => (m[9 + 2 * k] | 0) + (m[10 + 2 * k] | 0) * 65536), fr: m[17] | 0, fm: m[18] | 0, an: m[19] | 0 });
     }
     return true;

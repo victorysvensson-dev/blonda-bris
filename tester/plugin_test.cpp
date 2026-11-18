@@ -144,6 +144,20 @@ int main() {
         p.setParamFromUi(p.findParam("mofrz"), 0); p.setParamFromUi(p.findParam("mowet"), 0); p.uiFollow(false);
     }
 
+    // bandet (KASSETTEN): parametrarna finns i pluggen, ljudet går igenom med brus efter tonen, av = tyst igen
+    {
+        KRAV(p.findParam("tape") >= 0 && p.findParam("tamedia") >= 0 && p.findParam("tawow") >= 0, "bandets parametrar finns i pluggen");
+        p.setParamFromUi(p.findParam("tape"), 1); p.setParamFromUi(p.findParam("tamedia"), 0);
+        p.uiNote(true, 60, 110); const double med = render(p, 0.5); p.uiNote(false, 60, 0); render(p, 3);
+        KRAV(med > 0.003 && std::isfinite(med), "bandet: ljudet går igenom (rms %.4f)", med);
+        juce::MemoryBlock mb2; p.getStateInformation(mb2);
+        p.setParamFromUi(p.findParam("tape"), 0); p.setStateInformation(mb2.getData(), (int)mb2.getSize());
+        KRAV(p.paramValue(p.findParam("tape")) > 0.5, "bandet sparas med pluggens läge");
+        p.setParamFromUi(p.findParam("tape"), 0);
+        BrisProcessor::MeterSnap s5; p.readMeters(s5);
+        KRAV(s5.m.peakL >= 0 && s5.m.peakR >= 0, "nivåmätarna för vänster och höger finns");
+    }
+
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;
 }

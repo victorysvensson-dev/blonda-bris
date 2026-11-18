@@ -202,6 +202,44 @@ int main() {
         KRAV(eb > ea * 1000 && eb > 1e-3, "MOOD FREEZE håller inte reverben");
         KRAV(mw < 2.0 && std::isfinite(mw), "MOOD blir för starkt (%.2f)", mw);
     }
+    // ---------------------------------------------------------------- BANDET (SLITEN, för KASSETTEN)
+    {
+        auto& cp = coreParams();
+        const int it = cp.find("tape"), im = cp.find("tamedia"), iw = cp.find("tawow"), ib = cp.find("tabrus");
+        KRAV(it >= 0 && im >= 0 && iw >= 0 && ib >= 0 && cp.tapeIdx[im] >= 0 && cp.tapeIdx[it] < 0, "bandets parametrar finns (tape, ta...)");
+        // av: exakt som utan band, även med andra bandrattar
+        Core a, b; a.prepare(sr); b.prepare(sr);
+        b.setParam(iw, 1.0); b.setParam(ib, 1.0); b.setParam(cp.find("taage"), 1.0); b.setParam(im, 3);
+        std::vector<float> L2(B), R2(B); double md = 0;
+        a.noteOn(60, 100); b.noteOn(60, 100);
+        for (int k = 0; k < 300; ++k) {
+            if (k == 100) { a.noteOff(60); b.noteOff(60); }
+            a.process(L.data(), R.data(), B); b.process(L2.data(), R2.data(), B);
+            for (int s2 = 0; s2 < B; ++s2) md = std::max(md, (double)std::fabs(L[s2] - L2[s2]));
+        }
+        KRAV(md == 0.0, "bandet av ändrar ljudet (%.2e)", md);
+        // på (kassett): ljudet går igenom, ändras (svaj), brus finns kvar efter tonen, inget skenar
+        Core c, d; c.prepare(sr); d.prepare(sr);
+        d.setParam(it, 1); d.setParam(im, 0);
+        double ec = 0, ed = 0, diff = 0, svans = 0, topp = 0;
+        c.noteOn(60, 100); d.noteOn(60, 100);
+        for (int k = 0; k < 500; ++k) {
+            if (k == 200) { c.noteOff(60); d.noteOff(60); }
+            c.process(L.data(), R.data(), B); d.process(L2.data(), R2.data(), B);
+            for (int s2 = 0; s2 < B; ++s2) {
+                if (k > 20 && k < 200) { ec += L[s2] * L[s2]; ed += L2[s2] * L2[s2]; diff += (L[s2] - L2[s2]) * (L[s2] - L2[s2]); }
+                if (k > 450) svans += L2[s2] * L2[s2];
+                topp = std::max(topp, (double)std::fabs(L2[s2]));
+            }
+        }
+        const double db = 10 * std::log10((ed + 1e-20) / (ec + 1e-20));
+        std::printf("BAND (kassett): nivå %+.1f dB mot utan band, skillnad %.1f dB, brus efter tonen %.1f dB, topp %.2f\n",
+                    db, 10 * std::log10(diff / ec + 1e-20), 10 * std::log10(svans + 1e-20), topp);
+        KRAV(std::fabs(db) < 6.0, "bandet ändrar nivån för mycket (%+.1f dB)", db);
+        KRAV(diff > ec * 1e-3, "bandet på ändrar inte ljudet");
+        KRAV(svans > 1e-9, "inget bandbrus efter tonen");
+        KRAV(topp < 2.0 && std::isfinite(topp), "bandet skenar (%.2f)", topp);
+    }
     // ---------------------------------------------------------------- ackordpads, FOLLOW och ARP
     {
         Core c; c.prepare(sr); c.setTempo(120);

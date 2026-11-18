@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 29;
+constexpr int kNumExtra = 41;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -63,6 +63,18 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"arpr", "Arp Rate", 0.0, 5.0, 3.0, true},
     {"arpo", "Arp Octaves", 1.0, 4.0, 1.0, true},
     {"arpg", "Arp Gate", 0.05, 1.0, 0.6, false},
+    {"tape", "Tape", 0.0, 1.0, 0.0, true},
+    {"tamedia", "TAPE Media", 0.0, 8.0, 0.0, true},
+    {"taage", "TAPE Wear", 0.0, 1.0, 0.5, false},
+    {"tawow", "TAPE Wow", 0.0, 1.0, 0.35, false},
+    {"taflut", "TAPE Flutter", 0.0, 1.0, 0.3, false},
+    {"tasat", "TAPE Saturation", 0.0, 1.0, 0.4, false},
+    {"tabrus", "TAPE Noise", 0.0, 1.0, 0.3, false},
+    {"taavbr", "TAPE Dropouts", 0.0, 1.0, 0.2, false},
+    {"taton", "TAPE Tone", 0.0, 1.0, 0.5, false},
+    {"tabredd", "TAPE Width", 0.0, 1.0, 1.0, false},
+    {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
+    {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

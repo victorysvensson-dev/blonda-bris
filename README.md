@@ -21,6 +21,25 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.11.0
+
+- Två nya hemliga patchar, som låses upp genom att man spelar en tonföljd på tangenterna (i vilken oktav som helst).
+  En skylt visar SECRET 02/03 och namnet, och de ligger sedan under SECRET i ljudlistan tillsammans med KRISTALL:
+  - **SJÖN** (B-A-D-A, "bada"): en skogssjö i månsken över hela skärmen, räknad i realtid (ui/sjon.js). Varje ton
+    släpper en droppe där man spelar; ringarna sprider sig, korsar varandra och bryter månens spegling. Himlen
+    (månen, stjärnorna och granarna på andra stranden) och dess spegling räknas med samma ljusmodell. Arpen blir regn,
+    och en liten droppe faller då och då även när ingen spelar. Ljudet är Bellish med mjukare filter, längre klang,
+    droppande eko och MOOD:s rum.
+  - **KASSETTEN** (D-E-C-A-D-E, "decade"): en kassettbandspelare renderad i Blender i lager (tools/kassett.py), med
+    spolar som snurrar med bandets riktiga fart (ett fullt nav långsammare än ett tomt) medan bandet flyttas från den
+    ena spolen till den andra och vänder vid slutet, VU-mätare som följer vänster och höger kanal med VU-mätarens
+    tröghet, och ett räkneverk. FREEZE i MOOD stoppar bandet mjukt. Ljudet är vintagekeys genom bandet.
+- Bandet: BLONDA SLITEN ur blonda-motor finns nu i BRIS kärna (parametrarna tape och ta..., media 0 = kassett).
+  Av = ljudet bitexakt som förut.
+- En hemlig patch sparar inställningarna den ändrar (MOOD, bandet, rummet) och sätter tillbaka dem när man lämnar
+  den. Med arpen igång följer ljuset och tangenterna arpen i alla hemliga patchar.
+- Gränssnittet får vänster och höger nivå var för sig (pl/pr) för VU-mätarna.
+
 ## 1.10.1
 
 - KRISTALL med arpen igång: ljuset följer arpen. Varje ton arpen spelar skjuter en stråle, tänder glaset på sitt

@@ -82,7 +82,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 juce_add_binary_data(BrisUi SOURCES
-    ui/index.html ui/style.css ui/app.js ui/bridge.js ui/blommor.js ui/data.js ui/kristall.js ui/kristall/kristall.webp
+    ui/index.html ui/style.css ui/app.js ui/bridge.js ui/blommor.js ui/data.js ui/kristall.js ui/kristall/kristall.webp ui/sjon.js ui/kassett.js ui/kassett/kassett_bak.webp ui/kassett/kassett_fram.webp ui/kassett/kassett_vu.webp ui/kassett/kassett_nav.webp
     ui/fonts/blonda-mono.woff2 ui/fonts/blonda-grotesk.woff2
     ui/blommor/iris.webp ui/blommor/strelitzia.webp ui/blommor/lilja.webp ui/blommor/eukalyptus.webp ui/blommor/silke.webp
     ui/blommor/lavendel.webp ui/blommor/kanna.webp
