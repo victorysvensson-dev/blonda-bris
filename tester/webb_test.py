@@ -266,17 +266,19 @@ with sync_playwright() as p:
             krav(sf1 and not pg.evaluate("__bris.scen('sjon').lage().sf"), "SJÖN: ett stjärnfall syns en kort stund")
             # fem tryck på månen: dag (månen går ner, solen stiger); himlen blir ljus. Fem tryck på solen: natt igen.
             natt = pg.evaluate("__bris.scen('sjon').matt()")
-            mp = pg.evaluate("__bris.scen('sjon').plats()")
-            for i in range(4): pg.mouse.click(mp[0], mp[1]); pg.wait_for_timeout(150)
+            # trycken skickas som pekarhändelser där månen är (som riktiga tryck, men i en följd: i CI kan bildrutorna
+            # vara så långsamma att riktiga musklick kommer för glest)
+            tryck = lambda k, n: pg.evaluate(f"""(() => {{ const [x, y] = __bris.scen('sjon').plats(); const e = document.elementFromPoint(x, y);
+                for (let i = 0; i < {n}; i++) e.dispatchEvent(new PointerEvent('pointerdown', {{ bubbles: true, clientX: x, clientY: y }})); }})()""")
+            tryck("mane", 4)
             krav(pg.evaluate("__bris.scen('sjon').lage().mal") == 0, "SJÖN: fyra tryck på månen gör inget")
-            pg.mouse.click(mp[0], mp[1]); pg.wait_for_timeout(1500)
+            tryck("mane", 1); pg.wait_for_timeout(1500)
             l1 = pg.evaluate("__bris.scen('sjon').lage()")
             krav(l1["mal"] == 1 and 0.03 < l1["p"] < 0.4 and l1["dag"] < 0.01, f"SJÖN: fem tryck på månen: det börjar bli dag, gradvis ({l1})")
             pg.evaluate("__bris.scen('sjon').dag(true, true)"); pg.wait_for_timeout(300)
             dag = pg.evaluate("__bris.scen('sjon').matt()"); pg.screenshot(path=f"{UT}/sjon_dag.png")
             krav(dag["himmel"] > natt["himmel"] * 4 and dag["vatten"] > natt["vatten"] * 3, f"SJÖN: dag – ljus himmel och sjö ({natt} -> {dag})")
-            sp = pg.evaluate("__bris.scen('sjon').plats()")
-            for i in range(5): pg.mouse.click(sp[0], sp[1]); pg.wait_for_timeout(150)
+            tryck("sol", 5); pg.wait_for_timeout(200)
             krav(pg.evaluate("__bris.scen('sjon').lage().mal") == 0, "SJÖN: fem tryck på solen gör natt igen")
             pg.evaluate("__bris.scen('sjon').dag(false, true)")
             # KASSETTEN
