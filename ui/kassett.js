@@ -24,7 +24,7 @@ const Kassett = (() => {
     stage.append(cv);
     const g = cv.getContext("2d");
     const bild = {}; let laddade = 0, aktiv = false, tFor = 0;
-    const LAGER = ["skugga", "bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "skap", "panel", "nere", "lucka", "vu", "nav"];
+    const LAGER = ["skugga", "bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "skap", "panel", "nere", "lucka", "vu", "nav", "nav_vhs"];
     for (const k of LAGER) {
       const im = new Image(); im.onload = () => { laddade++; }; im.src = bas + meta.bilder[k]; bild[k] = im;
     }
@@ -92,7 +92,9 @@ const Kassett = (() => {
       return { rV, rH };
     }
 
-    function ritaSpole(x, cx, cy, r, nr, vinkel) {   // bandet (brunt, med svaga varv och en glans) och navet som snurrar
+    // bandet (brunt, med svaga varv och en glans) och navet som snurrar. sprite = navets bild och dess halva bredd
+    // (kassetten: navet; VHS: spolen med sitt nav och sin genomskinliga fläns över bandet)
+    function ritaSpole(x, cx, cy, r, nr, vinkel, sprite = bild.nav, sr = nr * 1.05) {
       const bg = x.createRadialGradient(cx, cy, nr * 0.9, cx, cy, r);
       bg.addColorStop(0, "rgb(52,30,17)"); bg.addColorStop(0.75, "rgb(70,42,24)"); bg.addColorStop(0.97, "rgb(92,58,34)"); bg.addColorStop(1, "rgb(40,24,14)");
       x.fillStyle = bg; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
@@ -102,7 +104,7 @@ const Kassett = (() => {
       gl.addColorStop(0, "rgba(255,230,200,0.10)"); gl.addColorStop(0.5, "rgba(255,230,200,0)"); gl.addColorStop(1, "rgba(255,230,200,0.06)");
       x.fillStyle = gl; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
       x.save(); x.translate(cx, cy); x.rotate(vinkel);
-      x.drawImage(bild.nav, -nr * 1.05, -nr * 1.05, nr * 2.1, nr * 2.1);
+      x.drawImage(sprite, -sr, -sr, sr * 2, sr * 2);
       x.restore();
     }
 
@@ -215,7 +217,7 @@ const Kassett = (() => {
         g.drawImage(bild.vhs_bak, R.x, R.y, R.w, R.h);
         const [rmin, rmax] = vs.pack, A = rmax * rmax - rmin * rmin, s = Math.max(0, Math.min(1, st.pos));
         const r2 = [Math.sqrt(rmax * rmax - s * A), Math.sqrt(rmin * rmin + s * A)];
-        r2.forEach((rr, i) => { const [cx0, cy0] = vs.spolar[i]; ritaSpole(g, X(cx0), Y(cy0), rr * sk, vs.nav_r * sk, st.vinkel[i]); });
+        r2.forEach((rr, i) => { const [cx0, cy0] = vs.spolar[i]; ritaSpole(g, X(cx0), Y(cy0), rr * sk, vs.nav_r * sk, st.vinkel[i], bild.nav_vhs, vs.sprite_r * sk); });
         g.drawImage(bild.vhs_fram, R.x, R.y, R.w, R.h);
         g.restore();
       }

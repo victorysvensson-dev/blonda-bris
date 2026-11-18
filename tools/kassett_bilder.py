@@ -15,7 +15,7 @@ ut = os.path.join(ROT, "ui", "kassett"); os.makedirs(ut, exist_ok=True)
 info = json.load(open(os.path.join(d, "kassett.json")))
 filer = {}
 LAGER = [("skugga", True, 88), ("bak", True, 90), ("kassett_bak", True, 90), ("kassett_fram", True, 92), ("vhs_bak", True, 90), ("vhs_fram", True, 92), ("inre", True, 88), ("skap", True, 92),
-         ("panel", True, 92), ("nere", True, 92), ("lucka", True, 92), ("vu", False, 90), ("nav", True, 92)]
+         ("panel", True, 92), ("nere", True, 92), ("lucka", True, 92), ("vu", False, 90), ("nav", True, 92), ("nav_vhs", True, 92)]
 for namn, alfa, kval in LAGER:
     im = Image.open(os.path.join(d, namn + ".png"))
     im = im.convert("RGBA" if alfa else "RGB")
@@ -43,7 +43,7 @@ for namn, alfa, kval in LAGER:
         a_[~mask] = 0; im = Image.fromarray(a_, "RGBA")
     FIL = {"skugga": "kassett_skugga", "skap": "kassett_skap", "bak": "kassett_fack", "kassett_bak": "kassett_bak", "kassett_fram": "kassett_fram", "vhs_bak": "kassett_vhs_bak",
            "vhs_fram": "kassett_vhs_fram", "inre": "kassett_inre", "panel": "kassett_panel", "nere": "kassett_nere", "lucka": "kassett_lucka",
-           "vu": "kassett_vu", "nav": "kassett_nav"}
+           "vu": "kassett_vu", "nav": "kassett_nav", "nav_vhs": "kassett_nav_vhs"}
     sti = os.path.join(ut, FIL[namn] + ".webp")   # unika namn (pluggen slår upp filerna på namnet)
     im.save(sti, quality=kval, method=6, alpha_quality=100, exact=True)
     filer[namn] = os.path.basename(sti)

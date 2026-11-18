@@ -177,7 +177,8 @@
    130.31,
    1308.52,
    717.19
-  ]
+  ],
+  "sprite_r": 261.65
  },
  "front": [
   132.17,
@@ -198,6 +199,7 @@
   "nere": "kassett_nere.webp",
   "lucka": "kassett_lucka.webp",
   "vu": "kassett_vu.webp",
-  "nav": "kassett_nav.webp"
+  "nav": "kassett_nav.webp",
+  "nav_vhs": "kassett_nav_vhs.webp"
  }
 }

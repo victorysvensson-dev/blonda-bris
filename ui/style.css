@@ -329,7 +329,7 @@ main { position: relative; }
 html.hemlig { --ink: #e9e4f4; --mute: #8f87a8; --faint: rgba(233, 228, 244, .07); --line: rgba(233, 228, 244, .16); color-scheme: dark; }
 html.hemlig #app { background: radial-gradient(ellipse 55% 50% at 50% 45%, rgba(120, 80, 220, .10), rgba(120, 80, 220, 0) 70%); }
 html.hemlig.h-kassett #app { background: radial-gradient(ellipse 55% 50% at 50% 40%, rgba(255, 170, 90, .11), rgba(255, 160, 70, 0) 72%); }
-html.hemlig.h-sjon #app { background: none; }
+html.hemlig.h-sjon #app { background: none; text-shadow: 0 1px 10px rgba(2, 12, 30, .55); }   /* texten syns även mot dagens himmel */
 html.hemlig #fsw .fs { background: rgba(22, 19, 34, .6); }
 html.hemlig .pad { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }
 html.hemlig #menu .shade { background: rgba(11, 10, 19, .6); }

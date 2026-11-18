@@ -14,7 +14,7 @@ Det som rör sig ritas av appen (ui/kassett.js), så scenen renderas i lager (ge
   panel         – fronten; nere = samma med alla tangenter nedtryckta
   lucka         – luckans rökglas
   vu            – bara VU-mätarnas bakgrundsljus (läggs till i appen efter nivån)
-  nav           – ett spolnav framifrån (appen snurrar det)
+  nav / nav_vhs – spolnaven framifrån (kassettens nav, VHS-spolen med fläns); appen snurrar dem
   kassett.json  – var spolarna, nålarnas fästen, räkneverket, tangenterna m.m. ligger i bilden (bildpunkter).
 Mått i Blender: 1 enhet = 50 mm (kassetten är 100,4 x 63,8 mm = 2,008 x 1,276). x åt höger, y in i bilden, z upp.
 
@@ -503,7 +503,7 @@ def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True, vhs=False, inne=F
     bpy.ops.render.render(write_still=True); print("KLAR", r.filepath, flush=True)
 
 VU_GLOD = 0.0   # VU-skalorna lyser inte i de vanliga lagren: appen lägger på ljuset (lagret vu) efter nivån
-ALLA = ["skugga", "bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "skap", "panel", "nere", "lucka", "vu", "nav"]
+ALLA = ["skugga", "bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "skap", "panel", "nere", "lucka", "vu", "nav", "nav_vhs"]
 vilka = [s.strip() for s in a.bara.split(",") if s.strip()] or ALLA
 if a.forhand:
     rendera("forhand", DECK | {BORD}, VU_GLOD * 2, True, skugga=True); vilka = []
@@ -526,25 +526,80 @@ if "lucka" in vilka: rendera("lucka", set(LUCKA_O), VU_GLOD, True)
 if "vu" in vilka:   # bara VU-ljuset: allt annat släckt, ogenomskinligt svart runt omkring (läggs till i appen)
     rendera("vu", set(PANELDEL), 0.9, False, transparent=False)
 
-# spolnavet: ett vitt nav med sex kuggar, framifrån, i en egen liten rendering (rakt framifrån, utan lutning)
-if "nav" in vilka:
+# spolnaven, framifrån i egna små renderingar (rakt framifrån, utan lutning, med ljus rakt framifrån så att inget
+# ljus snurrar med när appen vrider bilden):
+#   nav      – kassettens nav: en vit ring med sex kuggar inåt, och bandspelarens axel i mitten (genom skalets hål)
+#   nav_vhs  – VHS-spolen: vitt nav med kuggar och tre fönster, och spolens genomskinliga fläns över bandet
+NAVSPRITE = {"nav": NAV_R * 1.05, "nav_vhs": VPACK_MAX * 1.03 * 1.04}   # bildens halva bredd (enheter)
+if "nav" in vilka or "nav_vhs" in vilka:
     for o in sc.objects:
         if o.type in ("MESH", "FONT", "CURVE"): o.hide_render = True
-    nav = cyl("nav", 0, 0, NAV_R, -0.05, 0.0, VITPLAST, 128)
-    hal(nav, [cyl("navhal", 0, 0, NAV_R * 0.62, -0.2, 0.2, SVART, 96)])
-    for i in range(6):
-        v = i * math.pi / 3
-        bpy.ops.mesh.primitive_cube_add(size=1, location=(math.sin(v) * NAV_R * 0.52, -0.025, math.cos(v) * NAV_R * 0.52), rotation=(0, -v, 0))
-        o = bpy.context.object; o.scale = (0.028, 0.05, 0.09); lagg(o, VITPLAST)
-    for i in range(3):   # ekrarna syns som tre mörka spår i navets kant
-        v = i * 2 * math.pi / 3 + 0.5
-        bpy.ops.mesh.primitive_cube_add(size=1, location=(math.sin(v) * NAV_R * 0.82, -0.051, math.cos(v) * NAV_R * 0.82), rotation=(0, -v, 0))
-        o = bpy.context.object; o.scale = (0.03, 0.002, 0.06); lagg(o, SVART)
-    cam.ortho_scale = NAV_R * 2.1; r.resolution_x = r.resolution_y = 512   # skarpt även på VHS-bandets stora spolar
-    co.location = (0, -20, 0); co.rotation_euler = (math.radians(90), 0, 0)
-    r.film_transparent = True; BORD.hide_render = True; FACKLJUS.hide_render = True
-    for o in LJUS: o.hide_render = False
-    r.filepath = os.path.join(UT, "nav.png"); bpy.ops.render.render(write_still=True); print("KLAR nav", flush=True)
+    for o in LJUS: o.hide_render = True
+    BORD.hide_render = True; FACKLJUS.hide_render = True; REFLEX.hide_render = True
+    fram_ = ljus("navljus", (0.0, -6.0, 0.0), 200, (1.0, 0.96, 0.9), 9.0, (0, 0, 0))
+    for _v in range(6):   # en krans av svaga ljus runt om (ljuset är detsamma åt alla håll, så det snurrar inte med)
+        _a = _v * math.pi / 3; ljus(f"navkrans{_v}", (math.sin(_a) * 4, -3.0, math.cos(_a) * 4), 40, (1.0, 0.96, 0.9), 1.5, (0, 0, 0))
+    vg.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0
+    NAVPLAST = mat("navplast", (0.88, 0.86, 0.82), 0.0, 0.42)
+    AXEL = mat("axel", (0.06, 0.06, 0.065), 0.4, 0.35)
+    BAKOM = mat("bakom", (0.01, 0.01, 0.012), 0.0, 0.8)
+    FLANS = mat("flans", (0.85, 0.86, 0.9), 0.0, 0.05, alfa=0.12)
+    FLANSRIB = mat("flansrib", (0.9, 0.9, 0.92), 0.0, 0.2, alfa=0.35)
+
+    def tander(r0, r1, b, n, y0, y1, m, fas=0.0, off=0.0):   # n kuggar från radien r0 till r1 (bredd b), vridna off
+        ut = []
+        for i in range(n):
+            v = i * 2 * math.pi / n + off
+            rm = (r0 + r1) / 2
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(math.sin(v) * rm, (y0 + y1) / 2, math.cos(v) * rm), rotation=(0, -v, 0))
+            o = bpy.context.object; o.scale = (b, y1 - y0, r1 - r0); bpy.ops.object.transform_apply(scale=True)
+            if fas: bv = o.modifiers.new("fas", "BEVEL"); bv.width = fas; bv.segments = 2
+            ut.append(lagg(o, m))
+        return ut
+
+    def navrender(namn, delar):
+        for o in sc.objects:
+            if o.type in ("MESH", "FONT", "CURVE"): o.hide_render = o not in delar
+            if o.type in ("MESH", "FONT", "CURVE"): o.visible_camera = True
+        cam.ortho_scale = NAVSPRITE[namn] * 2; r.resolution_x = r.resolution_y = 512
+        co.location = (0, -20, 0); co.rotation_euler = (math.radians(90), 0, 0)
+        r.film_transparent = True
+        r.filepath = os.path.join(UT, namn + ".png"); bpy.ops.render.render(write_still=True); print("KLAR", namn, flush=True)
+
+    if "nav" in vilka:
+        R = NAV_R; d = []
+        ring = cyl("navring", 0, 0, R, -0.05, 0.0, NAVPLAST, 160, 0.004)
+        hal(ring, [cyl("navringhal", 0, 0, R * 0.57, -0.3, 0.3, SVART, 128)]); d.append(ring)
+        d.append(ring)
+        kant = cyl("navkant", 0, 0, R * 0.68, -0.056, -0.049, NAVPLAST, 128, 0.002)   # en upphöjd kant runt hålet
+        hal(kant, [cyl("navkanthal", 0, 0, R * 0.57, -0.3, 0.3, SVART, 128)]); d.append(kant)
+        d += tander(R * 0.38, R * 0.6, 0.032, 6, -0.048, 0.0, NAVPLAST, 0.004)
+        # bandspelarens axel: mörk, med tre kilar mellan kuggarna, och en ljus topp
+        d.append(cyl("axel", 0, 0, R * 0.3, -0.03, 0.1, AXEL, 96, 0.006))
+        d += tander(R * 0.25, R * 0.4, 0.028, 3, -0.025, 0.05, AXEL, 0.003, math.pi / 6)
+        d.append(cyl("axeltopp", 0, 0, R * 0.1, -0.035, -0.02, KROM, 48, 0.003))
+        d.append(cyl("navbakom", 0, 0, R * 0.62, 0.15, 0.2, BAKOM, 96))
+        navrender("nav", set(d))
+
+    if "nav_vhs" in vilka:
+        R = VNAV_R; RF = VPACK_MAX * 1.03; d = []
+        hub = cyl("vnav", 0, 0, R, -0.06, 0.0, NAVPLAST, 192, 0.006)
+        kl = [cyl("vnavhal", 0, 0, R * 0.42, -0.3, 0.3, SVART, 128)]
+        for i in range(6):   # sex runda hål i navet
+            v = i * 2 * math.pi / 6 + math.pi / 6
+            kl.append(cyl(f"vf{i}", math.sin(v) * R * 0.72, math.cos(v) * R * 0.72, R * 0.1, -0.3, 0.3, SVART, 64))
+        hal(hub, kl); d.append(hub)
+        d += tander(R * 0.28, R * 0.44, 0.045, 6, -0.055, 0.0, NAVPLAST, 0.005)
+        d.append(cyl("vaxel", 0, 0, R * 0.2, -0.04, 0.1, AXEL, 96, 0.008))
+        d += tander(R * 0.16, R * 0.29, 0.04, 3, -0.035, 0.05, AXEL, 0.004, math.pi / 6)
+        d.append(cyl("vaxeltopp", 0, 0, R * 0.07, -0.045, -0.03, KROM, 48, 0.004))
+        d.append(cyl("vnavbakom", 0, 0, R * 0.95, 0.15, 0.2, BAKOM, 128))
+        # flänsen: genomskinlig plast över bandet, med en ring vid navet, sex svaga ribbor och en kant ytterst
+        d.append(cyl("flans", 0, 0, RF, -0.075, -0.068, FLANS, 192))
+        fk = cyl("flanskant", 0, 0, RF, -0.078, -0.066, FLANSRIB, 192); hal(fk, [cyl("fkh", 0, 0, RF - 0.02, -0.3, 0.3, SVART, 192)]); d.append(fk)
+        fr = cyl("flansring", 0, 0, R * 1.18, -0.08, -0.068, FLANSRIB, 192); hal(fr, [cyl("frh", 0, 0, R * 1.1, -0.3, 0.3, SVART, 192)]); d.append(fr)
+        d += tander(R * 1.18, RF - 0.03, 0.012, 6, -0.078, -0.07, FLANSRIB)
+        navrender("nav_vhs", set(d))
 
 info = {
     "w": W0, "h": H0, "enhet": round(s0, 4), "tilt": TILT,
@@ -562,6 +617,7 @@ info = {
     "rattar": [dict(mitt=px(x, z, RATTY), r=round(rr * s0, 2)) for x, z, rr in RATTAR],
     "led": px(LED[0], LED[1], -0.03) + [round(0.036 * s0, 2)],
     "vhs": dict(spolar=[px(VX - VNAV_DX, VZ + VNAV_DZ, VY + 0.15), px(VX + VNAV_DX, VZ + VNAV_DZ, VY + 0.15)], nav_r=round(VNAV_R * s0, 2),
+                sprite_r=round(VPACK_MAX * 1.03 * 1.04 * s0, 2),   # VHS-spolens bild (nav + fläns): halva bredden
                 pack=[round(VPACK_MIN * s0, 2), round(VPACK_MAX * s0, 2)], ruta=ruta(VX - VW / 2, VZ + VHH / 2, VW, VHH, VY)),
     "front": ruta(-PW / 2, PH / 2, PW, PH, 0.0),   # fronten (fälls ut kring nederkanten)
 }

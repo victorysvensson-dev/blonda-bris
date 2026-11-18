@@ -21,6 +21,15 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.15.0
+
+- KASSETTEN: spolnaven ser ut som på riktiga band. Kassetten: en vit ring med sex kuggar inåt och bandspelarens
+  axel i mitten. VHS: ett vitt nav med kuggar och hål, och spolens genomskinliga fläns med ribbor över bandet
+  (nytt lager nav_vhs).
+- SJÖN: ett stjärnfall då och då (det syns även i vattnet). Fem tryck på månen gör dag: månen går ner bakom
+  skogen, himlen ljusnar i en gryning och solen stiger (ca 14 s). Fem tryck på solen gör natt igen. Långt bort
+  är ytan lugnare, så att skogen speglas som en rand.
+
 ## 1.14.1
 
 - KASSETTEN har ett nytt utseende, som en produktbild: bandspelaren står i ett skåp av valnöt på ett bord och syns

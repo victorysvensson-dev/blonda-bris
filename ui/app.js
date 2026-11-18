@@ -626,6 +626,18 @@
     Bridge.send({ t: "band", k: KA_KNAPP[namn] });
     if (SCEN.kassett) SCEN.kassett.tryck(namn);
   }
+  // SJÖN: fem tryck på månen gör dag (solen stiger), fem tryck på solen gör natt. Trycken räknas bara om de kommer
+  // tätt (högst 1,2 s mellan), och varje tryck får månen/solen att lysa till.
+  const himlaTryck = { n: 0, t: 0 };
+  document.addEventListener("pointerdown", (e) => {
+    if (S.secret !== "sjon" || !SCEN.sjon || !SCEN.sjon.traff) return;
+    const k = SCEN.sjon.traff(e.clientX, e.clientY); if (!k) { himlaTryck.n = 0; return; }
+    const t = performance.now();
+    himlaTryck.n = t - himlaTryck.t < 1200 ? himlaTryck.n + 1 : 1; himlaTryck.t = t;
+    SCEN.sjon.puls();
+    if (himlaTryck.n >= 5) { himlaTryck.n = 0; SCEN.sjon.dag(k === "mane"); }
+  }, true);
+
   function lamnaHemlig() {
     if (!S.secret) return;
     const var_ = S.secret;
