@@ -304,3 +304,17 @@ html.hemlig #menu .sheet { background: color-mix(in srgb, var(--bg) 94%, white);
 html.hemlig #start { background: rgba(11, 10, 19, .45); }
 html.hemlig #start div { background: rgba(255, 255, 255, .06); }
 html.hemlig #dev .kort { background: rgba(24, 21, 36, .92); border-color: rgba(255, 255, 255, .1); }
+
+/* ---------------------------------------------------------------- att lyssna efter en tonföljd (fem tryck på BLONDA):
+   bokstäverna lyfter och lyser upp i tur och ordning, som en våg genom ordet */
+.logo { cursor: default; }
+.logo span { display: inline-block; }
+.logo.lyssnar span { animation: lyssna 1.5s ease-in-out infinite; animation-delay: calc(var(--i) * .11s); }
+@keyframes lyssna {
+  0%, 100% { transform: translateY(0); color: var(--ink); text-shadow: none; }
+  35% { transform: translateY(-3px); color: var(--a); text-shadow: 0 0 12px var(--a2); }
+  60% { transform: translateY(0); }
+}
+html.still .logo.lyssnar span { animation: none; color: var(--a); }
+/* banden (KASSETTEN, TAPE under FX) */
+.choice.band { flex-wrap: wrap; row-gap: 10px; }

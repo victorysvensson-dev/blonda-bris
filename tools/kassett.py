@@ -148,7 +148,7 @@ FRAM.append(box("rand", KX, ey1 + 0.07, KW - 0.16, 0.05, KY - 0.005, KY - 0.003,
 FRAM.append(text("t_brand", "BLONDA", KX - KW / 2 + 0.16, ey1 + 0.155, 0.12, TEXT, GROT, KY - 0.006, "LEFT", 0.6))
 FRAM.append(text("t_bris", "BRIS", KX + 0.62, ey1 + 0.155, 0.12, TEXT, GROT, KY - 0.006, "LEFT", 0.4))
 FRAM.append(text("t_sida", "A", KX - KW / 2 + 0.2, KZ + NAV_DZ, 0.2, mat("sida", (0.85, 0.85, 0.86), 0, 0.4), GROT, KY - 0.008))
-FRAM.append(text("t_c60", "C-60", KX + 0.62, ey2 - 0.06, 0.07, TEXT, MONO, KY - 0.006, "LEFT", 0.3))
+# (bandets namn skrivs av appen till höger på den nedre etiketten, och randen färgas efter bandet)
 FRAM.append(text("t_hemlig", "SECRET 03", KX - KW / 2 + 0.16, ey2 - 0.06, 0.07, TEXT, MONO, KY - 0.006, "LEFT", 0.3))
 # trapetsen nertill (där huvudet möter bandet) och skruvarna
 FRAM.append(box("trapets", KX, KZ - KH / 2 + 0.14, 1.25, 0.24, KY - 0.03, KY, SKAL, fas=0.015))
@@ -329,6 +329,9 @@ info = {
                 ruta=px(x - VUW / 2, z + VUH / 2) + [round(VUW * s0, 2), round(VUH * s0, 2)]) for x, z in VU],
     "vu_vinkel": [round(v, 3) for v in VUINFO["vink"]],
     "raknare": px(CNT[0] - CNT[2] / 2, CNT[1] + CNT[3] / 2) + [round(CNT[2] * s0, 2), round(CNT[3] * s0, 2)],
+    "rand": px(KX - (KW - 0.16) / 2, ey1 + 0.07 + 0.025) + [round((KW - 0.16) * s0, 2), round(0.05 * s0, 2)],
+    "bandtext": px(KX + KW / 2 - 0.16, ey2 - 0.06) + [round(0.07 * s0, 2)],   # högerkant, mitt, textens storlek
+    "lucka": px(DX - DWW / 2, DZ + DHH / 2) + [round(DWW * s0, 2), round(DHH * s0, 2)],
 }
 json.dump(info, open(os.path.join(UT, "kassett.json"), "w"), indent=1)
 print("KLAR json", flush=True)

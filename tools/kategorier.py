@@ -54,21 +54,39 @@ GLID = [
 ]
 GLID_TAKT = 0.6   # lrate minst så här medan man glider (0.1 * 1000^0.6 = ca 6 Hz)
 
-# De hemliga patcharna. ljud = fabriksljudet de spelar (namn exakt som i blonda-motor). satt = inställningar som
-# läggs ovanpå ljudet (MOOD, bandet, rummet ...); appen sparar de gamla värdena och sätter tillbaka dem när man
-# lämnar patchen. melodi = tonklasserna (0 = C) som låser upp den när de spelas i följd, i vilken oktav som helst
-# (KRISTALL låses upp med fem tryck på versionen). scen = katalogen i ui/ med scenens bilder och data.
+# De hemliga patcharna. Var och en har ett eget ljud som bara finns här (inte bland fabriksljuden): ljud = namnet
+# och alla inställningar, ovanpå init-ljudet. Inställningarna utanför BRIS-motorn (MOOD, bandet, rummet ...) sätts
+# tillbaka när man lämnar patchen. melodi = tonklasserna (0 = C) som låser upp den, i vilken oktav som helst, medan
+# appen lyssnar (fem tryck på BLONDA; KRISTALL: fem tryck på versionen). scen = katalogen i ui/ med scenens data.
 HEMLIGA = [
-    dict(id="kristall", namn="KRISTALL", ljud="Vintage Saw", satt={}, melodi=None, scen="kristall"),
-    # SJÖN: ett ihåligt, mjukt anslag (Bellish, mjukare filter och längre klang), droppande eko och MOOD:s rum
-    dict(id="sjon", namn="SJÖN", ljud="Bellish", melodi=[11, 9, 2, 9], scen=None,   # B-A-D-A
-         satt={"cut": 0.5, "res": 0.35, "ad": 0.74, "ar": 0.72, "sub": 0.15, "chorus": 0.35,
-               "dmix": 0.18, "dtime": 0.55, "dfb": 0.42, "rvb": 0.3, "rsize": 0.85,
-               "mowet": 1, "mowmode": 0, "motime": 0.82, "mowmod": 0.7, "moblend": 0.38}),
-    # KASSETTEN: vintagekeys genom bandet (SLITEN, media kassett) och lite drive
-    dict(id="kassett", namn="KASSETTEN", ljud="vintagekeys", melodi=[2, 4, 0, 9, 2, 4], scen="kassett",   # D-E-C-A-D-E
-         satt={"tape": 1, "tamedia": 0, "taage": 0.55, "tawow": 0.45, "taflut": 0.35, "tasat": 0.5, "tabrus": 0.3,
-               "taavbr": 0.12, "taton": 0.42, "tabredd": 0.85, "tawet": 1, "rvb": 0.15, "rsize": 0.45, "drive": 0.08}),
+    # KRISTALL "prisma": glasigt, ljust och skimrande (smal puls, resonans, chorus), ett kort eko och ett ljust rum
+    dict(id="kristall", namn="KRISTALL", ljudnamn="prisma", melodi=None, scen="kristall",
+         satt={"vform": 1, "pw": 0.16, "lfopwm": 0.12, "lrate": 0.3, "cut": 0.68, "res": 0.38, "eg1": 0.22, "kbd": 0.9,
+               "fa": 0, "fd": 0.42, "fs": 0.3, "fr": 0.6, "aa": 0, "ad": 0.62, "asus": 0.45, "ar": 0.62, "detune": 0.2,
+               "chorus": 0.65, "dmix": 0.24, "dtime": 0.42, "dfb": 0.38, "velf": 0.4, "vela": 0.5, "vol": 0.6,
+               "rvb": 0.35, "rsize": 0.8, "mowet": 1, "mowmode": 0, "motime": 0.7, "mowmod": 0.85, "moblend": 0.3, "motone": 0.6}),
+    # SJÖN "månvatten": ett mjukt, ihåligt anslag som klingar ut länge, med långt eko (som ringarna) och ett stort rum
+    dict(id="sjon", namn="SJÖN", ljudnamn="månvatten", melodi=[11, 9, 2, 9], scen=None,   # B-A-D-A
+         satt={"vform": 1, "pw": 0.3, "lfopwm": 0.2, "lrate": 0.22, "sub": 0.1, "cut": 0.52, "res": 0.25, "eg1": 0.35, "kbd": 0.8,
+               "fa": 0, "fd": 0.5, "fs": 0.15, "fr": 0.7, "aa": 0.01, "ad": 0.78, "asus": 0.22, "ar": 0.85, "detune": 0.22,
+               "chorus": 0.7, "dmix": 0.4, "dtime": 0.62, "dfb": 0.55, "velf": 0.4, "vela": 0.5, "vol": 0.5,
+               "rvb": 0.45, "rsize": 0.95, "mowet": 1, "mowmode": 0, "motime": 0.86, "mowmod": 0.75, "moblend": 0.42, "motone": 0.35}),
+    # KASSETTEN "varm 106": ett varmt Juno 106-ljud mellan pad och keys (såg + sub, lågt filter, mycket chorus) genom bandet
+    dict(id="kassett", namn="KASSETTEN", ljudnamn="varm 106", melodi=[2, 4, 0, 9, 2, 4], scen="kassett",   # D-E-C-A-D-E
+         satt={"vform": 0, "sub": 0.4, "pw": 0.5, "cut": 0.4, "res": 0.12, "eg1": 0.3, "kbd": 0.45, "fa": 0.02, "fd": 0.55,
+               "fs": 0.45, "fr": 0.55, "aa": 0.04, "ad": 0.6, "asus": 0.82, "ar": 0.58, "detune": 0.12, "chorus": 0.9,
+               "lfoosc": 0.03, "lrate": 0.45, "dmix": 0.12, "dtime": 0.4, "dfb": 0.25, "velf": 0.3, "vela": 0.4,
+               "drive": 0.1, "rvb": 0.18, "rsize": 0.5, "tape": 1, "tawet": 1, "tabredd": 0.85}, band=0),
+]
+# Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
+# namn, etikett (står på kassetten), färg (randen), inställningar
+BAND = [
+    ("TYPE I", "NORMAL", "#e8742c", {"tamedia": 0, "taage": 0.5, "tawow": 0.4, "taflut": 0.35, "tasat": 0.55, "tabrus": 0.35, "taavbr": 0.1, "taton": 0.42}),
+    ("TYPE II", "CHROME", "#3d6fd6", {"tamedia": 0, "taage": 0.32, "tawow": 0.25, "taflut": 0.22, "tasat": 0.38, "tabrus": 0.2, "taavbr": 0.05, "taton": 0.56}),
+    ("METAL", "METAL", "#8e959e", {"tamedia": 0, "taage": 0.2, "tawow": 0.15, "taflut": 0.12, "tasat": 0.28, "tabrus": 0.12, "taavbr": 0.02, "taton": 0.64}),
+    ("WORN", "SLITEN", "#a07a48", {"tamedia": 0, "taage": 0.88, "tawow": 0.72, "taflut": 0.6, "tasat": 0.7, "tabrus": 0.55, "taavbr": 0.45, "taton": 0.3}),
+    ("MICRO", "DIKTAFON", "#c9c2b0", {"tamedia": 6, "taage": 0.55, "tawow": 0.45, "taflut": 0.5, "tasat": 0.6, "tabrus": 0.45, "taavbr": 0.2, "taton": 0.4}),
+    ("VHS", "VHS", "#d23a3a", {"tamedia": 1, "taage": 0.5, "tawow": 0.45, "taflut": 0.35, "tasat": 0.5, "tabrus": 0.35, "taavbr": 0.15, "taton": 0.45}),
 ]
 
 # Växterna. Ordningen = ordningen i ljudlistan. id används av växtritaren i ui/vaxter.js.
@@ -221,13 +239,18 @@ def main():
     for i_, h in enumerate(HEMLIGA):
         okand = [k for k in h["satt"] if k not in giltiga]
         if okand: sys.exit(f"{h['id']}: okända parametrar {okand}")
-        if h["ljud"] not in namn: sys.exit(f"{h['id']}: okänt ljud {h['ljud']}")
-        e = dict(id=h["id"], namn=h["namn"], nr=i_ + 1, ljud=namn.index(h["ljud"]), satt=h["satt"], melodi=h["melodi"])
+        e = dict(id=h["id"], namn=h["namn"], nr=i_ + 1, ljud=namn.index("init"), ljudnamn=h["ljudnamn"], satt=h["satt"],
+                 melodi=h["melodi"], band=h.get("band"))
         if h["scen"]:
             sj = os.path.join(ROT, f"ui/{h['scen']}/{h['scen']}.json")
             if not os.path.exists(sj): sys.exit(f"{h['id']}: saknar {sj}")
             e["scen"] = json.load(open(sj, encoding="utf-8"))
         data["hemliga"].append(e)
+    data["band"] = []
+    for b_ in BAND:
+        okand = [k for k in b_[3] if k not in giltiga]
+        if okand: sys.exit(f"bandet {b_[0]}: okända parametrar {okand}")
+        data["band"].append(dict(namn=b_[0], etikett=b_[1], farg=b_[2], satt=b_[3]))
     js = ("// GENERERAD av tools/kategorier.py – ändra inte för hand.\n"
           "window.BRIS_DATA = " + json.dumps(data, ensure_ascii=True, separators=(",", ":")) + ";\n")
     open(os.path.join(ROT, "ui/data.js"), "w", encoding="utf-8").write(js)

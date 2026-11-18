@@ -18,7 +18,8 @@ const Kassett = (() => {
       const im = new Image(); im.onload = () => { laddade++; skugga = null; }; im.src = bas + meta.bilder[k]; bild[k] = im;
     }
     // bandets läge
-    const st = { s: 0.18, rikt: 1, fart: 1, vinkel: [0, 0], varv: 0, nal: [{ p: 0, v: 0 }, { p: 0, v: 0 }] };
+    const st = { s: 0.18, rikt: 1, fart: 1, vinkel: [0, 0], varv: 0, nal: [{ p: 0, v: 0 }, { p: 0, v: 0 }],
+      band: null, nyttBand: null, byte: -1 };   // bandet som sitter i, och ett byte som pågår (tid sedan start)
     let skugga = null, ruta = null, dpr = 1;
 
     function mattRuta() {
@@ -41,8 +42,14 @@ const Kassett = (() => {
     };
 
     function steg(S, dt) {
-      // bandet: stannar mjukt vid FREEZE, går igen när den släpps
-      const mal = S.v && S.v.mofrz > 0.5 ? 0 : 1;
+      // bandbyte: spolarna stannar, luckan mörknar, kassetten byts, och bandet går igen
+      if (st.byte >= 0) {
+        st.byte += dt;
+        if (st.nyttBand && st.byte >= 0.55) { st.band = st.nyttBand; st.nyttBand = null; }
+        if (st.byte > 1.4) st.byte = -1;
+      }
+      // bandet: stannar mjukt vid FREEZE (och medan bandet byts), går igen när den släpps
+      const mal = (S.v && S.v.mofrz > 0.5) || (st.byte >= 0 && st.byte < 0.8) ? 0 : 1;
       st.fart += (mal - st.fart) * (1 - Math.exp(-dt / (mal ? 0.25 : 0.35)));
       const [rmin, rmax] = meta.pack, A = rmax * rmax - rmin * rmin;
       const rH = Math.sqrt(rmin * rmin + st.s * A), rV = Math.sqrt(rmax * rmax - st.s * A);
@@ -93,6 +100,21 @@ const Kassett = (() => {
         g.restore();
       });
       g.drawImage(bild.fram, R.x, R.y, R.w, R.h);
+      // bandets färg på kassettens rand och namnet på etiketten (bakom luckans rökglas, därför lite dämpat)
+      if (st.band && meta.rand) {
+        const [ax, ay, aw, ah] = meta.rand;
+        g.save(); g.globalCompositeOperation = "color"; g.fillStyle = st.band.farg; g.fillRect(R.x + ax * sk, R.y + ay * sk, aw * sk, ah * sk); g.restore();
+        const [tx, ty, ts] = meta.bandtext;
+        g.save(); g.globalAlpha = 0.78; g.fillStyle = "rgb(24,20,16)"; g.textAlign = "right"; g.textBaseline = "middle";
+        g.font = `400 ${Math.max(6, ts * sk * 1.05)}px 'BLONDA Mono', monospace`;
+        g.fillText([...st.band.etikett].join("\u2009"), R.x + tx * sk, R.y + ty * sk);
+        g.restore();
+      }
+      // bandbytet: luckan mörknar medan kassetten byts
+      if (st.byte >= 0 && meta.lucka) {
+        const a = 0.7 * Math.sin(Math.min(1, st.byte / 1.1) * Math.PI), [lx, ly, lw, lh] = meta.lucka;
+        g.fillStyle = `rgba(6,5,4,${a})`; g.fillRect(R.x + lx * sk, R.y + ly * sk, lw * sk, lh * sk);
+      }
       // VU-ljuset (bakgrundsbelysningen) och nålarna
       g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.5 + 0.2 * Math.min(1, ((S.m && S.m.pk) || 0) / REF);
       g.drawImage(bild.vu, R.x, R.y, R.w, R.h);
@@ -130,8 +152,17 @@ const Kassett = (() => {
       visa(pa) { aktiv = !!pa; cv.style.display = aktiv ? "block" : "none"; tFor = 0; },
       tick(S) { if (aktiv) rita(S); },
       klar() { return laddade >= 4; },
+      // byta band: med en kort växling (spolarna stannar, luckan mörknar), eller direkt (när patchen väljs)
+      band(b, direkt) { if (!b) return; if (direkt || !aktiv || !st.band) { st.band = b; st.nyttBand = null; st.byte = -1; } else { st.nyttBand = b; st.byte = 0; } },
       // tester: spolarnas vinklar, bandets läge, nålarnas vinklar och räkneverket
-      matt() { return { vinkel: st.vinkel.slice(), s: st.s, fart: st.fart, nal: st.nal.map((n) => n.p), varv: st.varv }; },
+      matt() { return { vinkel: st.vinkel.slice(), s: st.s, fart: st.fart, nal: st.nal.map((n) => n.p), varv: st.varv, band: st.band ? st.band.namn : null, byte: st.byte }; },
+      // träffar en punkt (skärmens koordinater) kassetten i luckan? (tryck på kassetten = nästa band)
+      traff(x, y) {
+        if (!ruta || !meta.kassett) return false;
+        const c = cv.getBoundingClientRect(), [kx, ky, kw, kh] = meta.kassett, sk = ruta.sk;
+        const X = c.left + ruta.x + kx * sk, Y = c.top + ruta.y + ky * sk;
+        return x >= X && x <= X + kw * sk && y >= Y && y <= Y + kh * sk;
+      },
     };
   }
   return { create };

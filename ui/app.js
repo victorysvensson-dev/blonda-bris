@@ -19,7 +19,7 @@
     egna: [], eget: null,
     hid: false,               // MOOD: de dolda rattarna (som pedalens hidden options)
     ljus: false,              // det varma ljuset ur tangenterna i det vanliga läget (av sedan 1.10; koden finns kvar)
-    hemliga: [], secret: null, fore: null,   // hemliga patchar: upplåsta (id), vald (id eller null), värdena innan den valdes
+    hemliga: [], secret: null, fore: null, band: null, fxTape: false,   // hemliga patchar: upplåsta (id), vald (id eller null), värdena innan den valdes
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
@@ -52,7 +52,10 @@
     { id: "mod", name: "MOD", wave: "lfo", kt: "LFO", knobs: [["lrate", "RATE"], ["lfoosc", "VIB"], ["lfopwm", "PWM"], ["lfocut", "FILT"]],
       rt: "SHAPE", right: [["c", "lwave", ["TRI", "UP", "DOWN", "SQR", "RND"]], ["s", "mwosc", "WHEEL VIB"], ["s", "mwcut", "WHEEL CUT"]] },
     { id: "fx", name: "FX", wave: "scope", kt: "CHORUS · DELAY", knobs: [["chorus", "CHORUS"], ["dtime", "TIME"], ["dfb", "FDBK"], ["dmix", "MIX"]],
-      rt: "SPACE", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SIZE"], ["s", "drive", "DRIVE"]] },
+      rt: "SPACE", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SIZE"], ["s", "drive", "DRIVE"]],
+      // TAPE: bandet ur KASSETTEN, när den är hittad (knappen TAPE vid SPACE byter vy)
+      tape: { kt: "TAPE", pre: [["t", [["tape", "TAPE"]]], ["b"]], knobs: [["taage", "WEAR"], ["tawow", "WOW"], ["taflut", "FLUTTER"], ["tabrus", "NOISE"]],
+        rt: "TAPE", right: [["s", "tasat", "SATURATION"], ["s", "taavbr", "DROPOUTS"], ["s", "taton", "TONE"], ["s", "tawet", "MIX"]] } },
     // MOOD: WET-kanalen till vänster, mikrolooperns till höger, fotknapparna (WET FREEZE · LOOP DUB) över blomman.
     // HIDDEN visar de dolda rattarna, som när man håller båda fotknapparna på pedalen.
     { id: "mood", name: "MOOD", fsw: true, kt: "WET", pre: [["c", "mowmode", ["REVERB", "DELAY", "SLIP"]]],
@@ -198,7 +201,16 @@
     });
     return c;
   }
-  const item = (c) => c[0] === "s" ? slider(c[1], c[2]) : c[0] === "t" ? toggles(c[1]) : choice(c[1], c[2]);
+  // banden (KASSETTEN och TAPE under FX): ett val som ställer in flera av bandets rattar på en gång
+  const bandEls = [];
+  function bandVal() {
+    const c = el("div", "choice band");
+    const bs = (D.band || []).map((b, i) => { const k = el("button", "opt", `<i></i>${b.namn}`); k.onclick = () => valjBand(i); c.append(k); return k; });
+    const upd = () => bs.forEach((k, i) => k.classList.toggle("on", i === S.band));
+    upd(); bandEls.push(upd);
+    return c;
+  }
+  const item = (c) => c[0] === "s" ? slider(c[1], c[2]) : c[0] === "t" ? toggles(c[1]) : c[0] === "b" ? bandVal() : choice(c[1], c[2]);
 
 
   // ---------------------------------------------------------------- vågen (vänster panel)
@@ -311,14 +323,19 @@
     br._upd = () => {
       const pr = D.presets[S.preset], pl = plantOf(S.preset);
       if (S.eget) { cur.textContent = "MY SOUND"; nm.textContent = S.eget; return; }
-      if (S.secret) { const h = hemOf(S.secret); cur.textContent = "SECRET " + String(h.nr).padStart(2, "0"); nm.textContent = h.namn + " · " + pr.name.toUpperCase(); return; }
+      if (S.secret) { const h = hemOf(S.secret); cur.textContent = "SECRET " + String(h.nr).padStart(2, "0"); nm.textContent = h.namn + " · " + h.ljudnamn.toUpperCase(); return; }
       cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase();
     };
     browserEl = br; br._upd();
     L.append(br);
     waveCv = null;
     if (pg.wave) { const ww = el("div", "wave-wrap"); waveCv = el("canvas", "wave"); ww.append(waveCv); L.append(ww); waveType = pg.wave; }
-    const vy = pg.hid && S.hid ? { ...pg, ...pg.hid, pre: pg.hid.pre || [] } : pg;   // MOOD: dolda rattar
+    bandEls.length = 0;
+    const tapeOk = S.hemliga.includes("kassett");
+    let vy = pg.hid && S.hid ? { ...pg, ...pg.hid, pre: pg.hid.pre || [] } : pg;   // MOOD: dolda rattar
+    if (pg.tape && tapeOk && S.fxTape) vy = { ...pg, ...pg.tape };                 // FX: bandet
+    if (pg.id === "play" && S.secret === "kassett")                                 // KASSETTEN: bandet till höger
+      vy = { ...pg, rt: "TAPE", right: [["b"], ["s", "taage", "WEAR"], ["s", "tawow", "WOW"], ["s", "tabrus", "NOISE"]] };
     if (vy.knobs || vy.pre) {
       const kb = el("div", "kbox"); kb.append(el("div", "ttl", vy.kt));
       if (vy.pre && vy.pre.length) { const pr = el("div", "pre"); vy.pre.forEach((c) => pr.append(item(c))); kb.append(pr); }
@@ -334,6 +351,11 @@
       const hb = el("button", "hidb" + (S.hid ? " on" : ""), S.hid ? "BACK" : "HIDDEN");
       hb.onclick = () => { S.hid = !S.hid; buildPanels(); };
       rt.append(hb);
+    }
+    if (pg.tape && tapeOk) {
+      const tb = el("button", "hidb" + (S.fxTape ? " on" : ""), S.fxTape ? "BACK" : "TAPE");
+      tb.onclick = () => { S.fxTape = !S.fxTape; buildPanels(); saveUi(); };
+      rt.append(tb);
     }
     box.append(rt);
     const sl = el("div", "sliders");
@@ -483,8 +505,11 @@
     if (!S.hemliga.includes(id)) S.hemliga.push(id);
     selectPreset(h.ljud);
     S.fore = {};
-    for (const k in h.satt) { S.fore[k] = S.v[k]; setParam(k, h.satt[k], true); }
-    S.secret = id; applyTheme(); buildMenu(); saveUi();
+    const harBand = h.band !== null && h.band !== undefined && D.band, bi = harBand ? (S.band ?? h.band) : null;
+    const satt = { ...h.satt, ...(harBand ? D.band[bi].satt : {}) };
+    for (const k in satt) { S.fore[k] = S.v[k]; setParam(k, satt[k], true); }
+    if (harBand) { S.band = bi; if (SCEN[id] && SCEN[id].band) SCEN[id].band(D.band[bi], true); }
+    S.secret = id; applyTheme(); buildMenu(); buildPanels(); saveUi();
   }
   // ett anslag: en ny ton från tangenterna här (direkt) eller från en klaviatur (via mätarna). Tonföljden räknas,
   // och utan arp får den hemliga patchens scen tonen (SJÖN: en droppe; med arp är det arpens slag som blir droppar)
@@ -499,16 +524,31 @@
   function uiNot(n, v) { Bridge.send({ t: "note", n, v }); keys.egna.set(n, Infinity); keys.uiTid.set(n, performance.now()); anslag(n); }
   function uiOff(n) { Bridge.send({ t: "off", n }); if (keys.egna.has(n)) keys.egna.set(n, 0); }
   // tonföljderna som låser upp: de senaste anslagen (tonklasser, högst 3 s mellan två) jämförs med patchernas melodi
-  const MEL = { buf: [] };
+  // Appen lyssnar bara efter tonföljderna en kort stund efter fem tryck på BLONDA (så att man inte råkar hitta en
+  // hemlig patch); under tiden rör sig bokstäverna i BLONDA. Varje ton håller lyssnandet öppet minst 2,5 s till.
+  const MEL = { buf: [], till: 0, tryck: 0, tt: 0, tid: 0 };
+  const LYSSNA_MS = 5000;
+  function lyssna(pa) {
+    const logo = $("header .logo");
+    clearTimeout(MEL.tid);
+    if (pa) {
+      MEL.till = performance.now() + LYSSNA_MS; MEL.buf = [];
+      logo && logo.classList.add("lyssnar");
+      const koll = () => { const kvar = MEL.till - performance.now(); if (kvar <= 0) lyssna(false); else MEL.tid = setTimeout(koll, Math.min(kvar, 250)); };
+      koll();
+    } else { MEL.till = 0; logo && logo.classList.remove("lyssnar"); }
+  }
   function melodiTon(n) {
     const t = performance.now();
+    if (t >= MEL.till) return;                       // lyssnar inte
+    MEL.till = Math.max(MEL.till, t + 2500);
     if (MEL.buf.length && t - MEL.buf[MEL.buf.length - 1].t > 3000) MEL.buf = [];   // en paus på över 3 s börjar om
     MEL.buf = MEL.buf.concat([{ n: ((n % 12) + 12) % 12, t }]).slice(-12);
     for (const h of HEM) {
       if (!h.melodi || MEL.buf.length < h.melodi.length) continue;
       const sista = MEL.buf.slice(-h.melodi.length);
       if (sista.every((e, i) => e.n === h.melodi[i])) {
-        MEL.buf = [];
+        MEL.buf = []; lyssna(false);
         if (S.secret !== h.id) { const ny = !S.hemliga.includes(h.id); valjHemlig(h.id); visaHemlig(h.id, ny); }
         return;
       }
@@ -522,9 +562,20 @@
     t.classList.remove("syns"); void t.offsetWidth; t.classList.add("syns");
     clearTimeout(visaHemlig.tid); visaHemlig.tid = setTimeout(() => t.classList.remove("syns"), 2600);
   }
+  // byta band: bandets rattar ställs in efter bandet (KASSETTEN visar det på kassetten och spolarna stannar en stund)
+  function valjBand(i) {
+    const b = D.band && D.band[i]; if (!b) return;
+    for (const k in b.satt) { gesture(k, true); setParam(k, b.satt[k], true); gesture(k, false); }
+    S.band = i;
+    bandEls.forEach((f) => f());
+    if (SCEN.kassett) SCEN.kassett.band(b);
+    saveUi();
+  }
   function lamnaHemlig() {
     if (!S.secret) return;
+    const var_ = S.secret;
     S.secret = null;
+    if (var_ === "kassett") setTimeout(buildPanels, 0);
     if (S.fore) for (const k in S.fore) if (S.fore[k] !== undefined) setParam(k, S.fore[k], true);
     S.fore = null;
   }
@@ -1098,7 +1149,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemliga: S.hemliga, secret: S.secret, fore: S.fore,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemliga: S.hemliga, secret: S.secret, fore: S.fore, band: S.band, fxTape: S.fxTape,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -1121,7 +1172,21 @@
     if (h.id === "sjon" && typeof Sjon !== "undefined") SCEN.sjon = Sjon.create(document.body);
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/");
   }
-  // upplåsningen: tryck fem gånger på versionen uppe till höger (inom tre sekunder)
+  // BLONDA: bokstäverna var för sig (de rör sig när appen lyssnar), fem tryck inom tre sekunder börjar lyssna
+  { const logo = $("header .logo");
+    if (logo) {
+      logo.innerHTML = [...logo.textContent.trim()].map((c, i) => `<span style="--i:${i}">${c}</span>`).join("");
+      logo.addEventListener("pointerdown", () => {
+        const nu = performance.now(); if (nu - MEL.tt > 3000) MEL.tryck = 0;
+        MEL.tt = nu; if (++MEL.tryck >= 5) { MEL.tryck = 0; lyssna(true); }
+      });
+    } }
+  // KASSETTEN: tryck på kassetten i luckan = byt till nästa band
+  $("#stage").addEventListener("pointerdown", (e) => {
+    if (S.secret === "kassett" && SCEN.kassett && SCEN.kassett.traff(e.clientX, e.clientY) && D.band)
+      valjBand(((S.band ?? 0) + 1) % D.band.length);
+  });
+  // KRISTALL: tryck fem gånger på versionen uppe till höger (inom tre sekunder)
   const ver = { n: 0, t: 0 };
   $("#ver").addEventListener("pointerdown", (e) => {
     const nu = performance.now(); if (nu - ver.t > 3000) ver.n = 0;
@@ -1186,6 +1251,7 @@
       S.secret = u.secret !== undefined ? u.secret : u.kristall ? "kristall" : null;
       if (S.secret && !S.hemliga.includes(S.secret)) S.secret = null;
       S.fore = u.fore && typeof u.fore === "object" ? u.fore : null;
+      S.band = Number.isInteger(u.band) && D.band && D.band[u.band] ? u.band : null; S.fxTape = !!u.fxTape;
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
     if (typeof st.follow === "boolean") S.pads.follow = st.follow;   // pluggens sparade FOLLOW gäller
@@ -1238,5 +1304,6 @@
   Bridge.start();
   window.__bris = { S, setParam, selectPreset, note: (n, v) => uiNot(n, v), off: (n) => uiOff(n), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
     pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => SCEN.kristall || null, scen: (id) => SCEN[id] || null,
-    valjHemlig, valjKristall: () => valjHemlig("kristall"), melodi: () => MEL.buf.map((e) => e.n) };   // för tester
+    valjHemlig, valjKristall: () => valjHemlig("kristall"), melodi: () => MEL.buf.map((e) => e.n),
+    lyssnar: () => performance.now() < MEL.till, valjBand };   // för tester
 })();

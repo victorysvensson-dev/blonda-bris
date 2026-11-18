@@ -21,6 +21,22 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.12.0
+
+- De hemliga patcharna har egna ljud som bara finns i dem (inte bland fabriksljuden, inställningarna ligger i
+  tools/kategorier.py): KRISTALL "prisma" (glasigt och skimrande), SJÖN "månvatten" (mjukt, ihåligt anslag med långt
+  eko och stort rum, som ringarna på vattnet) och KASSETTEN "varm 106" (ett varmt Juno 106-ljud mellan pad och keys,
+  såg och sub, lågt filter och mycket chorus) genom bandet.
+- KASSETTEN: sex band att byta mellan, TYPE I, TYPE II (krom), METAL, WORN (slitet), MICRO (diktafon) och VHS. Byt
+  till höger under TAPE eller genom att trycka på kassetten. Spolarna stannar, luckan mörknar och kassetten får
+  bandets färg och namn. Till höger finns också WEAR, WOW och NOISE.
+- När KASSETTEN är hittad finns bandet även under FX (knappen TAPE vid SPACE): av/på, banden, WEAR, WOW, FLUTTER,
+  NOISE, SATURATION, DROPOUTS, TONE och MIX, i alla ljud.
+- Tonföljderna gäller bara när appen lyssnar: tryck fem gånger på BLONDA, så lyssnar den i ungefär fem sekunder
+  (varje ton håller den öppen lite till) medan bokstäverna i BLONDA lyfter och lyser upp i en våg. Då kan man inte
+  råka hitta en hemlig patch genom att bara spela.
+- tester/lyssna.cpp spelar en fras genom hela kärnan och skriver en wav (för att lyssna på och mäta ett ljud).
+
 ## 1.11.0
 
 - Två nya hemliga patchar, som låses upp genom att man spelar en tonföljd på tangenterna (i vilken oktav som helst).

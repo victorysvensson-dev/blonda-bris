@@ -208,18 +208,38 @@ with sync_playwright() as p:
                 for n in toner:
                     pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(ms); pg.evaluate(f"__bris.off({n})"); pg.wait_for_timeout(120)
                 pg.wait_for_timeout(500)
+            # appen lyssnar bara efter fem tryck på BLONDA, och bara en kort stund
+            def lyssna():
+                pg.evaluate("for (let i = 0; i < 5; i++) document.querySelector('header .logo').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+            krav(pg.evaluate("document.querySelectorAll('header .logo span').length") == 6, "BLONDA: bokstäverna var för sig")
+            pg.click("[data-tab=fx]"); pg.wait_for_timeout(300)
+            krav(pg.locator(".rbox .hidb:has-text('TAPE')").count() == 0, "FX: ingen TAPE innan KASSETTEN är hittad")
+            pg.click("[data-tab=play]"); pg.wait_for_timeout(200)
+            spela_foljd([71, 69, 62, 69])
+            krav(not pg.evaluate("__bris.S.hemliga.includes('sjon')") and pg.evaluate("__bris.S.secret") is None, "B-A-D-A utan att appen lyssnar låser inte upp")
+            pg.evaluate("for (let i = 0; i < 4; i++) document.querySelector('header .logo').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+            krav(not pg.evaluate("__bris.lyssnar()"), "fyra tryck på BLONDA: lyssnar inte")
+            pg.wait_for_timeout(3200)
+            lyssna()
+            ly = pg.evaluate("({ l: __bris.lyssnar(), c: document.querySelector('header .logo').classList.contains('lyssnar'), a: getComputedStyle(document.querySelector('header .logo span')).animationName })")
+            krav(ly["l"] and ly["c"] and ly["a"] == "lyssna", f"fem tryck på BLONDA: appen lyssnar och bokstäverna rör sig ({ly})")
+            pg.screenshot(path=f"{UT}/lyssnar.png", clip={"x": 0, "y": 0, "width": 400, "height": 90})
+            pg.wait_for_timeout(5600)
+            krav(not pg.evaluate("__bris.lyssnar()") and not pg.evaluate("document.querySelector('header .logo').classList.contains('lyssnar')"), "lyssnandet slutar efter ca 5 s")
+            lyssna()
             spela_foljd([59, 57, 62, 60])
             krav(not pg.evaluate("__bris.S.hemliga.includes('sjon')") and pg.evaluate("__bris.S.secret") is None, "fel tonföljd (B-A-D-C) låser inte upp")
             mo0 = pg.evaluate("__bris.S.v.mowet")
-            spela_foljd([71, 69, 62, 69])   # B-A-D-A i en annan oktav
+            spela_foljd([71, 69, 62, 69])   # B-A-D-A i en annan oktav (lyssnandet hölls öppet av tonerna)
             sj = pg.evaluate("""({ s: __bris.S.secret, upp: __bris.S.hemliga.includes('sjon'), mowet: __bris.S.v.mowet, cut: __bris.S.v.cut,
                 preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === 'sjon').ljud,
                 cv: getComputedStyle(document.querySelector('#sjon')).display, blomma: getComputedStyle(document.querySelector('#fGl')).visibility,
                 skylt: document.querySelector('#hemskylt') ? document.querySelector('#hemskylt').textContent : '',
                 syns: document.querySelector('#hemskylt') && document.querySelector('#hemskylt').classList.contains('syns') })""")
-            krav(sj["s"] == "sjon" and sj["upp"] and sj["mowet"] == 1 and abs(sj["cut"] - 0.5) < 1e-9 and sj["preset"] == sj["ljud"] and sj["cv"] == "block" and sj["blomma"] == "hidden",
+            krav(sj["s"] == "sjon" and sj["upp"] and sj["mowet"] == 1 and abs(sj["cut"] - 0.52) < 1e-9 and sj["preset"] == sj["ljud"] and sj["cv"] == "block" and sj["blomma"] == "hidden",
                  f"B-A-D-A låser upp och väljer SJÖN (ljud, MOOD-rummet, vattnet) ({sj})")
             krav(sj["syns"] and "SJÖN" in sj["skylt"] and "SECRET 02" in sj["skylt"], f"skylten visar SECRET 02 · SJÖN ({sj['skylt']})")
+            krav("SJÖN · MÅNVATTEN" in pg.evaluate("document.querySelector('.browser .nm').textContent") and not pg.evaluate("__bris.lyssnar()"), "SJÖN spelar sitt eget ljud (MÅNVATTEN), och lyssnandet slutar")
             pg.wait_for_timeout(2600)
             m0 = pg.evaluate("__bris.scen('sjon').matt()")
             for n in (52, 64, 76): pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(150)
@@ -236,12 +256,12 @@ with sync_playwright() as p:
             pg.evaluate("__bris.setParam('arp', 0, true)")
             krav(d1 >= min(24, d0 + 3), f"SJÖN + ARP: arpens slag blir regn ({d0} -> {d1} droppar)")
             # KASSETTEN
-            spela_foljd([62, 64, 60, 57, 62, 64])
+            lyssna(); spela_foljd([62, 64, 60, 57, 62, 64])
             ka = pg.evaluate("""({ s: __bris.S.secret, upp: __bris.S.hemliga, tape: __bris.S.v.tape, media: __bris.S.v.tamedia, mowet: __bris.S.v.mowet,
                 preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === 'kassett').ljud,
                 cv: getComputedStyle(document.querySelector('#kassett')).display, sjon: getComputedStyle(document.querySelector('#sjon')).display,
                 namn: document.querySelector('.browser .nm').textContent })""")
-            krav(ka["s"] == "kassett" and ka["tape"] == 1 and ka["media"] == 0 and ka["preset"] == ka["ljud"] and ka["cv"] == "block" and ka["sjon"] == "none" and "KASSETTEN" in ka["namn"],
+            krav(ka["s"] == "kassett" and ka["tape"] == 1 and ka["media"] == 0 and ka["preset"] == ka["ljud"] and ka["cv"] == "block" and ka["sjon"] == "none" and "KASSETTEN · VARM 106" in ka["namn"],
                  f"D-E-C-A-D-E låser upp och väljer KASSETTEN (bandet på, kassett) ({ka}, senaste toner {pg.evaluate('__bris.melodi()')})")
             krav(ka["mowet"] == mo0, f"att byta från SJÖN sätter tillbaka MOOD ({mo0} / {ka['mowet']})")
             pg.wait_for_function("__bris.scen('kassett').klar()", timeout=10000)
@@ -259,6 +279,29 @@ with sync_playwright() as p:
             krav(f1["fart"] < 0.05 and abs(f1["vinkel"][1] - f0["vinkel"][1]) < 0.15, f"KASSETTEN: FREEZE stoppar bandet ({f1['fart']:.3f})")
             pg.evaluate("__bris.setParam('mofrz', 0, true)"); pg.wait_for_timeout(1500)
             krav(pg.evaluate("__bris.scen('kassett').matt().fart") > 0.95, "KASSETTEN: bandet går igen när FREEZE släpps")
+            # banden: TAPE till höger på PLAY med banden och WEAR, WOW, NOISE; byta band ställer in bandet
+            pt = pg.evaluate("({ rt: document.querySelector('.rbox .ttl').textContent, band: [...document.querySelectorAll('.rbox .choice.band .opt')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')), sl: [...document.querySelectorAll('.rbox .sliders .lab, .rbox .sliders label, .rbox .sliders .nm')].map((e) => e.textContent) })")
+            krav(pt["rt"].startswith("TAPE") and pt["band"][0] == "TYPE I*" and len(pt["band"]) == 6, f"KASSETTEN: TAPE med banden till höger ({pt})")
+            pg.click(".rbox .choice.band .opt:has-text('METAL')"); pg.wait_for_timeout(300)
+            bm = pg.evaluate("({ band: __bris.S.band, wow: __bris.S.v.tawow, brus: __bris.S.v.tabrus, scen: __bris.scen('kassett').matt() })")
+            krav(bm["band"] == 2 and abs(bm["wow"] - 0.15) < 1e-9 and abs(bm["brus"] - 0.12) < 1e-9 and bm["scen"]["byte"] >= 0, f"byta band (METAL): bandet ställs in och kassetten byts ({bm})")
+            pg.wait_for_timeout(1800)
+            krav(pg.evaluate("__bris.scen('kassett').matt().band") == "METAL", "kassetten visar det nya bandet")
+            pg.screenshot(path=f"{UT}/kassett_metal.png")
+            kr_ = pg.evaluate("(() => { const c = document.querySelector('#kassett').getBoundingClientRect(); return [c.left, c.top, c.width, c.height]; })()")
+            # tryck mitt på kassetten (luckan till vänster i bandspelaren) = nästa band
+            m = pg.evaluate("BRIS_DATA.hemliga.find((h) => h.id === 'kassett').scen")
+            hit = pg.evaluate("""(() => { const m = BRIS_DATA.hemliga.find((h) => h.id === 'kassett').scen, k = __bris.scen('kassett');
+                for (let y = 0; y < innerHeight; y += 8) for (let x = 0; x < innerWidth; x += 8) if (k.traff(x, y)) return [x + 40, y + 30]; return null; })()""")
+            if hit: pg.mouse.click(hit[0], hit[1]); pg.wait_for_timeout(300)
+            krav(hit is not None and pg.evaluate("__bris.S.band") == 3, f"tryck på kassetten: nästa band (WORN) ({pg.evaluate('__bris.S.band')})")
+            # FX: TAPE (bandets alla rattar) finns nu, även i vanliga ljud
+            pg.click("[data-tab=fx]"); pg.wait_for_timeout(300)
+            pg.click(".rbox .hidb:has-text('TAPE')"); pg.wait_for_timeout(300)
+            fx = pg.evaluate("({ kt: document.querySelector('.kbox .ttl').textContent, kn: [...document.querySelectorAll('.kbox .knob .lab, .kbox .knob span')].map((e) => e.textContent).join(' '), band: document.querySelectorAll('.kbox .choice.band .opt').length, tape: !!document.querySelector('.kbox [data-id=tape]') })")
+            krav(fx["kt"] == "TAPE" and fx["band"] == 6 and fx["tape"] and "WEAR" in fx["kn"] and "FLUTTER" in fx["kn"], f"FX: TAPE med av/på, banden och rattarna ({fx})")
+            pg.screenshot(path=f"{UT}/fx_tape.png")
+            pg.click("[data-tab=play]"); pg.wait_for_timeout(200)
             pg.click("#menuBtn"); pg.wait_for_timeout(300)
             hm = pg.evaluate("[...document.querySelectorAll('#list .grp.hemlig .it')].map((b) => b.dataset.hem + (b.classList.contains('on') ? '*' : ''))")
             krav(hm == ["kristall", "sjon", "kassett*"], f"menyn: SECRET med alla tre, KASSETTEN vald ({hm})")
@@ -267,6 +310,9 @@ with sync_playwright() as p:
             pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
             ut = pg.evaluate("({ s: __bris.S.secret, tape: __bris.S.v.tape, mowet: __bris.S.v.mowet, cls: document.documentElement.classList.contains('hemlig'), cv: getComputedStyle(document.querySelector('#kassett')).display })")
             krav(ut["s"] is None and ut["tape"] == 0 and ut["mowet"] == mo0 and not ut["cls"] and ut["cv"] == "none", f"ett vanligt ljud lämnar KASSETTEN och stänger av bandet ({ut})")
+            pg.click("[data-tab=fx]"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("document.querySelector('.kbox .ttl').textContent") == "TAPE", "FX: TAPE finns kvar i ett vanligt ljud (KASSETTEN är hittad)")
+            pg.click("[data-tab=play]"); pg.wait_for_timeout(200)
 
             # AUDIO / MIDI-rutan (fristående appen): egen ruta som går att stänga
             pg.evaluate("__bris.dev.open()"); pg.wait_for_timeout(200)
