@@ -14,22 +14,46 @@ const Sjon = (() => {
     uniform vec3 uSol;                   // solen: x, y (skärmen), radie
     uniform float uDag, uGry, uPuls;     // dagsljus 0..1, gryningens färg 0..1, ett sken när man trycker på månen/solen
     uniform vec4 uSf;                    // stjärnfallet: start x, y (x i bildförhållandets enheter), riktning (rad), ålder (s)
-    uniform vec2 uSfL;                   // stjärnfallets livslängd (s) och fart (skärmhöjder per s)
+    uniform vec3 uSfL;                   // stjärnfallets livslängd (s), fart (skärmhöjder per s) och storlek (1 = nära, ~0.3 = långt bort)
     uniform vec4 uD[${MAX}];             // droppe: världens x, z, starttid, styrka
     uniform vec3 uC[${MAX}];             // droppens färg (ett svagt sken i ringarna)
     const float FOV = 1.25;              // brännvidd: hur fort sjön flyr mot horisonten
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-    // trädlinjen på andra sidan sjön: granar (trianglar) i två rader ovanpå en mjuk ås
-    float skog(float x) {
-      float h = 0.018 + 0.012 * noise(vec2(x * 3.0, 1.7));
-      for (int r = 0; r < 2; r++) {
-        float w = r == 0 ? 0.011 : 0.017, c = floor(x / w), f = fract(x / w);
-        float th = (r == 0 ? 0.03 : 0.045) * (0.45 + 0.55 * hash(vec2(c, float(r) * 7.0)));
-        h = max(h, (r == 0 ? 0.012 : 0.0) + th * (1.0 - 2.0 * abs(f - 0.5)));
-      }
-      return h;
+    // trädlinjen på andra sidan sjön: granar i tre rader (längst bort disigast), varje gran med grenvåningar,
+    // ovanpå en låg ås. Ger täckning (0..1) och hur högt upp i granen punkten är (toppen fångar solen).
+    vec2 gran(float x, float upp, float w, float hmax, float seed, float glest, float aa) {
+      float c = floor(x / w), f = fract(x / w), r = hash(vec2(c, seed));
+      if (hash(vec2(c, seed + 9.0)) < glest) return vec2(0.0);           // en lucka i raden
+      float th = hmax * (0.45 + 0.55 * r), y = upp / th;
+      if (y > 1.0 || y < 0.0) return vec2(0.0);
+      float u = abs(f - 0.5 - (hash(vec2(c, seed + 3.0)) - 0.5) * 0.35) * 2.0;
+      float vaning = fract(y * (4.0 + 3.0 * r) + r);                    // grenvåningarna: bredast nertill i varje våning
+      float halv = (1.0 - y) * (0.55 + 0.45 * (1.0 - vaning)) + 0.03;
+      return vec2(smoothstep(halv + aa, halv - aa, u), y);
+    }
+    float as(float x) { return 0.006 + 0.01 * noise(vec2(x * 2.2, 1.7)) + 0.004 * noise(vec2(x * 9.0, 3.1)); }
+    vec3 skogen(vec3 c, float x, float upp, float r, float skarpa) {
+      if (upp < 0.0 || upp > 0.075) return c;
+      float aa = 0.05 / skarpa;
+      vec3 horis = mix(vec3(0.020, 0.040, 0.075), vec3(0.40, 0.53, 0.66), uDag) + vec3(0.95, 0.42, 0.18) * uGry * 0.5;
+      vec3 bak = mix(vec3(0.012, 0.02, 0.032), mix(vec3(0.10, 0.16, 0.16), horis, 0.5), uDag);
+      vec3 mitt = mix(vec3(0.006, 0.011, 0.018), vec3(0.045, 0.085, 0.06), uDag);
+      vec3 fram = mix(vec3(0.003, 0.006, 0.010), vec3(0.018, 0.04, 0.026), uDag);
+      vec3 sol = vec3(0.25, 0.2, 0.08) * uDag + vec3(0.25, 0.1, 0.03) * uGry;   // solen på trädtopparna
+      vec3 glod = vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4 * (1.0 - uDag);   // månskenet nära månen
+      vec2 g1 = gran(x + 3.7, upp, 0.0055, 0.03, 11.0, 0.0, aa);
+      c = mix(c, bak + sol * 0.3 * g1.y + glod, g1.x);
+      vec2 g2 = gran(x + 1.3, upp, 0.009, 0.042, 7.0, 0.04, aa);
+      c = mix(c, mitt + sol * 0.5 * g2.y * g2.y + glod * 0.6, g2.x);
+      float a = as(x);
+      c = mix(c, fram, smoothstep(a + 0.0015 / skarpa, a - 0.0015 / skarpa, upp));
+      vec2 g3 = gran(x, upp, 0.016, 0.06, 3.0, 0.3, aa);
+      c = mix(c, fram + sol * 0.6 * g3.y * g3.y, g3.x);
+      // dis vid vattnet i gryningen och på dagen
+      c = mix(c, horis * 0.9, exp(-upp * 110.0) * (0.25 * uDag + 0.2 * uGry));
+      return c;
     }
     // himlen i skärmens koordinater (x 0..1, y nedåt; horisonten vid uHy)
     vec3 himmel(vec2 s, float skarpa) {
@@ -50,10 +74,10 @@ const Sjon = (() => {
       if (uSf.w >= 0.0 && uSf.w < uSfL.x) {
         vec2 dir = vec2(cos(uSf.z), sin(uSf.z)), huvud = uSf.xy + dir * uSfL.y * uSf.w;
         vec2 p = vec2(s.x * uAsp, s.y) - huvud; float bak = -dot(p, dir), sid = abs(dot(p, vec2(-dir.y, dir.x)));
-        float lang = 0.05 + 0.1 * min(1.0, uSf.w * 4.0);
-        float svans = step(0.0, bak) * smoothstep(lang, 0.0, bak) + smoothstep(0.004, 0.0, length(p)) * 1.5;
+        float k = uSfL.z, lang = (0.05 + 0.1 * min(1.0, uSf.w * 4.0)) * k;
+        float svans = step(0.0, bak) * smoothstep(lang, 0.0, bak) + smoothstep(0.004 * k, 0.0, length(p)) * 1.5;
         float liv = sin(3.14159 * uSf.w / uSfL.x);
-        c += vec3(0.85, 0.92, 1.0) * svans * smoothstep(0.0022 + bak * 0.012, 0.0, sid) * liv * natten * smoothstep(0.0, 0.04, upp) * 1.3;
+        c += vec3(0.85, 0.92, 1.0) * svans * smoothstep((0.0022 + bak * 0.012) * (0.4 + 0.6 * k), 0.0, sid) * liv * natten * smoothstep(0.0, 0.04, upp) * (0.5 + 0.8 * k);
       }
       // månen: skiva med mjuka fält, ring av ljus runt omkring
       vec2 d = vec2((s.x - uMx) * uAsp, s.y - uMy); float r = length(d);
@@ -66,11 +90,8 @@ const Sjon = (() => {
       vec3 solf = mix(vec3(1.0, 0.55, 0.22), vec3(1.0, 0.96, 0.86), smoothstep(0.0, 0.22, hojd));
       c = mix(c, solf * 1.5, sv);
       c += solf * (0.35 * exp(-rs * 12.0) + 0.16 * exp(-rs * 3.0)) * smoothstep(-0.06, 0.02, hojd) * (1.0 + uPuls * 2.0);
-      // skogen skymmer allt bakom sig
-      float tr = skog(s.x * uAsp * 0.5);
-      float iskog = (1.0 - smoothstep(tr - 0.003 / skarpa + 0.003, tr + 0.003 / skarpa - 0.003 + 0.0005, upp)) * step(0.0, upp);   // mjukare kant i speglingen
-      if (iskog > 0.0) c = mix(c, mix(vec3(0.003, 0.006, 0.010) + vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4,
-                                          vec3(0.025, 0.05, 0.035) + vec3(0.08, 0.05, 0.02) * uGry, uDag), iskog);
+      // skogen skymmer allt bakom sig (i speglingen med mjukare kanter)
+      c = skogen(c, s.x * uAsp * 0.5, upp, r, skarpa);
       return c;
     }
     void main() {
@@ -124,8 +145,8 @@ const Sjon = (() => {
     let prog = null, u = {}, buf = null, aktiv = false, t0 = performance.now(), nasta = 0, lugn = 0;
     // dag och natt: p går 0 (natt) -> 1 (dag) på DYGN sekunder när man har gjort dag (och tillbaka för natt)
     const DYGN = 14;
-    let p = 0, mal = 0, tFor = 0, puls = 0;
-    const sf = { x: 0, y: 0, v: 0, t0: -99, liv: 1, fart: 1 }; let sfNasta = 4 + Math.random() * 6;
+    let p = 0, mal = 0, tFor = 0, puls = 0, p0 = 0, tStart = 0;   // p räknas ur klockan (inte bildrutorna), så att det tar lika lång tid överallt
+    const sf = { x: 0, y: 0, v: 0, t0: -99, liv: 1, fart: 1, k: 1 }; let sfNasta = 15 + Math.random() * 20;
     const D = new Float32Array(MAX * 4), C = new Float32Array(MAX * 3); let n = 0, pos = 0;
     if (gl) {
       try {
@@ -166,16 +187,19 @@ const Sjon = (() => {
       gl.uniform1f(u.uMx, L.mx); gl.uniform1f(u.uMy, L.my); gl.uniform1f(u.uMr, L.mr);
       gl.uniform1f(u.uN, n); gl.uniform4fv(u.uD, D); gl.uniform3fv(u.uC, C);
       gl.uniform3f(u.uSol, L.sx, L.sy, L.sr); gl.uniform1f(u.uDag, L.dag); gl.uniform1f(u.uGry, L.gry); gl.uniform1f(u.uPuls, puls);
-      gl.uniform4f(u.uSf, sf.x, sf.y, sf.v, nu() - sf.t0); gl.uniform2f(u.uSfL, sf.liv, sf.fart);
+      gl.uniform4f(u.uSf, sf.x, sf.y, sf.v, nu() - sf.t0); gl.uniform3f(u.uSfL, sf.liv, sf.fart, sf.k);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(u.aP); gl.vertexAttribPointer(u.aP, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
     // ett stjärnfall: startar högt upp på en slumpad plats och faller snett nedåt åt vänster eller höger
-    function stjarnfall() {
+    // långt = långt bort: ett litet, kort och svagt stjärnfall, lägre ner mot skogen
+    function stjarnfall(langt = false) {
       const L = lage(), hoger = Math.random() < 0.5;
-      sf.x = (0.15 + Math.random() * 0.7) * L.asp; sf.y = 0.04 + Math.random() * (L.hy * 0.45);
+      sf.k = langt ? 0.22 + Math.random() * 0.15 : 1;
+      sf.x = (0.15 + Math.random() * 0.7) * L.asp;
+      sf.y = langt ? L.hy * (0.45 + Math.random() * 0.35) : 0.04 + Math.random() * (L.hy * 0.45);
       const vinkel = (0.35 + Math.random() * 0.4); sf.v = hoger ? vinkel : Math.PI - vinkel;
-      sf.liv = 0.7 + Math.random() * 0.5; sf.fart = 0.45 + Math.random() * 0.25; sf.t0 = nu();
+      sf.liv = (0.7 + Math.random() * 0.5) * (langt ? 0.6 : 1); sf.fart = (0.45 + Math.random() * 0.25) * (langt ? 0.3 : 1); sf.t0 = nu();
     }
     return {
       visa(pa) { aktiv = !!pa; cv.style.display = aktiv ? "block" : "none"; tFor = 0; },
@@ -188,7 +212,7 @@ const Sjon = (() => {
       },
       puls() { puls = 1; },
       // gör dag (true) eller natt (false); direkt = utan att vänta på solen
-      dag(pa, direkt) { mal = pa ? 1 : 0; if (direkt) p = mal; },
+      dag(pa, direkt) { mal = pa ? 1 : 0; p0 = direkt ? mal : p; p = p0; tStart = nu(); },
       arDag() { return mal === 1; },
       stjarnfall,
       // var månen/solen är på skärmen (bildpunkter), för tester
@@ -204,9 +228,9 @@ const Sjon = (() => {
         if (!aktiv) return;
         // sjön lever även när ingen spelar: en liten droppe då och då, långt ut
         const t = nu(), dt = Math.min(0.1, Math.max(0, t - (tFor || t))); tFor = t;
-        if (p !== mal) p = mal > p ? Math.min(mal, p + dt / DYGN) : Math.max(mal, p - dt / DYGN);
+        if (p !== mal) p = mal > p0 ? Math.min(mal, p0 + (t - tStart) / DYGN) : Math.max(mal, p0 - (t - tStart) / DYGN);
         puls = Math.max(0, puls - dt * 2.5);
-        if (t > sfNasta) { if (p < 0.3) stjarnfall(); sfNasta = t + 6 + Math.random() * 12; }
+        if (t > sfNasta) { if (p < 0.3) stjarnfall(Math.random() < 0.4); sfNasta = t + 25 + Math.random() * 35; }   // ungefär en gång i minuten
         if (t > lugn) { if (lugn > 0) droppe(0.2 + Math.random() * 0.6, 7 + Math.random() * 5, 0.35, [0.4, 0.6, 0.9]); lugn = t + 3 + Math.random() * 5; }
         rita();
       },

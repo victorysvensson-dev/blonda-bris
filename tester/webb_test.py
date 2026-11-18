@@ -274,7 +274,7 @@ with sync_playwright() as p:
             krav(pg.evaluate("__bris.scen('sjon').lage().mal") == 0, "SJÖN: fyra tryck på månen gör inget")
             tryck("mane", 1); pg.wait_for_timeout(1500)
             l1 = pg.evaluate("__bris.scen('sjon').lage()")
-            krav(l1["mal"] == 1 and 0.03 < l1["p"] < 0.4 and l1["dag"] < 0.01, f"SJÖN: fem tryck på månen: det börjar bli dag, gradvis ({l1})")
+            krav(l1["mal"] == 1 and 0.05 < l1["p"] < 0.4 and l1["dag"] < 0.01, f"SJÖN: fem tryck på månen: det börjar bli dag, gradvis ({l1})")
             pg.evaluate("__bris.scen('sjon').dag(true, true)"); pg.wait_for_timeout(300)
             dag = pg.evaluate("__bris.scen('sjon').matt()"); pg.screenshot(path=f"{UT}/sjon_dag.png")
             krav(dag["himmel"] > natt["himmel"] * 4 and dag["vatten"] > natt["vatten"] * 3, f"SJÖN: dag – ljus himmel och sjö ({natt} -> {dag})")

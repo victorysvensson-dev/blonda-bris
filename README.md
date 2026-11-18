@@ -21,6 +21,12 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.15.1
+
+- SJÖN: stjärnfallen kommer mer sällan (ungefär en gång i minuten), och ibland långt bort: små, korta och svaga,
+  lägre ner mot skogen. Skogen är ny: tät granskog i tre rader med grenvåningar, längst bort disigast, på en låg
+  ås. Solen fångar trädtopparna, och i gryningen och på dagen ligger ett dis vid vattnet.
+
 ## 1.15.0
 
 - KASSETTEN: spolnaven ser ut som på riktiga band. Kassetten: en vit ring med sex kuggar inåt och bandspelarens
