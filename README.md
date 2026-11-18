@@ -25,7 +25,8 @@ På iPad och iPhone får allt plats utan att man skrollar, stående som liggande
 
 - SJÖN: stjärnfallen kommer mer sällan (ungefär en gång i minuten), och ibland långt bort: små, korta och svaga,
   lägre ner mot skogen. Skogen är ny: tät granskog i tre rader med grenvåningar, längst bort disigast, på en låg
-  ås. Solen fångar trädtopparna, och i gryningen och på dagen ligger ett dis vid vattnet.
+  ås. Solen fångar trädtopparna, och i gryningen och på dagen ligger ett dis vid vattnet. Stjärnorna blinkar
+  mindre och långsammare.
 
 ## 1.15.0
 

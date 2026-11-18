@@ -69,7 +69,7 @@ const Sjon = (() => {
       vec2 g = vec2(s.x * uAsp, s.y) * 140.0, id = floor(g), f = fract(g) - 0.5;
       float st = hash(id), ljus = step(0.985, st) * smoothstep(0.08 * skarpa + 0.05, 0.0, length(f + (vec2(hash(id + 3.1), hash(id + 5.7)) - 0.5) * 0.6));
       float natten = (1.0 - uDag) * (1.0 - uDag);
-      c += vec3(0.7, 0.8, 1.0) * ljus * (0.55 + 0.45 * sin(uT * (1.0 + 3.0 * st) + st * 60.0)) * smoothstep(0.0, 0.08, upp) * natten;
+      c += vec3(0.7, 0.8, 1.0) * ljus * (0.85 + 0.15 * sin(uT * (0.4 + 1.2 * st) + st * 60.0)) * smoothstep(0.0, 0.08, upp) * natten;
       // stjärnfallet: ett ljust huvud med en svans som tonar bort, tänds och slocknar under sin korta väg
       if (uSf.w >= 0.0 && uSf.w < uSfL.x) {
         vec2 dir = vec2(cos(uSf.z), sin(uSf.z)), huvud = uSf.xy + dir * uSfL.y * uSf.w;
