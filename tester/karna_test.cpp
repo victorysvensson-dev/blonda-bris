@@ -240,6 +240,64 @@ int main() {
         KRAV(svans > 1e-9, "inget bandbrus efter tonen");
         KRAV(topp < 2.0 && std::isfinite(topp), "bandet skenar (%.2f)", topp);
     }
+    // ---------------------------------------------------------------- BANDSPELAREN (KASSETTEN)
+    {
+        auto& cp = coreParams();
+        const int it = cp.find("tape"), ir = cp.find("tarec");
+        KRAV(ir >= 0 && cp.tapeIdx[ir] < 0, "REC LEVEL (tarec) finns");
+        auto ny = [&](Core& c) { c.prepare(sr); c.setParam(it, 1); c.setParam(cp.find("tabrus"), 0); c.setParam(cp.find("taavbr"), 0); c.setParam(cp.find("tawow"), 0); c.setParam(cp.find("taflut"), 0); };
+        auto kor = [&](Core& c, double sek, double* e = nullptr) {   // kör en stund, energi per sampel
+            double acc = 0; const int k = (int)(sek * sr / B);
+            for (int i = 0; i < k; ++i) { c.process(L.data(), R.data(), B); for (int s2 = 0; s2 < B; ++s2) acc += L[s2] * L[s2]; }
+            if (e) *e = acc / std::max(1, k * B);
+        };
+        Core c; ny(c);
+        c.bandKommando(Bandspelare::K_REC);
+        c.noteOn(60, 110); c.noteOn(67, 100);
+        double eRec = 0; kor(c, 1.5, &eRec);
+        c.noteOff(60); c.noteOff(67);
+        c.bandKommando(Bandspelare::K_STOPP);
+        double eTyst = 0; kor(c, 2.5); kor(c, 0.5, &eTyst);   // tonen klingar ut, sedan tyst
+        const float sek = c.meters().bandSek;
+        KRAV(c.meters().bandLage == 0 && std::fabs(c.meters().bandFart) < 1e-3, "bandet stannar inte (läge %d, fart %.3f)", c.meters().bandLage, c.meters().bandFart);
+        KRAV(sek > 1.4f && sek < 1.8f, "bandet gick inte i rätt fart under inspelningen (%.2f s)", sek);
+        // spola tillbaka: hörs (tjatter), stannar av sig självt vid början
+        c.bandKommando(Bandspelare::K_REW);
+        double eRew = 0; kor(c, 0.4, &eRew);
+        for (int i = 0; i < 400 && c.meters().bandLage != 0; ++i) c.process(L.data(), R.data(), B);
+        KRAV(c.meters().bandLage == 0 && c.meters().bandPos < 1e-6f, "REW stannar inte vid början (läge %d, pos %.4f)", c.meters().bandLage, c.meters().bandPos);
+        // spela upp: det inspelade hörs
+        c.bandKommando(Bandspelare::K_PLAY);
+        double ePlay = 0; kor(c, 1.2, &ePlay);
+        // paus: bandet står still, platsen är kvar
+        c.bandKommando(Bandspelare::K_PAUS); kor(c, 0.6);
+        const float p1 = c.meters().bandPos; kor(c, 0.3);
+        KRAV(c.meters().bandLage == 1 + 8 && std::fabs(c.meters().bandPos - p1) < 1e-6f && p1 > 0.0f, "PAUS håller inte bandet (läge %d, %.5f -> %.5f)", c.meters().bandLage, p1, c.meters().bandPos);
+        c.bandKommando(Bandspelare::K_STOPP); c.bandKommando(Bandspelare::K_REW);
+        for (int i = 0; i < 400 && c.meters().bandLage != 0; ++i) c.process(L.data(), R.data(), B);
+        c.bandKommando(Bandspelare::K_FF);
+        double eFf = 0; kor(c, 0.5, &eFf);
+        const double db = [](double a, double b) { return 10 * std::log10((a + 1e-20) / (b + 1e-20)); }(ePlay, eTyst);
+        std::printf("BANDSPELARE: inspelat %.2f s, uppspelning %+.1f dB över tystnad, REW %+.1f dB, FF %+.1f dB, uppspelning mot inspelning %+.1f dB\n",
+                    sek, db, 10 * std::log10((eRew + 1e-20) / (eTyst + 1e-20)), 10 * std::log10((eFf + 1e-20) / (eTyst + 1e-20)), 10 * std::log10((ePlay + 1e-20) / (eRec + 1e-20)));
+        KRAV(db > 30.0, "det inspelade hörs inte vid PLAY (%.1f dB)", db);
+        KRAV(std::fabs(10 * std::log10((ePlay + 1e-20) / (eRec + 1e-20))) < 4.0, "uppspelningen har inte samma nivå som inspelningen");
+        KRAV(eRew > eTyst * 100 && eFf > eTyst * 100, "spolningen hörs inte (REW %.2e, FF %.2e, tyst %.2e)", eRew, eFf, eTyst);
+        // REC LEVEL: låg nivå = svagare och renare, hög = starkare på bandet (VU) och driven
+        double eLag = 0, eHog = 0; float vuLag = 0, vuHog = 0;
+        for (int v = 0; v < 2; ++v) {
+            Core d; ny(d); d.setParam(ir, v ? 1.0 : 0.15);
+            d.noteOn(60, 110); d.noteOn(64, 110); d.noteOn(67, 110);
+            float vu = 0; double e = 0;
+            for (int i = 0; i < 300; ++i) { d.process(L.data(), R.data(), B); if (i > 50) { vu = std::max(vu, d.meters().bandVuL); for (int s2 = 0; s2 < B; ++s2) e += L[s2] * L[s2]; } }
+            (v ? eHog : eLag) = e; (v ? vuHog : vuLag) = vu;
+        }
+        std::printf("REC LEVEL: VU %.2f -> %.2f, nivå %+.1f dB\n", vuLag, vuHog, 10 * std::log10((eHog + 1e-20) / (eLag + 1e-20)));
+        KRAV(vuHog > vuLag * 3 && 10 * std::log10((eHog + 1e-20) / (eLag + 1e-20)) > 3.0, "REC LEVEL hörs inte");
+        // TAPE av: bandspelaren stannar och ljudet är orört
+        c.setParam(it, 0); c.process(L.data(), R.data(), B);
+        KRAV(c.meters().bandLage == 0, "bandet går fast TAPE är av");
+    }
     // ---------------------------------------------------------------- ackordpads, FOLLOW och ARP
     {
         Core c; c.prepare(sr); c.setTempo(120);

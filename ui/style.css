@@ -85,6 +85,26 @@ main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(210p
 .ttl .hidb { margin-left: 16px; font-size: 9.5px; letter-spacing: .28em; color: var(--a); font-weight: 500; padding: 4px 0; }
 .ttl .hidb.on { color: var(--ink); }
 
+/* FX: kedjan till höger (en rad per effekt, med av/på eller en lampa) och den valda effekten till vänster */
+.fxttl { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.fxpa { display: inline-flex; align-items: center; height: 24px; border: 1px solid var(--line); border-radius: 13px; padding: 2px; font-size: 9.5px; letter-spacing: .26em; font-weight: 500; flex: none; }
+.fxpa span { padding: 0 9px 0 calc(9px + .26em); height: 18px; display: grid; place-items: center; border-radius: 10px; color: var(--mute); transition: background .15s, color .15s; }
+.fxpa:not(.on) span:last-child { background: var(--ink); color: var(--bg); }
+.fxpa.on span:first-child { background: var(--a); color: #fff; }
+.fxinn { transition: opacity .2s; }
+.fxinn.av { opacity: .42; }
+.fxbox .knobs { row-gap: 22px; }
+.fxlista { display: flex; flex-direction: column; }
+.fxrad { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid var(--line); min-height: 52px; }
+.fxrad:last-child { border-bottom: 1px solid var(--line); }
+.fxnamn { flex: 1; display: flex; align-items: center; gap: 16px; text-align: left; font-size: 11.5px; letter-spacing: var(--track); font-weight: 500; opacity: .55; padding: 14px 0; min-width: 0; }
+.fxnamn em { font-style: normal; font-size: 9.5px; letter-spacing: .2em; color: var(--mute); }
+.fxnamn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fxrad.vald .fxnamn { opacity: 1; color: var(--a); }
+.fxrad.vald .fxnamn em { color: var(--a); }
+.fxlampa { width: 7px; height: 7px; border-radius: 50%; border: 1.1px solid var(--line); margin-right: 9px; flex: none; }
+.fxlampa.on { background: var(--a); border-color: var(--a); }
+
 /* MOOD: fotknapparna över blommans nederkant */
 #fsw { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 2; display: flex; justify-content: center; gap: clamp(18px, 6vw, 70px); pointer-events: none; }
 #fsw .grp { display: flex; gap: 10px; pointer-events: auto; }
@@ -206,6 +226,10 @@ main { position: relative; }
   /* inställningsflikarna: ljudväljaren finns i menyn, blomman tar resten */
   #app:not(.tab-play) #left .browser { display: none; }
   #app:not(.tab-play) #left { gap: 0; }
+  .tab-fx #right { order: 1; }   /* FX: välj i kedjan först, rattarna under */
+  .tab-fx #left { order: 2; }
+  .fxrad { min-height: 40px; }
+  .fxnamn { padding: 10px 0; }
 }
 /* iPad stående: inställningarna i två kolumner under blomman */
 @media (orientation: portrait) and (min-width: 700px) {
@@ -228,6 +252,15 @@ main { position: relative; }
   .wave-wrap { display: none; }
   .knob { gap: 6px; }
   .knob canvas { width: 28px; height: 28px; }
+  .fxbox .knobs { row-gap: 8px; }
+  .fxrad { min-height: 32px; }
+  .fxnamn { padding: 6px 0; }
+  .tab-fx #left .browser { display: none; }   /* FX: den valda effekten får hela vänstra sidan */
+  .fxbox .pre { margin-bottom: 8px; }
+  .fxbox .choice.band { flex-wrap: nowrap; overflow-x: auto; gap: 0 14px; scrollbar-width: none; }
+  .fxbox .choice.band::-webkit-scrollbar { display: none; }
+  .fxbox .choice.band .opt { letter-spacing: .18em; gap: 6px; flex: none; }
+  .fxbox .knob .lab { font-size: 9px; letter-spacing: .14em; }
   #keys { height: clamp(92px, 30vh, 146px); margin-top: 6px; }
   #kbar { height: 22px; margin-bottom: 4px; }
   #kgrip { display: none; }

@@ -60,6 +60,8 @@ public:
     void uiSlide(int note, float v);       // BRIS MPE: ett fingers slide på sin ton (gränssnittet -> ljudtråden)
     void uiPad(const juce::var& notes, int vel);   // ackordpad: tonerna (tom = släpp)
     void uiFollow(bool on) { follow.store(on); }    // FOLLOW: tangenterna följer padens skala
+    void uiBand(int cmd, bool tyst = false);        // KASSETTEN: bandspelarens knappar (Bandspelare::Kommando)
+    void uiSfx(int id, float styrka, float fart);   // apparatens ljud (lucka, band in), tajmade av gränssnittet
     bool getFollow() const { return follow.load(); }
     void allNotesOff() { panic.store(true); }
     void setPattern(const juce::var& pattern);    // rullen
@@ -85,13 +87,18 @@ private:
     std::atomic<int> preset { 65 };
 
     // gränssnittets toner -> ljudtråden (en skrivare, en läsare)
-    struct NoteEv { uint8_t on, note, vel; };
+    struct NoteEv { uint8_t on, note, vel; float f = 0.0f; };
     juce::AbstractFifo noteFifo { 256 };
     std::array<NoteEv, 256> noteBuf {};
     std::atomic<bool> panic { false };
     std::atomic<bool> follow { false };          // sparas i projektet
     std::atomic<int> glidMode { 1 };            // 1 = FILTER (som gränssnittets standard); sparas i projektet          // glid på tangenterna (gränssnittet -> ljudtråden)
     std::atomic<float> glidAmount { 0.0f };
+
+    // apparatens ljud (knappar, lucka, band), avkodade ur BinaryData i konstruktorn; kärnan får pekare
+    std::vector<float> sfxData[blonda::app::Ljudeffekter::kAntal];
+    double sfxRate[blonda::app::Ljudeffekter::kAntal] {};
+    void loadSfx();
 
     // rullen
     juce::SpinLock patLock;

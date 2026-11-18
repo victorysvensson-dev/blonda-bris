@@ -39,6 +39,8 @@ SLITEN = json.load(open(os.path.join(ROT, "External/blonda-motor/motorer/sliten/
 EXTRA.append(("tape", "Tape", 0.0, 1.0, 0.0, True))
 for _p in SLITEN["params"]:
     EXTRA.append(("ta" + _p["id"], "TAPE " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"] or _p["id"] == "media"))
+# REC LEVEL: hur hårt bandet spelas in på (bandspelaren i KASSETTEN och TAPE under FX). 0.6 = 0 dB.
+EXTRA.append(("tarec", "TAPE Rec Level", 0.0, 1.0, 0.6))
 EXTRA = [e if len(e) == 6 else e + (False,) for e in EXTRA]
 
 # Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...

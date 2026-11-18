@@ -153,7 +153,21 @@ int main() {
         juce::MemoryBlock mb2; p.getStateInformation(mb2);
         p.setParamFromUi(p.findParam("tape"), 0); p.setStateInformation(mb2.getData(), (int)mb2.getSize());
         KRAV(p.paramValue(p.findParam("tape")) > 0.5, "bandet sparas med pluggens läge");
-        p.setParamFromUi(p.findParam("tape"), 0);
+        // bandspelaren: spela in, spola tillbaka (stannar själv), spela upp: det inspelade hörs utan toner
+        p.setParamFromUi(p.findParam("tape"), 1);
+        p.uiBand(2); p.uiNote(true, 60, 110); p.uiNote(true, 64, 100); render(p, 1.0); p.uiNote(false, 60, 0); p.uiNote(false, 64, 0);
+        p.uiBand(0); render(p, 3.0); const double tyst2 = render(p, 0.3);
+        p.uiBand(3); render(p, 1.5);
+        BrisProcessor::MeterSnap sb; p.readMeters(sb);
+        KRAV(sb.m.bandLage == 0 && sb.m.bandPos < 1e-4f, "bandspelaren: REW stannar vid början (läge %d, %.4f)", sb.m.bandLage, sb.m.bandPos);
+        p.uiBand(1); const double upp = render(p, 0.8); p.readMeters(sb);
+        KRAV(sb.m.bandLage == 1 && upp > tyst2 * 30 && upp > 0.003, "bandspelaren: PLAY spelar upp det inspelade (rms %.4f, tyst %.5f)", upp, tyst2);
+        p.uiBand(0, true); render(p, 0.5);
+        p.setParamFromUi(p.findParam("tape"), 0); render(p, 0.1);
+        // apparatens ljud ur BinaryData (knappar, lucka, band in) spelas i kärnan
+        const double fore = render(p, 0.2); p.uiSfx(4, 1.0f, 1.0f); const double sfx = render(p, 0.5);
+        KRAV(sfx > 0.003 && sfx > fore * 30, "apparatens ljud: luckan hörs (rms %.4f, före %.5f)", sfx, fore);
+        render(p, 1.5);
         BrisProcessor::MeterSnap s5; p.readMeters(s5);
         KRAV(s5.m.peakL >= 0 && s5.m.peakR >= 0, "nivåmätarna för vänster och höger finns");
     }

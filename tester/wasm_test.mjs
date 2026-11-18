@@ -52,16 +52,22 @@ for (const p of [4, 53]) {
   const p = 79;
   e.bris_init(48000); e.bris_all_off(); e.bris_load_preset(p);
   sp("mowet", 0); sp("moloop", 0); sp("arp", 0);   // kärnan återanvänds: stäng av det förra fallets MOOD och arp
-  sp("tape", 1); sp("tamedia", 0); sp("tawow", 0.8);
+  sp("tape", 1); sp("tamedia", 0); sp("tawow", 0.8); sp("tarec", 0.8); e.bris_band(2, 0);
   e.bris_note_on(60, 100); e.bris_note_on(64, 90); e.bris_note_on(67, 80);
   const ref = new Float32Array(execFileSync(dumpBin, [String(p), "band"], { maxBuffer: 1 << 26 }).buffer.slice(0));
   let md = 0, k = 0, pk = 0;
   for (let b = 0; b < 750; b++) {
     if (b === 500) e.bris_all_off();
+    if (b === 250) e.bris_band(3, 0);   // bandspelaren: spela in, spola tillbaka, spela upp
+    if (b === 330) e.bris_band(1, 0);
     e.bris_process(128);
     const L = new Float32Array(e.memory.buffer, e.bris_buf_l(), 128), R = new Float32Array(e.memory.buffer, e.bris_buf_r(), 128);
     for (let s = 0; s < 128; s++) { md = Math.max(md, Math.abs(L[s] - ref[k++]), Math.abs(R[s] - ref[k++])); pk = Math.max(pk, Math.abs(L[s])); }
   }
+  const mt = new Float32Array(e.memory.buffer, e.bris_meters(), 27);
+  console.log(`bandspelaren i wasm: läge ${mt[24]}, ${mt[23].toFixed(2)} s, fart ${mt[21].toFixed(2)}`);
+  if (!(mt[24] === 1 && mt[21] > 0.99)) fel++;
+  e.bris_band(0, 1); sp("tape", 0);
   console.log(`ljud ${p} med bandet: största skillnad wasm mot C++ ${md.toExponential(2)} (topp ${pk.toFixed(2)})`);
   if (!(md < 1e-4) || !(pk > 0.01)) fel++;
 }

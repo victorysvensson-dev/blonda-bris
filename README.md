@@ -21,6 +21,23 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.14.0
+
+- KASSETTEN är en riktig bandspelare (i ljudkärnan, core/bandspelare.h): REC spelar in det man spelar på ett band
+  (ca 60 s), PLAY spelar upp det, REW och FF spolar och det inspelade hörs som ett ljust tjatter, STOP stannar och
+  PAUSE håller bandet stilla. Bandet tar fart och bromsar in som en riktig motor (tonhöjden glider), stannar av sig
+  självt i början och slutet, och spolarna fylls och töms efter var på bandet man är. Räkneverket följer bandet.
+- REC LEVEL (ny parameter tarec) är hur hårt det spelas in på bandet: högt = drivet och mättat, lågt = renare och
+  svagare. VU-mätarna visar nivån på bandet. Finns även under FX.
+- Bandspelaren låter: knapparna klickar, luckan öppnas och bandet sätts i (ljuden i ui/ljud/, spelas i ljudkärnan).
+- Till och från VHS fälls hela fronten ut, ett VHS-band lika stort som hela bandspelaren åker in underifrån och
+  fronten stängs. Sedan syns bara en del av VHS-bandet (den vänstra spolen) genom luckans glas.
+- FX är en kedja: varje effekt har en egen rad (CHORUS · DELAY, SPACE, TAPE när KASSETTEN är hittad), och den valda
+  effektens rattar visas till vänster. TAPE har en tydlig ON/OFF och är dämpad när den är av. Fler effekter läggs
+  till i FX_KEDJA i ui/app.js.
+- Tangenterna (BRIS och BRIS MPE): sliden börjar där man trycker. Högt upp på tangenten = mer redan från början
+  (vita tangenter från de svarta tangenternas nederkant, svarta från mitten), och man kan dra uppåt som förut.
+
 ## 1.13.0
 
 - KASSETTEN går att spela på: knapparna trycks ner och styr MOOD:s mikrolooper som en bandspelare. REC fångar det

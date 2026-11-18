@@ -1,6 +1,7 @@
 // BLONDA BRIS – pluggens ljuddel.
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <BinaryData.h>
 
 using namespace blonda::app;
 
@@ -39,6 +40,7 @@ BrisProcessor::BrisProcessor()
       apvts(*this, nullptr, "BRIS", makeLayout()) {
     for (int i = 0; i < Core::numParams(); ++i) params.push_back(apvts.getParameter(Core::paramInfo(i).id));
     applied.assign(params.size(), std::numeric_limits<double>::quiet_NaN());
+    loadSfx();
     // startljud: "bris" (index 65, en PAD/iris) om inget sparat tillstånd läses in
     applyProgramToHost(preset.load());
 }
@@ -105,6 +107,55 @@ const juce::String BrisProcessor::getProgramName(int index) {
 void BrisProcessor::uiNote(bool on, int note, int vel) {
     const auto w = noteFifo.write(1);
     if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)(on ? 1 : 0), (uint8_t)juce::jlimit(0, 127, note), (uint8_t)juce::jlimit(1, 127, vel) };
+}
+
+// apparatens ljud: ui/ljud/bris_<namn>.wav (16 bitar PCM, mono), i Ljudeffekter::Id:s ordning. Filerna är våra egna
+// (tools: 48 kHz mono), så en enkel läsare av RIFF räcker (inget beroende av juce_audio_formats).
+static bool lasWav(const char* d, int n, std::vector<float>& ut, double& sr) {
+    auto u32 = [&](int i) { return (uint32_t)(uint8_t)d[i] | (uint32_t)(uint8_t)d[i + 1] << 8 | (uint32_t)(uint8_t)d[i + 2] << 16 | (uint32_t)(uint8_t)d[i + 3] << 24; };
+    auto u16 = [&](int i) { return (int)((uint8_t)d[i] | (uint8_t)d[i + 1] << 8); };
+    if (n < 44 || std::memcmp(d, "RIFF", 4) != 0 || std::memcmp(d + 8, "WAVE", 4) != 0) return false;
+    int kanaler = 0, bitar = 0;
+    for (int i = 12; i + 8 <= n;) {
+        const int len = (int)u32(i + 4), b = i + 8;
+        if (len < 0 || b + len > n) return false;
+        if (std::memcmp(d + i, "fmt ", 4) == 0 && len >= 16) { if (u16(b) != 1) return false; kanaler = u16(b + 2); sr = u32(b + 4); bitar = u16(b + 14); }
+        else if (std::memcmp(d + i, "data", 4) == 0 && kanaler > 0 && bitar == 16) {
+            const int ramar = len / (2 * kanaler);
+            ut.resize((size_t)ramar);
+            for (int k = 0; k < ramar; ++k) ut[(size_t)k] = (int16_t)u16(b + k * 2 * kanaler) / 32768.0f;   // första kanalen
+            return ramar > 0;
+        }
+        i = b + len + (len & 1);
+    }
+    return false;
+}
+
+void BrisProcessor::loadSfx() {
+    static const char* const namn[] = {"bris_knapp.wav", "bris_kort.wav", "bris_rec.wav", "bris_upp.wav", "bris_lucka.wav", "bris_in.wav"};
+    for (int id = 0; id < (int)std::size(namn); ++id) {
+        for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
+            if (juce::String(BinaryData::originalFilenames[i]) != namn[id]) continue;
+            int size = 0;
+            const char* data = BinaryData::getNamedResource(BinaryData::namedResourceList[i], size);
+            double sr = 48000.0;
+            if (data != nullptr && lasWav(data, size, sfxData[id], sr)) {
+                sfxRate[id] = sr;
+                core.setSfx(id, sfxData[id].data(), (int)sfxData[id].size(), sr);
+            }
+            break;
+        }
+    }
+}
+
+void BrisProcessor::uiBand(int cmd, bool tyst) {
+    const auto w = noteFifo.write(1);
+    if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)5, (uint8_t)juce::jlimit(0, 5, cmd), (uint8_t)(tyst ? 1 : 0) };
+}
+
+void BrisProcessor::uiSfx(int id, float styrka, float fart) {
+    const auto w = noteFifo.write(1);
+    if (w.blockSize1 > 0) noteBuf[(size_t)w.startIndex1] = { (uint8_t)6, (uint8_t)juce::jlimit(0, 7, id), (uint8_t)juce::roundToInt(juce::jlimit(0.0f, 1.0f, styrka) * 255.0f), fart };
 }
 
 void BrisProcessor::uiGlid(int mode, float amount) {
@@ -215,6 +266,8 @@ void BrisProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuf
             for (int k = 0; k < size; ++k) {
                 const auto& e = noteBuf[(size_t)(start + k)];
                 if (e.on == 2) core.uiSlide(e.note, e.vel / 255.0);   // slide (0..255)
+                else if (e.on == 5) core.bandKommando(e.note, e.vel == 0);   // bandspelarens knappar (vel 1 = tyst)
+                else if (e.on == 6) core.sfx(e.note, e.vel / 255.0, e.f > 0.0f ? e.f : 1.0);   // apparatens ljud
                 else if (e.on == 3) core.padNote(e.note, e.vel);
                 else if (e.on == 4) core.padClear();
                 else if (e.on) core.noteOn(e.note, e.vel);

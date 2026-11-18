@@ -159,6 +159,10 @@ void BrisEditor::onMessage(const juce::var& m) {
         proc.uiPad(m.getProperty("n", {}), (int)m.getProperty("v", 100));
     } else if (t == "follow") {
         proc.uiFollow((bool)m.getProperty("on", false));
+    } else if (t == "band") {
+        proc.uiBand((int)m.getProperty("k", 0), (bool)m.getProperty("tyst", false));
+    } else if (t == "sfx") {
+        proc.uiSfx((int)m.getProperty("i", 0), (float)(double)m.getProperty("g", 1.0), (float)(double)m.getProperty("r", 1.0));
     } else if (t == "glid") {
         proc.uiGlid((int)m.getProperty("m", 0), (float)(double)m.getProperty("v", 0.0));
     } else if (t == "play") {
@@ -258,6 +262,8 @@ void BrisEditor::timerCallback() {
         o->setProperty("mask", s.m.voiceMask); o->setProperty("step", s.m.step); o->setProperty("nc", (int)(s.m.noteCount % 1000000u)); o->setProperty("glid", s.m.glid);
         juce::Array<juce::var> ks; for (auto k : s.m.keys) ks.add((juce::int64)k);
         o->setProperty("keys", ks); o->setProperty("fr", s.m.followRoot); o->setProperty("fm", s.m.followMask); o->setProperty("an", s.m.arpNote);
+        o->setProperty("bp", s.m.bandPos); o->setProperty("bf", s.m.bandFart); o->setProperty("bi", s.m.bandInsp); o->setProperty("bs", s.m.bandSek);
+        o->setProperty("bl", s.m.bandLage); o->setProperty("bvl", s.m.bandVuL); o->setProperty("bvr", s.m.bandVuR);
         juce::Array<juce::var> sc; sc.ensureStorageAllocated(blonda::app::kScopeLen);
         for (int i = 0; i < blonda::app::kScopeLen; i += 2) sc.add(s.m.scope[i]);
         o->setProperty("scope", sc);

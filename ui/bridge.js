@@ -76,6 +76,14 @@ const Bridge = (() => {
     pending.splice(0).forEach((m) => node.port.postMessage(m));
     await p;
     midi();
+    // apparatens ljud (knappar, lucka, band): avkodas här och skickas till kärnan i ljudtråden
+    ["knapp", "kort", "rec", "upp", "lucka", "in"].forEach(async (n, i) => {
+      try {
+        const b = await ctx.decodeAudioData(await (await fetch(`ljud/bris_${n}.wav`)).arrayBuffer());
+        const d = new Float32Array(b.getChannelData(0));
+        node.port.postMessage({ t: "sfxdata", i, d, sr: b.sampleRate }, [d.buffer]);
+      } catch (e) { /* utan ljudet: knapparna är tysta */ }
+    });
   }
 
   async function midi() {
@@ -111,6 +119,8 @@ const Bridge = (() => {
       case "glid": post({ t: "glid", m: m.m, v: m.v }); break;
       case "pad": post({ t: "pad", n: m.n || [], v: m.v || 100 }); break;
       case "follow": st.follow = !!m.on; post({ t: "follow", on: !!m.on }); save(); break;
+      case "band": post({ t: "band", k: m.k | 0, tyst: !!m.tyst }); break;
+      case "sfx": post({ t: "sfx", i: m.i | 0, g: m.g == null ? 1 : m.g, r: m.r || 1 }); break;
       case "ui": st.ui = m.s; save(); break;
       case "user": try { localStorage.setItem(SPAR + "-egna", JSON.stringify(m.list || [])); } catch (e) { /* privat läge */ } break;
       case "panic": post({ t: "alloff" }); break;

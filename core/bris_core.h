@@ -5,7 +5,7 @@
 // + en liten frasspelare + mätare till växten och vågen.
 //
 // Kärnan är enkeltrådad: allt anropas från ljudtråden. Skalen ser till att händelser från gränssnittet
-// kommer fram dit (kö / meddelanden). Ingen allokering efter konstruktorn.
+// kommer fram dit (kö / meddelanden). Ingen allokering efter konstruktorn (bandspelarens band allokeras i den).
 #pragma once
 #include <algorithm>
 #include <cmath>
@@ -25,6 +25,8 @@
 #include "sliten/sliten_ljud.h"
 #include "vibe/vibe_ljud.h"
 #include "kategorier.h"
+#include "bandspelare.h"
+#include "ljudeffekter.h"
 
 namespace blonda::app {
 
@@ -92,6 +94,10 @@ struct Meters {
     int followRoot = -1;    // FOLLOW: ackordets grundton 0..11 (-1 = inget ackord än)
     int followMask = 0;     // FOLLOW: skalans toner (bit 0..11, absoluta tonklasser)
     int arpNote = -1;       // tonen arpen spelar nu (-1 = ingen)
+    // bandspelaren (KASSETTEN): position 0..1, fart (1 = spelar, ±10 = spolar), hur långt det är inspelat 0..1,
+    // läge (0 stopp, 1 play, 2 rec, 3 rew, 4 ff; +8 = paus), sekunder in på bandet, nivån på bandet (VU) 0..1
+    float bandPos = 0, bandFart = 0, bandInsp = 0, bandSek = 0, bandVuL = 0, bandVuR = 0;
+    int bandLage = 0;
     float scope[kScopeLen]{};
 };
 
@@ -114,7 +120,7 @@ public:
         iRate_ = cp.find("lrate"); iBendr_ = cp.find("bendr"); iSlm_ = cp.find("slm");
         iArp_ = cp.find("arp"); iArpM_ = cp.find("arpm"); iArpR_ = cp.find("arpr"); iArpO_ = cp.find("arpo"); iArpG_ = cp.find("arpg");
         for (int n = 0; n < 128; ++n) keyOut_[n] = -1;
-        iTape_ = cp.find("tape");
+        iTape_ = cp.find("tape"); iRec_ = cp.find("tarec");
         for (int i = 0; i < cp.count; ++i) if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], val_[i]);
         for (int i = 0; i < cp.count; ++i) if (cp.tapeIdx[i] >= 0) tape_.setParam(cp.tapeIdx[i], val_[i]);
         applyExtra();
@@ -122,11 +128,25 @@ public:
 
     void prepare(double sr) {
         sr_ = sr;
-        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr); tape_.prepare(sr);
+        synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr); tape_.prepare(sr); band_.prepare(sr); sfx_.prepare(sr);
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); }
+    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); band_.reset(); sfx_.reset(); }
+
+    // ---------------------------------------------------------------- bandspelaren och apparatens ljud
+    // Knapparna i KASSETTEN (Bandspelare::Kommando: 0 STOP, 1 PLAY, 2 REC, 3 REW, 4 FF, 5 PAUS). Bandet går bara
+    // när TAPE är på. Varje knapp låter som en knapp (utom när appen stannar bandet själv: ljud = false).
+    void bandKommando(int k, bool ljud = true) {
+        if (k < 0 || k > 5) return;
+        const bool gick = band_.lage() != Bandspelare::STOPP && !band_.paus();
+        band_.kommando(k);
+        if (ljud) sfx_.spela(k == 2 ? Ljudeffekter::REC : k == 5 ? Ljudeffekter::KORT : k == 0 ? (gick ? Ljudeffekter::UPP : Ljudeffekter::KORT) : Ljudeffekter::KNAPP);
+    }
+    void bandRadera() { band_.radera(); }
+    // ljuden: id = Ljudeffekter::Id, data mono (pekaren ägs av skalet och måste leva lika länge som kärnan)
+    void setSfx(int id, const float* d, int n, double sr) { sfx_.satt(id, d, n, sr); }
+    void sfx(int id, double styrka, double fart) { sfx_.spela(id, styrka, fart); }
 
     // ---------------------------------------------------------------- toner / MIDI
     // En tangent (skärmen eller MIDI) trycks/släpps. FOLLOW rättar tonen till ackordets skala; med ARP blir
@@ -357,8 +377,13 @@ public:
         }
         if (driveOn_) vibe_.process(L, R, n);
         if (rvbOn_) rum_.process(L, R, n);
-        if (tapeOn_) tape_.process(L, R, n);   // bandet (SLITEN): av = ljudet orört
+        if (tapeOn_) {   // bandet: bandspelaren (REC LEVEL, inspelning, uppspelning) och bandets klang (SLITEN)
+            band_.process(L, R, n);
+            if (band_.tagSlut()) sfx_.spela(Ljudeffekter::UPP);   // bandet tog slut: knapparna hoppar upp
+            tape_.process(L, R, n);
+        } else if (band_.lage() != Bandspelare::STOPP || band_.fart() != 0.0) band_.reset();   // av = ljudet orört
         mood_.process(L, R, n);   // alltid: mikrolooper lyssnar även när den är av (båda av = ljudet oförändrat)
+        sfx_.process(L, R, n);    // apparatens ljud, torrt
 
         // mätare
         float pl = meters_.peakL * 0.9f, pr = meters_.peakR * 0.9f;
@@ -375,6 +400,9 @@ public:
         meters_.glid = (float)glidSm_;
 #endif
         meters_.followRoot = fRoot_; meters_.followMask = fMask_; meters_.arpNote = arpNote_;
+        meters_.bandPos = (float)band_.position(); meters_.bandFart = (float)band_.fart(); meters_.bandInsp = (float)band_.inspelat();
+        meters_.bandSek = (float)band_.sekunder(); meters_.bandVuL = band_.vuL(); meters_.bandVuR = band_.vuR();
+        meters_.bandLage = band_.lage() + (band_.paus() ? 8 : 0);
     }
 
     const Meters& meters() const { return meters_; }
@@ -533,6 +561,7 @@ private:
         const bool tape = iTape_ >= 0 && val_[iTape_] > 0.5;
         if (tape && !tapeOn_) tape_.reset();
         tapeOn_ = tape;
+        if (iRec_ >= 0) band_.setNiva(val_[iRec_]);
     }
 
     void advanceStep() {
@@ -562,6 +591,8 @@ private:
     GenEffect<vibe::Dsp> vibe_;
     GenEffect<mood::Dsp> mood_;
     GenEffect<sliten::Dsp> tape_;   // bandet (BLONDA SLITEN), för den hemliga patchen KASSETTEN
+    Bandspelare band_;              // bandspelaren i KASSETTEN (inspelning och spolning, REC LEVEL)
+    Ljudeffekter sfx_;              // apparatens ljud (knappar, lucka, band)
     int iWet_ = -1, iSize_ = -1, iDecay_ = -1, iDrive_ = -1, iOut_ = -1;
     int glidIdx_[kNumGlid]{}, iRate_ = -1, glidMode_ = 0;
     double glidTarget_ = 0.0, glidSm_ = 0.0, glidApplied_ = 0.0;
@@ -576,7 +607,7 @@ private:
     int uiCh_[128]{}, uiUsed_[16]{}, uiNext_ = 0;   // tangenterna på skärmen: kanal per ton
 #endif
     bool rvbOn_ = false, driveOn_ = false, tapeOn_ = false;
-    int iTape_ = -1;
+    int iTape_ = -1, iRec_ = -1;
     double val_[kMaxParams]{};
     // tangenter, pads, arp, FOLLOW
     int keyOut_[128]{}, keyVel_[128]{}, padVel_[128]{}, voiceRef_[128]{}, nPad_ = 0;

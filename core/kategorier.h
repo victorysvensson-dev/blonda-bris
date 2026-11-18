@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 41;
+constexpr int kNumExtra = 42;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -75,6 +75,7 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"tabredd", "TAPE Width", 0.0, 1.0, 1.0, false},
     {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
     {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
+    {"tarec", "TAPE Rec Level", 0.0, 1.0, 0.6, false},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

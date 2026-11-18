@@ -158,23 +158,54 @@ BAK.append(box("skal_bak", KX, KZ, KW, KH, KY + 0.06, KY + 0.13, mat("skalbak", 
 # bandet mellan spolarna längs botten (syns genom fönstret i nederkant)
 BAK.append(box("band", KX, KZ - 0.42, 1.5, 0.012, KY + 0.055, KY + 0.06, mat("bandbrun", (0.11, 0.06, 0.03), 0, 0.35)))
 
-# ------------------------------------------------------------------ VHS-kassetten (åker in när man väljer bandet VHS)
-VW, VHH = 2.25, 1.3
-VNAV_DX, VNAV_DZ, VNAV_R = 0.47, 0.05, 0.2
-VFON_W, VFON_H = 1.42, 0.44
-VPACK_MIN, VPACK_MAX = 0.2, 0.42
+# ------------------------------------------------------------------ VHS-bandet: lika stort som hela bandspelaren
+# När man väljer bandet VHS öppnar sig hela fronten och ett VHS-band i bandspelarens storlek åker in bakom den; sedan
+# ser man bara en del av det (den vänstra spolen) genom luckans glas. Ett riktigt VHS-band är 187 x 103 mm.
+VS = 2.09                                   # skalan mot ett VHS-band i samma mått som kassetten (1 enhet = 50 mm * VS)
+VW, VHH = 2.25 * VS, 1.24 * VS              # 4,70 x 2,59 – bandspelaren är 4,8 x 2,6
+VX, VZ, VY = 0.0, 0.0, 0.12                 # VHS-bandets mitt och framsida (bakom panelen)
+VNAV_DX, VNAV_DZ, VNAV_R = 0.47 * VS, 0.05 * VS, 0.2 * VS
+VFON_W, VFON_H = 1.42 * VS, 0.44 * VS
+VPACK_MIN, VPACK_MAX = 0.2 * VS, 0.42 * VS
 SVARTPLAST = mat("svartplast", (0.016, 0.016, 0.018), 0.0, 0.32)
 VHS_FRAM, VHS_BAK = [], []
-vk = box("vhs", KX, KZ, VW, VHH, KY, KY + 0.12, SVARTPLAST, fas=0.02)
-hal(vk, [box("vhs_f", KX, KZ + VNAV_DZ, VFON_W, VFON_H, KY - 0.1, KY + 0.3, SVART)]); VHS_FRAM.append(vk)
-VHS_FRAM.append(box("vhs_fonster", KX, KZ + VNAV_DZ, VFON_W + 0.02, VFON_H + 0.02, KY + 0.03, KY + 0.035, FONSTER))
+vk = box("vhs", VX, VZ, VW, VHH, VY, VY + 0.25, SVARTPLAST, fas=0.04)
+hal(vk, [box("vhs_f", VX, VZ + VNAV_DZ, VFON_W, VFON_H, VY - 0.1, VY + 0.5, SVART)]); VHS_FRAM.append(vk)
+VHS_FRAM.append(box("vhs_fonster", VX, VZ + VNAV_DZ, VFON_W + 0.04, VFON_H + 0.04, VY + 0.06, VY + 0.07, FONSTER))
 for j in range(7):   # räfflor i plasten under fönstret
-    VHS_FRAM.append(box(f"vhs_raffla{j}", KX - 0.6 + j * 0.2, KZ - 0.42, 0.08, 0.2, KY - 0.006, KY, SVARTPLAST))
-VHS_FRAM.append(box("vhs_etikett", KX, KZ + 0.47, VW - 0.3, 0.22, KY - 0.003, KY, mat("vhsetikett", (0.92, 0.91, 0.88), 0, 0.7)))
-VHS_FRAM.append(text("vhs_t1", "VHS", KX - VW / 2 + 0.24, KZ + 0.47, 0.13, TEXT, GROT, KY - 0.006, "LEFT", 0.5))
-VHS_FRAM.append(text("vhs_t2", "BLONDA  E-180", KX + VW / 2 - 0.24, KZ + 0.47, 0.06, TEXT, MONO, KY - 0.006, "RIGHT", 0.4))
-VHS_BAK.append(box("vhs_bak", KX, KZ, VW, VHH, KY + 0.1, KY + 0.13, mat("vhsbak", (0.03, 0.03, 0.032), 0, 0.5)))
-VHS_BAK.append(box("vhs_band", KX, KZ - 0.14, VFON_W, 0.012, KY + 0.09, KY + 0.095, bpy.data.materials["bandbrun"]))
+    VHS_FRAM.append(box(f"vhs_raffla{j}", VX - 0.6 * VS + j * 0.2 * VS, VZ - 0.42 * VS, 0.08 * VS, 0.2 * VS, VY - 0.012, VY, SVARTPLAST))
+VHS_FRAM.append(box("vhs_etikett", VX, VZ + 0.47 * VS, VW - 0.3 * VS, 0.22 * VS, VY - 0.006, VY, mat("vhsetikett", (0.92, 0.91, 0.88), 0, 0.7)))
+VHS_FRAM.append(text("vhs_t1", "VHS", VX - VW / 2 + 0.24 * VS, VZ + 0.47 * VS, 0.13 * VS, TEXT, GROT, VY - 0.012, "LEFT", 0.5))
+VHS_FRAM.append(text("vhs_t2", "BLONDA  E-180", VX + VW / 2 - 0.24 * VS, VZ + 0.47 * VS, 0.06 * VS, TEXT, MONO, VY - 0.012, "RIGHT", 0.4))
+VHS_FRAM.append(text("vhs_t3", "SECRET 03", VX + VW / 2 - 0.24 * VS, VZ - 0.42 * VS, 0.045 * VS, mat("vhsljus", (0.5, 0.5, 0.52), 0, 0.5), MONO, VY - 0.012, "RIGHT", 0.4))
+for sx, sz in [(-0.98, -0.5), (0.98, -0.5)]:
+    VHS_FRAM.append(cyl("vhs_skruv", VX + sx * VS, VZ + sz * VS, 0.035 * VS, VY - 0.02, VY, SKRUV, 32))
+VHS_BAK.append(box("vhs_bak", VX, VZ, VW, VHH, VY + 0.2, VY + 0.25, mat("vhsbak", (0.03, 0.03, 0.032), 0, 0.5)))
+VHS_BAK.append(box("vhs_band", VX, VZ - 0.14 * VS, VFON_W, 0.025, VY + 0.18, VY + 0.19, bpy.data.materials["bandbrun"]))
+
+# ------------------------------------------------------------------ bandspelarens insida (syns när fronten fälls ut)
+INRE = []
+INREMAT = borstad("inre", (0.028, 0.028, 0.03), 0.42)
+INRE.append(box("inre_bak", 0, 0, PW, PH, 0.85, 0.9, INREMAT, fas=0.06))
+for i, (x, z, w, h) in enumerate([(0, PH / 2 - 0.05, PW, 0.1), (0, -PH / 2 + 0.05, PW, 0.1), (-PW / 2 + 0.05, 0, 0.1, PH), (PW / 2 - 0.05, 0, 0.1, PH)]):
+    INRE.append(box(f"inre_kant{i}", x, z, w, h, 0.0, 0.9, PANEL, fas=0.01))
+for sx in (-1, 1):   # skenorna som bandet glider in i, och spolarnas axlar
+    INRE.append(box(f"inre_skena{sx}", sx * (VW / 2 + 0.02), 0.05, 0.06, PH - 0.4, 0.3, 0.85, SILVER))
+    ax = cyl(f"inre_axel{sx}", VX + sx * VNAV_DX, VZ + VNAV_DZ, 0.16, 0.55, 0.85, SILVER, 64); INRE.append(ax)
+    for k in range(6):
+        v = k * math.pi / 3
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(VX + sx * VNAV_DX + math.sin(v) * 0.13, 0.54, VZ + VNAV_DZ + math.cos(v) * 0.13), rotation=(0, -v, 0))
+        o = bpy.context.object; o.scale = (0.03, 0.05, 0.07); lagg(o, VITPLAST); INRE.append(o)
+# videohuvudet (trumman, axeln uppåt) med sina styrstift och tryckrullen
+bpy.ops.mesh.primitive_cylinder_add(radius=0.42, depth=0.34, vertices=128, location=(0.0, 0.55, -0.86))
+o = bpy.context.object; o.name = "inre_trumma"; lagg(o, SILVER); INRE.append(o)
+INRE.append(box("inre_trumband", 0.0, -0.86, 0.86, 0.03, 0.12, 0.98, SVART))
+for x in (-0.62, 0.62, 1.15):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.045 if x != 1.15 else 0.09, depth=0.3, vertices=48, location=(x, 0.55, -0.86))
+    o = bpy.context.object; lagg(o, SILVER if x != 1.15 else SVART); INRE.append(o)
+for sx, sz in [(-2.1, 1.05), (2.1, 1.05), (-2.1, -1.05), (2.1, -1.05)]:
+    INRE.append(cyl("inre_skruv", sx, sz, 0.035, 0.83, 0.85, SKRUV, 32))
+INRE.append(text("inre_t", "BRIS  VHS  HI-FI  STEREO", 0.0, 1.0, 0.055, mat("inretext", (0.45, 0.45, 0.46), 0, 0.5), MONO, 0.84, spar=0.5))
 
 # ------------------------------------------------------------------ VU-mätarna: skalan ritas som bild (PIL) med BLONDA Mono
 def vu_bild(sti):
@@ -302,11 +333,13 @@ def bild_px(x, z):   # världens (x, z) -> bildpunkt i renderingen
     W, H = r.resolution_x, r.resolution_y; s = W / cam.ortho_scale
     return (W / 2 + x * s, H / 2 - z * s)
 
-def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True, vhs=False):
+def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True, vhs=False, inne=False):
     for o in sc.objects:
         if o.type in ("MESH", "FONT", "CURVE") and o is not REFLEX: o.visible_camera = o in synliga
-    for o in KFRAM + KBAK: o.hide_render = vhs      # kassetten eller VHS:en sitter i luckan, aldrig båda
+    for o in KFRAM + KBAK: o.hide_render = vhs or inne   # kassetten i luckan, eller VHS-bandet bakom fronten
     for o in VHS_FRAM + VHS_BAK: o.hide_render = not vhs
+    for o in INRE: o.hide_render = not inne or vhs      # insidan bara när fronten är borta (och inte i VHS-bandets bild)
+    for o in PANEL + LUCKA_O + BAK: o.hide_render = inne  # bakom fronten: den skuggar inte (den är utfälld)
     REFLEX.hide_render = not ljus_pa
     for o in LJUS: o.hide_render = not ljus_pa
     vg.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0 if ljus_pa else 0.0
@@ -323,14 +356,15 @@ KBAK = [o for o in BAK if o.name.split(".")[0] in ("skal_bak", "band")]
 LUCKA_O = [o for o in FRAM if o.name == "lucka"]
 PANEL = [o for o in FRAM if o not in KFRAM and o not in LUCKA_O]
 BAK = [o for o in BAK if o not in KBAK]
-ALLA = ["bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "panel", "nere", "lucka", "vu", "nav"]
+ALLA = ["bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "panel", "nere", "lucka", "vu", "nav"]
 vilka = [s.strip() for s in a.bara.split(",") if s.strip()] or ALLA
 s_px = r.resolution_x / cam.ortho_scale
 if "bak" in vilka: rendera("bak", set(BAK), 0.06, True)
 if "kassett_bak" in vilka: rendera("kassett_bak", set(KBAK), 0.06, True)
 if "kassett_fram" in vilka: rendera("kassett_fram", set(KFRAM), 0.06, True)
-if "vhs_bak" in vilka: rendera("vhs_bak", set(VHS_BAK), 0.06, True, vhs=True)
-if "vhs_fram" in vilka: rendera("vhs_fram", set(VHS_FRAM), 0.06, True, vhs=True)
+if "vhs_bak" in vilka: rendera("vhs_bak", set(VHS_BAK), 0.06, True, vhs=True, inne=True)
+if "vhs_fram" in vilka: rendera("vhs_fram", set(VHS_FRAM), 0.06, True, vhs=True, inne=True)
+if "inre" in vilka: rendera("inre", set(INRE), 0.06, True, inne=True)
 if "panel" in vilka: rendera("panel", set(PANEL), 0.06, True)
 if "nere" in vilka:   # panelen med alla knappar nedtryckta (appen klipper ut de knappar som är nere)
     for k, sy in KNAPP:
@@ -357,7 +391,7 @@ if "nav" in vilka:
         v = i * 2 * math.pi / 3 + 0.5
         bpy.ops.mesh.primitive_cube_add(size=1, location=(math.sin(v) * NAV_R * 0.82, -0.051, math.cos(v) * NAV_R * 0.82), rotation=(0, -v, 0))
         o = bpy.context.object; o.scale = (0.03, 0.002, 0.06); lagg(o, SVART)
-    cam.ortho_scale = NAV_R * 2.1; r.resolution_x = r.resolution_y = 256
+    cam.ortho_scale = NAV_R * 2.1; r.resolution_x = r.resolution_y = 512   # skarpt även på VHS-bandets stora spolar
     r.film_transparent = True
     for o in LJUS: o.hide_render = False
     r.filepath = os.path.join(UT, "nav.png"); bpy.ops.render.render(write_still=True); print("KLAR nav", flush=True)
@@ -379,8 +413,9 @@ info = {
     "knappar": [dict(namn=KNAPPAR[i], ruta=px(KNX[i] - KNW / 2 - 0.02, KNZ + KNH / 2 + 0.02) + [round((KNW + 0.04) * s0, 2), round((KNH + 0.04) * s0, 2)]) for i in range(6)],
     "rattar": [dict(mitt=px(x, z), r=round(rr * s0, 2)) for x, z, rr in RATTAR],
     "led": px(*LED) + [round(0.035 * s0, 2)],
-    "vhs": dict(spolar=[px(KX - VNAV_DX, KZ + VNAV_DZ), px(KX + VNAV_DX, KZ + VNAV_DZ)], nav_r=round(VNAV_R * s0, 2),
-                pack=[round(VPACK_MIN * s0, 2), round(VPACK_MAX * s0, 2)], ruta=px(KX - VW / 2, KZ + VHH / 2) + [round(VW * s0, 2), round(VHH * s0, 2)]),
+    "vhs": dict(spolar=[px(VX - VNAV_DX, VZ + VNAV_DZ), px(VX + VNAV_DX, VZ + VNAV_DZ)], nav_r=round(VNAV_R * s0, 2),
+                pack=[round(VPACK_MIN * s0, 2), round(VPACK_MAX * s0, 2)], ruta=px(VX - VW / 2, VZ + VHH / 2) + [round(VW * s0, 2), round(VHH * s0, 2)]),
+    "front": px(-PW / 2, PH / 2) + [round(PW * s0, 2), round(PH * s0, 2)],   # fronten (fälls ut kring nederkanten)
 }
 json.dump(info, open(os.path.join(UT, "kassett.json"), "w"), indent=1)
 print("KLAR json", flush=True)
