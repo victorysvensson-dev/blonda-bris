@@ -78,9 +78,115 @@
   712.73,
   436.36
  ],
+ "knappar": [
+  {
+   "namn": "rec",
+   "ruta": [
+    136.73,
+    675.05,
+    119.27,
+    75.64
+   ]
+  },
+  {
+   "namn": "rew",
+   "ruta": [
+    256.0,
+    675.05,
+    119.27,
+    75.64
+   ]
+  },
+  {
+   "namn": "play",
+   "ruta": [
+    375.27,
+    675.05,
+    119.27,
+    75.64
+   ]
+  },
+  {
+   "namn": "ff",
+   "ruta": [
+    494.55,
+    675.05,
+    119.27,
+    75.64
+   ]
+  },
+  {
+   "namn": "stop",
+   "ruta": [
+    613.82,
+    675.05,
+    119.27,
+    75.64
+   ]
+  },
+  {
+   "namn": "paus",
+   "ruta": [
+    733.09,
+    675.05,
+    119.27,
+    75.64
+   ]
+  }
+ ],
+ "rattar": [
+  {
+   "mitt": [
+    980.36,
+    645.95
+   ],
+   "r": 49.45
+  },
+  {
+   "mitt": [
+    1154.91,
+    645.95
+   ],
+   "r": 49.45
+  }
+ ],
+ "led": [
+  1341.09,
+  645.95,
+  10.18
+ ],
+ "vhs": {
+  "spolar": [
+   [
+    357.82,
+    392.86
+   ],
+   [
+    631.27,
+    392.86
+   ]
+  ],
+  "nav_r": 58.18,
+  "pack": [
+   58.18,
+   122.18
+  ],
+  "ruta": [
+   167.27,
+   218.32,
+   654.55,
+   378.18
+  ]
+ },
  "bilder": {
-  "bak": "kassett_bak.webp",
-  "fram": "kassett_fram.webp",
+  "bak": "kassett_fack.webp",
+  "kassett_bak": "kassett_bak.webp",
+  "kassett_fram": "kassett_fram.webp",
+  "vhs_bak": "kassett_vhs_bak.webp",
+  "vhs_fram": "kassett_vhs_fram.webp",
+  "panel": "kassett_panel.webp",
+  "nere": "kassett_nere.webp",
+  "lucka": "kassett_lucka.webp",
   "vu": "kassett_vu.webp",
   "nav": "kassett_nav.webp"
  }

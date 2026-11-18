@@ -158,6 +158,24 @@ BAK.append(box("skal_bak", KX, KZ, KW, KH, KY + 0.06, KY + 0.13, mat("skalbak", 
 # bandet mellan spolarna längs botten (syns genom fönstret i nederkant)
 BAK.append(box("band", KX, KZ - 0.42, 1.5, 0.012, KY + 0.055, KY + 0.06, mat("bandbrun", (0.11, 0.06, 0.03), 0, 0.35)))
 
+# ------------------------------------------------------------------ VHS-kassetten (åker in när man väljer bandet VHS)
+VW, VHH = 2.25, 1.3
+VNAV_DX, VNAV_DZ, VNAV_R = 0.47, 0.05, 0.2
+VFON_W, VFON_H = 1.42, 0.44
+VPACK_MIN, VPACK_MAX = 0.2, 0.42
+SVARTPLAST = mat("svartplast", (0.016, 0.016, 0.018), 0.0, 0.32)
+VHS_FRAM, VHS_BAK = [], []
+vk = box("vhs", KX, KZ, VW, VHH, KY, KY + 0.12, SVARTPLAST, fas=0.02)
+hal(vk, [box("vhs_f", KX, KZ + VNAV_DZ, VFON_W, VFON_H, KY - 0.1, KY + 0.3, SVART)]); VHS_FRAM.append(vk)
+VHS_FRAM.append(box("vhs_fonster", KX, KZ + VNAV_DZ, VFON_W + 0.02, VFON_H + 0.02, KY + 0.03, KY + 0.035, FONSTER))
+for j in range(7):   # räfflor i plasten under fönstret
+    VHS_FRAM.append(box(f"vhs_raffla{j}", KX - 0.6 + j * 0.2, KZ - 0.42, 0.08, 0.2, KY - 0.006, KY, SVARTPLAST))
+VHS_FRAM.append(box("vhs_etikett", KX, KZ + 0.47, VW - 0.3, 0.22, KY - 0.003, KY, mat("vhsetikett", (0.92, 0.91, 0.88), 0, 0.7)))
+VHS_FRAM.append(text("vhs_t1", "VHS", KX - VW / 2 + 0.24, KZ + 0.47, 0.13, TEXT, GROT, KY - 0.006, "LEFT", 0.5))
+VHS_FRAM.append(text("vhs_t2", "BLONDA  E-180", KX + VW / 2 - 0.24, KZ + 0.47, 0.06, TEXT, MONO, KY - 0.006, "RIGHT", 0.4))
+VHS_BAK.append(box("vhs_bak", KX, KZ, VW, VHH, KY + 0.1, KY + 0.13, mat("vhsbak", (0.03, 0.03, 0.032), 0, 0.5)))
+VHS_BAK.append(box("vhs_band", KX, KZ - 0.14, VFON_W, 0.012, KY + 0.09, KY + 0.095, bpy.data.materials["bandbrun"]))
+
 # ------------------------------------------------------------------ VU-mätarna: skalan ritas som bild (PIL) med BLONDA Mono
 def vu_bild(sti):
     from PIL import Image, ImageDraw, ImageFont
@@ -207,9 +225,10 @@ FRAM.append(box("cnt_bak", CNT[0], CNT[1], CNT[2], CNT[3], 0.075, 0.08, SVART))
 FRAM.append(cyl("cnt_knapp", CNT[0] + CNT[2] / 2 + 0.14, CNT[1], 0.045, -0.04, 0.0, SILVER, 48))
 FRAM.append(text("t_cnt", "COUNTER", CNT[0], CNT[1] - 0.15, 0.05, bpy.data.materials["ljustext"], MONO, -0.001, spar=0.5))
 # rattar och REC-lampa
+RATTAR = [(0.62, -0.72, 0.17), (1.22, -0.72, 0.17)]   # mitt x, z, radie (strecket ritas av appen, som vrider dem)
+LED = (1.86, -0.72)
 for i, (x, namn) in enumerate([(0.62, "REC LEVEL"), (1.22, "OUTPUT")]):
     FRAM.append(cyl(f"ratt{i}", x, -0.72, 0.17, -0.2, 0.0, SILVER, 64))
-    FRAM.append(box(f"rattstreck{i}", x, -0.64, 0.012, 0.09, -0.202, -0.2, SVART))
     FRAM.append(text(f"t_ratt{i}", namn, x, -0.98, 0.045, bpy.data.materials["ljustext"], MONO, -0.001, spar=0.5))
 bpy.ops.mesh.primitive_uv_sphere_add(radius=0.035, location=(1.86, -0.03, -0.72)); o = bpy.context.object; lagg(o, ROD); FRAM.append(o)
 FRAM.append(text("t_rec", "REC", 1.86, -0.86, 0.045, bpy.data.materials["ljustext"], MONO, -0.001, spar=0.5))
@@ -217,9 +236,10 @@ FRAM.append(text("t_logo", "BLONDA", -PW / 2 + 0.22, PH / 2 - 0.3, 0.15, mat("lo
 FRAM.append(text("t_modell", "BRIS  K-1  STEREO CASSETTE DECK", PW / 2 - 0.22, PH / 2 - 0.3, 0.055, bpy.data.materials["ljustext"], MONO, -0.001, "RIGHT", 0.4))
 
 # transporttangenterna under luckan, med symboler
+KNAPP = []   # [(knappen, [symbolerna])] i ordning REC REW PLAY FF STOP PAUS
 def symbol(typ, x, z, s):
     m = mat("sym_" + typ, (0.05, 0.05, 0.05), 0, 0.5) if typ != "rec" else ROD
-    y = -0.122
+    y = -0.122; fore = len(FRAM)
     def tri(cx, rikt):
         bm_ = bmesh.new(); h = s * 0.55
         pts = [(cx - h * 0.5 * rikt, z - h * 0.6), (cx - h * 0.5 * rikt, z + h * 0.6), (cx + h * 0.55 * rikt, z)]
@@ -232,11 +252,13 @@ def symbol(typ, x, z, s):
     elif typ == "stop": FRAM.append(box("stop", x, z, s * 0.5, s * 0.5, y - 0.001, y, m))
     elif typ == "paus": FRAM.append(box("p1", x - s * 0.13, z, s * 0.12, s * 0.55, y - 0.001, y, m)); FRAM.append(box("p2", x + s * 0.13, z, s * 0.12, s * 0.55, y - 0.001, y, m))
     elif typ == "rec": FRAM.append(cyl("recs", x, z, s * 0.24, y - 0.001, y, m, 48))
-for i, typ in enumerate(["rec", "rew", "play", "ff", "stop", "paus"]):
-    x = DX - DWW / 2 + 0.2 + i * 0.41; z = -0.95
-    nedtryckt = typ == "play"
-    FRAM.append(box(f"tangent{i}", x, z, 0.37, 0.22, -0.12 + (0.05 if nedtryckt else 0), 0.05, SILVER, fas=0.015))
-    symbol(typ, x, z, 0.22)
+    return FRAM[fore:]
+KNAPPAR = ["rec", "rew", "play", "ff", "stop", "paus"]; KNW, KNH, KNZ = 0.37, 0.22, -0.95
+KNX = [DX - DWW / 2 + 0.2 + i * 0.41 for i in range(6)]
+for i, typ in enumerate(KNAPPAR):
+    k = box(f"tangent{i}", KNX[i], KNZ, KNW, KNH, -0.12, 0.05, SILVER, fas=0.015); FRAM.append(k)
+    KNAPP.append((k, symbol(typ, KNX[i], KNZ, 0.22)))
+NERE = 0.05   # så långt in en nedtryckt knapp går
 
 # ------------------------------------------------------------------ ljus och kamera
 vg = bpy.data.worlds.new("varld"); sc.world = vg; vg.use_nodes = True
@@ -280,9 +302,11 @@ def bild_px(x, z):   # världens (x, z) -> bildpunkt i renderingen
     W, H = r.resolution_x, r.resolution_y; s = W / cam.ortho_scale
     return (W / 2 + x * s, H / 2 - z * s)
 
-def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True):
+def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True, vhs=False):
     for o in sc.objects:
         if o.type in ("MESH", "FONT", "CURVE") and o is not REFLEX: o.visible_camera = o in synliga
+    for o in KFRAM + KBAK: o.hide_render = vhs      # kassetten eller VHS:en sitter i luckan, aldrig båda
+    for o in VHS_FRAM + VHS_BAK: o.hide_render = not vhs
     REFLEX.hide_render = not ljus_pa
     for o in LJUS: o.hide_render = not ljus_pa
     vg.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0 if ljus_pa else 0.0
@@ -291,12 +315,32 @@ def rendera(namn, synliga, vu_emit, ljus_pa, transparent=True):
     r.filepath = os.path.join(UT, namn + ".png")
     bpy.ops.render.render(write_still=True); print("KLAR", r.filepath, flush=True)
 
-vilka = [s.strip() for s in a.bara.split(",") if s.strip()] or ["bak", "fram", "vu", "nav"]
+# Lagren (bakifrån): bak (luckans insida) · kassett_bak · spolarna (appen) · kassett_fram · panel · lucka.
+# Kassetten (eller VHS:en) är egna lager så att appen kan låta den åka ut och in medan luckan öppnas.
+KASSETTDELAR = {"skal", "fonster", "etikett_o", "etikett_u", "rand", "t_brand", "t_bris", "t_sida", "t_hemlig", "trapets", "skruv"}
+KFRAM = [o for o in FRAM if o.name.split(".")[0] in KASSETTDELAR]
+KBAK = [o for o in BAK if o.name.split(".")[0] in ("skal_bak", "band")]
+LUCKA_O = [o for o in FRAM if o.name == "lucka"]
+PANEL = [o for o in FRAM if o not in KFRAM and o not in LUCKA_O]
+BAK = [o for o in BAK if o not in KBAK]
+ALLA = ["bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "panel", "nere", "lucka", "vu", "nav"]
+vilka = [s.strip() for s in a.bara.split(",") if s.strip()] or ALLA
 s_px = r.resolution_x / cam.ortho_scale
 if "bak" in vilka: rendera("bak", set(BAK), 0.06, True)
-if "fram" in vilka: rendera("fram", set(FRAM), 0.06, True)
+if "kassett_bak" in vilka: rendera("kassett_bak", set(KBAK), 0.06, True)
+if "kassett_fram" in vilka: rendera("kassett_fram", set(KFRAM), 0.06, True)
+if "vhs_bak" in vilka: rendera("vhs_bak", set(VHS_BAK), 0.06, True, vhs=True)
+if "vhs_fram" in vilka: rendera("vhs_fram", set(VHS_FRAM), 0.06, True, vhs=True)
+if "panel" in vilka: rendera("panel", set(PANEL), 0.06, True)
+if "nere" in vilka:   # panelen med alla knappar nedtryckta (appen klipper ut de knappar som är nere)
+    for k, sy in KNAPP:
+        for o in [k] + sy: o.location.y += NERE
+    rendera("nere", set(PANEL), 0.06, True)
+    for k, sy in KNAPP:
+        for o in [k] + sy: o.location.y -= NERE
+if "lucka" in vilka: rendera("lucka", set(LUCKA_O), 0.06, True)
 if "vu" in vilka:   # bara VU-ljuset: allt annat släckt, ogenomskinligt svart runt omkring (läggs till i appen)
-    rendera("vu", set(FRAM), 1.1, False, transparent=False)
+    rendera("vu", set(PANEL), 1.1, False, transparent=False)
 
 # spolnavet: ett vitt nav med sex kuggar, framifrån, i en egen liten rendering
 if "nav" in vilka:
@@ -332,6 +376,11 @@ info = {
     "rand": px(KX - (KW - 0.16) / 2, ey1 + 0.07 + 0.025) + [round((KW - 0.16) * s0, 2), round(0.05 * s0, 2)],
     "bandtext": px(KX + KW / 2 - 0.16, ey2 - 0.06) + [round(0.07 * s0, 2)],   # högerkant, mitt, textens storlek
     "lucka": px(DX - DWW / 2, DZ + DHH / 2) + [round(DWW * s0, 2), round(DHH * s0, 2)],
+    "knappar": [dict(namn=KNAPPAR[i], ruta=px(KNX[i] - KNW / 2 - 0.02, KNZ + KNH / 2 + 0.02) + [round((KNW + 0.04) * s0, 2), round((KNH + 0.04) * s0, 2)]) for i in range(6)],
+    "rattar": [dict(mitt=px(x, z), r=round(rr * s0, 2)) for x, z, rr in RATTAR],
+    "led": px(*LED) + [round(0.035 * s0, 2)],
+    "vhs": dict(spolar=[px(KX - VNAV_DX, KZ + VNAV_DZ), px(KX + VNAV_DX, KZ + VNAV_DZ)], nav_r=round(VNAV_R * s0, 2),
+                pack=[round(VPACK_MIN * s0, 2), round(VPACK_MAX * s0, 2)], ruta=px(KX - VW / 2, KZ + VHH / 2) + [round(VW * s0, 2), round(VHH * s0, 2)]),
 }
 json.dump(info, open(os.path.join(UT, "kassett.json"), "w"), indent=1)
 print("KLAR json", flush=True)

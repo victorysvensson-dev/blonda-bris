@@ -1,6 +1,7 @@
 """Gör om KASSETTEN:s renderingar (tools/kassett.py) till bilder för appen: ui/kassett/*.webp + kassett.json.
 
-bak och fram behåller genomskinligheten (webp med alfa, förlustfri alfa), vu är bara ljus (läggs till i appen),
+Lagren behåller genomskinligheten (webp med alfa): bak, kassett_bak/kassett_fram och vhs_bak/vhs_fram (bandet i
+luckan), panel, nere (bara de nedtryckta knapparna), lucka (rökglaset); vu är bara ljus (läggs till i appen),
 nav är spolnavets bild. kassett.json får positionerna ur renderingen (bildpunkter i bak/fram) och filnamnen.
 
 python3 tools/kassett_bilder.py <mapp med bak.png, fram.png, vu.png, nav.png, kassett.json>
@@ -13,7 +14,9 @@ d = sys.argv[1]
 ut = os.path.join(ROT, "ui", "kassett"); os.makedirs(ut, exist_ok=True)
 info = json.load(open(os.path.join(d, "kassett.json")))
 filer = {}
-for namn, alfa, kval in [("bak", True, 90), ("fram", True, 92), ("vu", False, 90), ("nav", True, 92)]:
+LAGER = [("bak", True, 90), ("kassett_bak", True, 90), ("kassett_fram", True, 92), ("vhs_bak", True, 90), ("vhs_fram", True, 92),
+         ("panel", True, 92), ("nere", True, 92), ("lucka", True, 92), ("vu", False, 90), ("nav", True, 92)]
+for namn, alfa, kval in LAGER:
     im = Image.open(os.path.join(d, namn + ".png"))
     im = im.convert("RGBA" if alfa else "RGB")
     if namn == "vu":
@@ -24,9 +27,18 @@ for namn, alfa, kval in [("bak", True, 90), ("fram", True, 92), ("vu", False, 90
         al = a_.max(axis=2); al[al < 3] = 0
         rgb = np.where(al[..., None] > 0, a_ * 255.0 / np.maximum(al[..., None], 1), 0)
         im = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), al]).astype(np.uint8), "RGBA")
-    sti = os.path.join(ut, "kassett_" + namn + ".webp")   # unika namn (pluggen slår upp filerna på namnet)
+    if namn == "nere":   # bara knapparna behövs (appen klipper ut dem): resten genomskinligt, så blir filen liten
+        import numpy as np
+        a_ = np.asarray(im).copy(); mask = np.zeros(a_.shape[:2], bool)
+        for k in info["knappar"]:
+            x, y, w, h = [int(round(v)) for v in k["ruta"]]; mask[max(0, y):y + h + 1, max(0, x):x + w + 1] = True
+        a_[~mask] = 0; im = Image.fromarray(a_, "RGBA")
+    FIL = {"bak": "kassett_fack", "kassett_bak": "kassett_bak", "kassett_fram": "kassett_fram", "vhs_bak": "kassett_vhs_bak",
+           "vhs_fram": "kassett_vhs_fram", "panel": "kassett_panel", "nere": "kassett_nere", "lucka": "kassett_lucka",
+           "vu": "kassett_vu", "nav": "kassett_nav"}
+    sti = os.path.join(ut, FIL[namn] + ".webp")   # unika namn (pluggen slår upp filerna på namnet)
     im.save(sti, quality=kval, method=6, alpha_quality=100, exact=True)
-    filer[namn] = "kassett_" + namn + ".webp"
+    filer[namn] = os.path.basename(sti)
     print(f"{namn}: {im.size[0]}x{im.size[1]}, {os.path.getsize(sti) // 1024} KB")
 info["bilder"] = filer
 json.dump(info, open(os.path.join(ut, "kassett.json"), "w"), indent=1)

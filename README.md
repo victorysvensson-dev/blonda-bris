@@ -21,6 +21,18 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.13.0
+
+- KASSETTEN går att spela på: knapparna trycks ner och styr MOOD:s mikrolooper som en bandspelare. REC fångar det
+  man nyss spelade och loopar det (REC-lampan lyser), PLAY spelar loopen i normal fart, REW baklänges, FF dubbelt så
+  fort, STOP stänger av loopen och stoppar spolarna, och PAUSE fryser ljudet. Rattarna vrids genom att dra uppåt
+  eller nedåt: REC LEVEL = hur hårt man spelar in på bandet (mättnad), OUTPUT = bandets utnivå. Allt sätts tillbaka
+  när man lämnar KASSETTEN.
+- Bandbyte: luckan fälls ut, bandet åker ut nedåt, det nya åker in underifrån och luckan stängs. Bandet VHS är en
+  VHS-kassett. Bandspelaren renderas nu i fler lager (tools/kassett.py): luckans insida, bandet (kassett eller VHS),
+  panelen, knapparna nedtryckta, rökglaset, VU-ljuset och spolnavet.
+- En liten nedräkning (5, 4, 3 ...) bredvid BLONDA medan appen lyssnar efter en tonföljd.
+
 ## 1.12.0
 
 - De hemliga patcharna har egna ljud som bara finns i dem (inte bland fabriksljuden, inställningarna ligger i

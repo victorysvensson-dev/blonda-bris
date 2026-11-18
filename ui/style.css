@@ -318,3 +318,7 @@ html.hemlig #dev .kort { background: rgba(24, 21, 36, .92); border-color: rgba(2
 html.still .logo.lyssnar span { animation: none; color: var(--a); }
 /* banden (KASSETTEN, TAPE under FX) */
 .choice.band { flex-wrap: wrap; row-gap: 10px; }
+/* nedräkningen bredvid BLONDA medan appen lyssnar (5, 4, 3 ...) */
+#nedrakning { display: inline-block; min-width: 1.2ch; margin-left: 2px; font: 500 9px/1 "BLONDA Mono", monospace; letter-spacing: 0;
+  font-style: normal; color: var(--a); opacity: 0; vertical-align: 2px; transition: opacity .3s; }
+#nedrakning.syns { opacity: .85; }

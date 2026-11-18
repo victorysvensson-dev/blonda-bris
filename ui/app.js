@@ -19,7 +19,7 @@
     egna: [], eget: null,
     hid: false,               // MOOD: de dolda rattarna (som pedalens hidden options)
     ljus: false,              // det varma ljuset ur tangenterna i det vanliga läget (av sedan 1.10; koden finns kvar)
-    hemliga: [], secret: null, fore: null, band: null, fxTape: false,   // hemliga patchar: upplåsta (id), vald (id eller null), värdena innan den valdes
+    hemliga: [], secret: null, fore: null, band: null, fxTape: false, ka: { lage: "play", rec: false, paus: false, loop: false },   // hemliga patchar: upplåsta (id), vald (id eller null), värdena innan den valdes
     // ackordpads: fyra ackord (tonnummer), HOLD, FOLLOW, överlägget öppet; rec/armed/active gäller bara nu
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
@@ -509,6 +509,7 @@
     const satt = { ...h.satt, ...(harBand ? D.band[bi].satt : {}) };
     for (const k in satt) { S.fore[k] = S.v[k]; setParam(k, satt[k], true); }
     if (harBand) { S.band = bi; if (SCEN[id] && SCEN[id].band) SCEN[id].band(D.band[bi], true); }
+    if (id === "kassett") { S.ka = { lage: "play", rec: false, paus: false, loop: false }; if (SCEN.kassett) SCEN.kassett.transport(S.ka); }
     S.secret = id; applyTheme(); buildMenu(); buildPanels(); saveUi();
   }
   // ett anslag: en ny ton från tangenterna här (direkt) eller från en klaviatur (via mätarna). Tonföljden räknas,
@@ -534,9 +535,15 @@
     if (pa) {
       MEL.till = performance.now() + LYSSNA_MS; MEL.buf = [];
       logo && logo.classList.add("lyssnar");
-      const koll = () => { const kvar = MEL.till - performance.now(); if (kvar <= 0) lyssna(false); else MEL.tid = setTimeout(koll, Math.min(kvar, 250)); };
+      const ned = $("#nedrakning");
+      const koll = () => {
+        const kvar = MEL.till - performance.now();
+        if (kvar <= 0) { lyssna(false); return; }
+        if (ned) { ned.textContent = String(Math.ceil(kvar / 1000)); ned.classList.add("syns"); }
+        MEL.tid = setTimeout(koll, Math.min(kvar, 100));
+      };
       koll();
-    } else { MEL.till = 0; logo && logo.classList.remove("lyssnar"); }
+    } else { MEL.till = 0; logo && logo.classList.remove("lyssnar"); const ned = $("#nedrakning"); if (ned) ned.classList.remove("syns"); }
   }
   function melodiTon(n) {
     const t = performance.now();
@@ -569,6 +576,33 @@
     S.band = i;
     bandEls.forEach((f) => f());
     if (SCEN.kassett) SCEN.kassett.band(b);
+    saveUi();
+  }
+  // KASSETTEN:s knappar styr MOOD:s mikrolooper som en bandspelare: REC fångar det man nyss spelade och loopar det
+  // (REC-lampan lyser), PLAY spelar loopen i normal fart, REW baklänges, FF dubbelt så fort, STOP stänger av loopen
+  // och stoppar spolarna (ljudet går igenom som vanligt), PAUSE fryser ljudet (FREEZE). Rattarna: REC LEVEL = hur
+  // hårt man spelar in på bandet (mättnad), OUTPUT = bandets utnivå. Allt sätts tillbaka när man lämnar KASSETTEN.
+  const KA_RATT = ["tasat", "taoutv"];
+  const KA_FART = { play: 0.6875, rew: 0.3125, ff: 0.8125 };   // MOOD TAPE: 1x framåt, 1x bakåt, 2x framåt
+  function hemFore(id) { if (S.secret && S.fore && !(id in S.fore)) S.fore[id] = S.v[id]; }
+  function kaSatt(id, v) { hemFore(id); gesture(id, true); setParam(id, v, true); gesture(id, false); }
+  function kassettKnapp(namn) {
+    const T = S.ka;
+    if (namn === "rec") {
+      T.rec = !T.rec;
+      if (T.rec) { kaSatt("molmode", 1); kaSatt("molmod", KA_FART.play); kaSatt("moloop", 1); T.lage = "play"; T.loop = true; }
+      else { kaSatt("moloop", 0); T.loop = false; }
+    } else if (namn === "play" || namn === "rew" || namn === "ff") {
+      T.lage = namn; if (T.loop) kaSatt("molmod", KA_FART[namn]);
+    } else if (namn === "stop") {
+      T.lage = "stop"; T.rec = false;
+      if (T.loop) { kaSatt("moloop", 0); T.loop = false; }
+      if (T.paus) { T.paus = false; kaSatt("mofrz", 0); kaSatt("mowet", S.fore.mowet ?? 0); }
+    } else if (namn === "paus") {
+      T.paus = !T.paus;
+      if (T.paus) { kaSatt("mowet", 1); kaSatt("mofrz", 1); } else { kaSatt("mofrz", 0); kaSatt("mowet", S.fore.mowet ?? 0); }
+    }
+    if (SCEN.kassett) SCEN.kassett.transport(T);
     saveUi();
   }
   function lamnaHemlig() {
@@ -1175,16 +1209,26 @@
   // BLONDA: bokstäverna var för sig (de rör sig när appen lyssnar), fem tryck inom tre sekunder börjar lyssna
   { const logo = $("header .logo");
     if (logo) {
-      logo.innerHTML = [...logo.textContent.trim()].map((c, i) => `<span style="--i:${i}">${c}</span>`).join("");
+      logo.innerHTML = [...logo.textContent.trim()].map((c, i) => `<span style="--i:${i}">${c}</span>`).join("") + '<em id="nedrakning"></em>';
       logo.addEventListener("pointerdown", () => {
         const nu = performance.now(); if (nu - MEL.tt > 3000) MEL.tryck = 0;
         MEL.tt = nu; if (++MEL.tryck >= 5) { MEL.tryck = 0; lyssna(true); }
       });
     } }
-  // KASSETTEN: tryck på kassetten i luckan = byt till nästa band
+  // KASSETTEN: knapparna trycks, rattarna vrids (dra uppåt/nedåt), och ett tryck på kassetten byter band
   $("#stage").addEventListener("pointerdown", (e) => {
-    if (S.secret === "kassett" && SCEN.kassett && SCEN.kassett.traff(e.clientX, e.clientY) && D.band)
-      valjBand(((S.band ?? 0) + 1) % D.band.length);
+    if (S.secret !== "kassett" || !SCEN.kassett) return;
+    const t = SCEN.kassett.traff(e.clientX, e.clientY); if (!t) return;
+    e.preventDefault();
+    if (t.typ === "knapp") kassettKnapp(t.namn);
+    else if (t.typ === "kassett" && D.band) valjBand(((S.band ?? 0) + 1) % D.band.length);
+    else if (t.typ === "ratt") {
+      const id = KA_RATT[t.i], y0 = e.clientY, v0 = S.v[id], pid = e.pointerId;
+      hemFore(id); gesture(id, true);
+      const flytta = (ev) => { if (ev.pointerId !== pid) return; setParam(id, Math.max(0, Math.min(1, v0 + (y0 - ev.clientY) / 180)), true); };
+      const slapp = (ev) => { if (ev.pointerId !== pid) return; gesture(id, false); removeEventListener("pointermove", flytta); removeEventListener("pointerup", slapp); removeEventListener("pointercancel", slapp); saveUi(); };
+      addEventListener("pointermove", flytta); addEventListener("pointerup", slapp); addEventListener("pointercancel", slapp);
+    }
   });
   // KRISTALL: tryck fem gånger på versionen uppe till höger (inom tre sekunder)
   const ver = { n: 0, t: 0 };
@@ -1305,5 +1349,5 @@
   window.__bris = { S, setParam, selectPreset, note: (n, v) => uiNot(n, v), off: (n) => uiOff(n), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
     pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => SCEN.kristall || null, scen: (id) => SCEN[id] || null,
     valjHemlig, valjKristall: () => valjHemlig("kristall"), melodi: () => MEL.buf.map((e) => e.n),
-    lyssnar: () => performance.now() < MEL.till, valjBand };   // för tester
+    lyssnar: () => performance.now() < MEL.till, valjBand, kassettKnapp };   // för tester
 })();
