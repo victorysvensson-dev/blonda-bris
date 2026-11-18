@@ -1,6 +1,6 @@
-// BLONDA BRIS – den hemliga patchen KASSETTEN: en kassettbandspelare (renderad i Blender, tools/kassett.py).
-// Bilden är i lager, bakifrån: bandspelarens insida (syns när fronten fälls ut), VHS-bandet (lika stort som hela
-// bandspelaren, bakom fronten), och fronten: luckans insida (fack) med kassetten (bak, spolarna som ritas här, fram),
+// BLONDA BRIS – den hemliga patchen KASSETTEN: en kassettbandspelare i ett skåp av valnöt, på ett bord, sedd lite
+// uppifrån (renderad i Blender, tools/kassett.py). Bilden är i lager, bakifrån: skuggan på bordet, bandspelarens
+// insida (syns när fronten fälls ut), VHS-bandet (lika stort som hela bandspelaren, bakom fronten), skåpet och fronten: luckans insida (fack) med kassetten (bak, spolarna som ritas här, fram),
 // panelen, de nedtryckta knapparna (ur ett eget pass), luckans rökglas, VU-ljuset, nålarna, räkneverket, rattarnas
 // streck och REC-lampan.
 // Allt som rör sig följer bandspelaren i ljudkärnan (mätarna S.m.b*): bandets plats (spolarna fylls och töms),
@@ -24,9 +24,9 @@ const Kassett = (() => {
     stage.append(cv);
     const g = cv.getContext("2d");
     const bild = {}; let laddade = 0, aktiv = false, tFor = 0;
-    const LAGER = ["bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "panel", "nere", "lucka", "vu", "nav"];
+    const LAGER = ["skugga", "bak", "kassett_bak", "kassett_fram", "vhs_bak", "vhs_fram", "inre", "skap", "panel", "nere", "lucka", "vu", "nav"];
     for (const k of LAGER) {
-      const im = new Image(); im.onload = () => { laddade++; skugga = null; }; im.src = bas + meta.bilder[k]; bild[k] = im;
+      const im = new Image(); im.onload = () => { laddade++; }; im.src = bas + meta.bilder[k]; bild[k] = im;
     }
     const st = {
       vinkel: [0, 0], nal: [{ p: 0, v: 0 }, { p: 0, v: 0 }], fart: 0, pos: 0, sek: 0,
@@ -34,20 +34,13 @@ const Kassett = (() => {
       nytt: null, byte: -1, typ: "lucka", fran: "kassett", till: "kassett", ljudIn: false,   // ett bandbyte som pågår
       tryck: null,                              // en knapp som just trycktes (syns nere en kort stund, även STOP)
     };
-    let skugga = null, ruta = null, dpr = 1, front = null;
+    let ruta = null, dpr = 1, front = null;
 
     function mattRuta() {
       const s = stage.getBoundingClientRect(), c = cv.getBoundingClientRect();
       const sk = Math.min(s.width * 0.98 / meta.w, s.height * 0.94 / meta.h);
       const w = meta.w * sk, h = meta.h * sk;
       return { x: s.left - c.left + (s.width - w) / 2, y: s.top - c.top + (s.height - h) / 2, w, h, sk };
-    }
-    function gorSkugga(R) {   // bandspelarens skugga mot bakgrunden, ritad en gång per storlek
-      const c = document.createElement("canvas"); c.width = Math.round(cv.width); c.height = Math.round(cv.height);
-      const x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-      x.shadowColor = "rgba(0,0,0,0.65)"; x.shadowBlur = 60 * R.sk * 2; x.shadowOffsetY = 26 * R.sk * 2;
-      x.drawImage(bild.panel, R.x, R.y, R.w, R.h);
-      return c;
     }
     const vuVinkel = (db) => {   // samma VU-skala som på mätarens bild (tools/kassett.py): linjär i amplitud
       const [a0, a1] = meta.vu_vinkel, v = Math.pow(10, db / 20), v0 = Math.pow(10, -20 / 20), v1 = Math.pow(10, 3 / 20);
@@ -203,19 +196,17 @@ const Kassett = (() => {
     function rita(S) {
       dpr = window.devicePixelRatio || 1;
       const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
-      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); skugga = null; }
+      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
       const tnu = performance.now(), dt = Math.min(0.1, Math.max(0, (tnu - (tFor || tnu)) / 1000)); tFor = tnu;
       const { rV, rH } = steg(S, dt);
       g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
       if (laddade < LAGER.length) return;
-      const R = mattRuta();
-      if (!ruta || ruta.w !== R.w || ruta.x !== R.x || ruta.y !== R.y) { ruta = R; skugga = null; }
-      if (!skugga) skugga = gorSkugga(R);
-      g.drawImage(skugga, 0, 0);
+      const R = mattRuta(); ruta = R;
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.imageSmoothingQuality = "high";
       const sk = R.sk, X = (v) => R.x + v * sk, Y = (v) => R.y + v * sk;
       const B = bytesLage(), [fx, fy, fw, fh] = meta.front;
+      g.drawImage(bild.skugga, R.x, R.y, R.w, R.h);   // skuggan på bordet
       // insidan (när fronten är utfälld) och VHS-bandet bakom fronten (åker in och ut underifrån)
       if (B.front > 0) g.drawImage(bild.inre, R.x, R.y, R.w, R.h);
       if (B.vhsUt < 1) {
@@ -228,6 +219,7 @@ const Kassett = (() => {
         g.drawImage(bild.vhs_fram, R.x, R.y, R.w, R.h);
         g.restore();
       }
+      g.drawImage(bild.skap, R.x, R.y, R.w, R.h);   // skåpet (locket och sidorna) står kvar när fronten fälls ut
       if (B.front <= 0) { ritaFront(g, R, S, B, rV, rH); return; }
       // fronten fälls ut kring nederkanten: ritas för sig, blir mörkare (vänds bort från ljuset) och kortare
       if (!front || front.width !== cv.width || front.height !== cv.height) { front = document.createElement("canvas"); front.width = cv.width; front.height = cv.height; }

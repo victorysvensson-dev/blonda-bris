@@ -21,6 +21,14 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.14.1
+
+- KASSETTEN har ett nytt utseende, som en produktbild: bandspelaren står i ett skåp av valnöt på ett bord och syns
+  lite uppifrån. Fronten är borstad champagnefärgad aluminium med rökfärgad lucka i svart ram, bakbelysta VU-mätare,
+  svarvade rattar med räfflad kant och skala, pianotangenter med text och ett räkneverk med RESET. Ljuset är mjukare
+  (AgX), kassetten har en riktigare etikett och skuggan på bordet är renderad. Skåpet står kvar när fronten fälls ut
+  för VHS-bandet (nya lager i tools/kassett.py: skugga och skap).
+
 ## 1.14.0
 
 - KASSETTEN är en riktig bandspelare (i ljudkärnan, core/bandspelare.h): REC spelar in det man spelar på ett band
