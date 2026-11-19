@@ -14,7 +14,7 @@ const dataJs = fs.readFileSync(new URL("../ui/data.js", import.meta.url), "utf8"
 const PARAMS = JSON.parse(dataJs.slice(dataJs.indexOf("{"), dataJs.lastIndexOf("}") + 1)).params.map((p) => p.id);
 const sp = (id, v) => e.bris_set_param(PARAMS.indexOf(id), v);
 // BRIS ljud, och de hemliga patcharnas motorer (ORGEL, SLÖJA, STAV: index efter BRIS 90, efter BRIS ljud 0 som i dump)
-for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105, 112, 127, 160]) {
+for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105, 112, 127, 175, 181, 186]) {
   e.bris_init(48000);
   e.bris_all_off();
   if (p >= 90) e.bris_load_preset(0);
@@ -30,40 +30,6 @@ for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105, 112, 127, 160]) {
   }
   console.log(`ljud ${p}: största skillnad wasm mot C++ ${md.toExponential(2)}`);
   if (!(md < 1e-4)) fel++;
-}
-// MELLOTRON (MELLO): banden läses ur ui/mellotron och lämnas till kärnan som i webbläsaren (16 bitar stereo)
-{
-  e.bris_init(48000);
-  for (let b = 0; b < 7; ++b) {
-    const d = fs.readFileSync(new URL(`../ui/mellotron/band_${b + 1}.wav`, import.meta.url));
-    let i = 12, sr = 32000, data = null;
-    while (i + 8 <= d.length) {
-      const id = d.toString("latin1", i, i + 4), len = d.readUInt32LE(i + 4);
-      if (id === "fmt ") sr = d.readUInt32LE(i + 12);
-      if (id === "data") { data = new Int16Array(d.buffer.slice(d.byteOffset + i + 8, d.byteOffset + i + 8 + len)); break; }
-      i += 8 + len + (len & 1);
-    }
-    const ramar = data.length >> 1, p = e.bris_mello_buf(b, ramar);
-    new Int16Array(e.memory.buffer, p, ramar * 2).set(data);
-    e.bris_mello_set(b, ramar, sr);
-    if (!e.bris_mello_har(b)) { console.log(`FEL: band ${b + 1} kom inte fram`); fel++; }
-  }
-  for (const p of [161, 169]) {
-    e.bris_init(48000);   // nollställer (eko, svaj), banden ligger kvar
-    e.bris_all_off();
-    e.bris_load_preset(0); e.bris_load_preset(p);
-    e.bris_note_on(60, 100); e.bris_note_on(64, 90); e.bris_note_on(67, 80);
-    const ref = new Float32Array(execFileSync(dumpBin, [String(p), "mello"], { maxBuffer: 1 << 26 }).buffer.slice(0));
-    let md = 0, k = 0, pk = 0;
-    for (let b = 0; b < 750; b++) {
-      if (b === 500) e.bris_all_off();
-      e.bris_process(128);
-      const L = new Float32Array(e.memory.buffer, e.bris_buf_l(), 128), R = new Float32Array(e.memory.buffer, e.bris_buf_r(), 128);
-      for (let s = 0; s < 128; s++) { md = Math.max(md, Math.abs(L[s] - ref[k++]), Math.abs(R[s] - ref[k++])); pk = Math.max(pk, Math.abs(L[s])); }
-    }
-    console.log(`MELLOTRON ljud ${p}: största skillnad wasm mot C++ ${md.toExponential(2)} (topp ${pk.toFixed(2)})`);
-    if (!(md < 1e-4) || !(pk > 0.05)) fel++;
-  }
 }
 // MOOD (delay, mikrolooper) och ARP som spelar en pad, med en ton ovanpå
 for (const p of [4, 53]) {

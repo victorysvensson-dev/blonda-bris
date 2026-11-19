@@ -41,7 +41,6 @@ BrisProcessor::BrisProcessor()
     for (int i = 0; i < Core::numParams(); ++i) params.push_back(apvts.getParameter(Core::paramInfo(i).id));
     applied.assign(params.size(), std::numeric_limits<double>::quiet_NaN());
     loadSfx();
-    loadMello();
     // startljud: "bris" (index 65, en PAD/iris) om inget sparat tillstånd läses in
     applyProgramToHost(preset.load());
 }
@@ -131,41 +130,6 @@ static bool lasWav(const char* d, int n, std::vector<float>& ut, double& sr) {
         i = b + len + (len & 1);
     }
     return false;
-}
-
-// MELLOTRONs band: ui/mellotron/band_<n>.wav (16 bitar PCM stereo, tools/mellotron.py). Kärnan läser dem direkt.
-static bool lasWavStereo(const char* d, int n, std::vector<int16_t>& ut, double& sr) {
-    auto u32 = [&](int i) { return (uint32_t)(uint8_t)d[i] | (uint32_t)(uint8_t)d[i + 1] << 8 | (uint32_t)(uint8_t)d[i + 2] << 16 | (uint32_t)(uint8_t)d[i + 3] << 24; };
-    auto u16 = [&](int i) { return (int)((uint8_t)d[i] | (uint8_t)d[i + 1] << 8); };
-    if (n < 44 || std::memcmp(d, "RIFF", 4) != 0 || std::memcmp(d + 8, "WAVE", 4) != 0) return false;
-    int kanaler = 0, bitar = 0;
-    for (int i = 12; i + 8 <= n;) {
-        const int len = (int)u32(i + 4), b = i + 8;
-        if (len < 0 || b + len > n) return false;
-        if (std::memcmp(d + i, "fmt ", 4) == 0 && len >= 16) { if (u16(b) != 1) return false; kanaler = u16(b + 2); sr = u32(b + 4); bitar = u16(b + 14); }
-        else if (std::memcmp(d + i, "data", 4) == 0 && kanaler == 2 && bitar == 16) {
-            ut.resize((size_t)(len / 2));
-            std::memcpy(ut.data(), d + b, (size_t)(len / 2) * 2);   // RIFF är little endian, som alla våra plattformar
-            return len >= 8;
-        }
-        i = b + len + (len & 1);
-    }
-    return false;
-}
-
-void BrisProcessor::loadMello() {
-    for (int b = 0; b < blonda::app::mello::kNumBand; ++b) {
-        const juce::String namn = "band_" + juce::String(b + 1) + ".wav";
-        for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
-            if (juce::String(BinaryData::originalFilenames[i]) != namn) continue;
-            int size = 0;
-            const char* data = BinaryData::getNamedResource(BinaryData::namedResourceList[i], size);
-            double sr = blonda::app::mello::kBandSr;
-            if (data != nullptr && lasWavStereo(data, size, melloData[b], sr))
-                core.setMelloBand(b, melloData[b].data(), (int)melloData[b].size() / 2, sr);
-            break;
-        }
-    }
 }
 
 void BrisProcessor::loadSfx() {

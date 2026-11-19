@@ -45,10 +45,9 @@ EXTRA.append(("tarec", "TAPE Rec Level", 0.0, 1.0, 0.6))
 # (0 = BRIS), sedan alla motorernas rattar med ett prefix per motor, utom de som delas med BRIS (DELADE: effekterna
 # efter rösterna och volymen; BRIS värde gäller för alla motorer). Motorernas fabriksljud får index efter BRIS
 # (kNumFactory + motorns första + ljudets index).
-MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv"), ("one", "ONE", "on"), ("mello", "MELLO", "ml")]
+MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv"), ("one", "ONE", "on"), ("kor", "KÖR", "kr")]
 DELADE = {"chorus", "dtime", "dfb", "dmix", "bendr", "vol"}
-# MELLO (bandinstrumentet i MELLOTRON) är BRIS egen: tools/mellotron.py skriver core/mello.json
-MOTOR_DATA = {m: json.load(open(os.path.join(ROT, "core/mello.json" if m == "mello" else f"External/blonda-motor/motorer/{m}/{m}.json"), encoding="utf-8")) for m, _, _ in MOTORER}
+MOTOR_DATA = {m: json.load(open(os.path.join(ROT, f"External/blonda-motor/motorer/{m}/{m}.json"), encoding="utf-8")) for m, _, _ in MOTORER}
 EXTRA.append(("motor", "Engine", 0.0, float(len(MOTORER)), 0.0, True))
 for _m, _namn, _pre in MOTORER:
     for _p in MOTOR_DATA[_m]["params"]:
@@ -96,22 +95,22 @@ HEMLIGA = [
     dict(id="norrsken", namn="NORRSKEN", ljudnamn="polarljus", melodi=[5, 9, 2, 4], scen="norrsken", motor="sloja",
          satt={"vol": 0.88, "rvb": 0.5, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.92, "mowmod": 0.9, "moblend": 0.4,
                "motone": 0.55}),
-    # NATTÅGET "nattåg": motorn STAV (elpiano med tremolo), ett litet rum och lite band (som en gammal inspelning).
-    # B-A-G-G-A-G-E.
+    # NATTÅGET "nattåg": motorn STAV (elpiano med djup tremolo), ett litet rum och ett slitet band som svajar (som en
+    # gammal inspelning som spelas på ett skakigt tåg). B-A-G-G-A-G-E.
     dict(id="nattag", namn="NATTÅGET", ljudnamn="nattåg", melodi=[11, 9, 7, 7, 9, 7, 4], scen=None, motor="stav",
-         satt={"vol": 0.92, "rvb": 0.25, "rsize": 0.55, "tape": 1, "tamedia": 0, "taage": 0.3, "tawow": 0.25, "taflut": 0.2,
-               "tasat": 0.35, "tabrus": 0.15, "taavbr": 0.02, "taton": 0.5, "tawet": 1}),
+         satt={"vol": 0.92, "rvb": 0.25, "rsize": 0.55, "svtrem": 0.62, "tape": 1, "tamedia": 0, "taage": 0.4, "tawow": 0.6,
+               "taflut": 0.38, "tasat": 0.38, "tabrus": 0.18, "taavbr": 0.04, "taton": 0.47, "tawet": 1}),
     # ORGELN "katedral": motorn ORGEL (fullt verk) i ett enormt stenrum. B-A-C-H (B = B♭, H = B).
     dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel", motor="orgel",
          satt={"vol": 0.8, "rvb": 0.7, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.45,
                "motone": 0.45}),
-    # ANALOG "one": motorn ONE (BRIS möter Moog) med alla dess ljud, i ett litet rum. D-E-C-C-G (de fem tonerna).
-    dict(id="analog", namn="ANALOG", ljudnamn="one", melodi=[2, 4, 0, 0, 7], scen=None, motor="one",
+    # ANALOG "moogbas": motorn ONE (BRIS möter Moog) med alla dess ljud, i ett litet rum. Börjar på basen.
+    # D-E-C-C-G (de fem tonerna).
+    dict(id="analog", namn="ANALOG", ljudnamn="moogbas", melodi=[2, 4, 0, 0, 7], scen=None, motor="one",
          satt={"vol": 0.7, "rvb": 0.18, "rsize": 0.45}),
-    # MELLOTRON "violiner": bandinstrumentet MELLO (sju riktiga mellotronband) med alla sina ljud, i ett mjukt rum.
-    # C-G-E-A-G.
-    dict(id="mellotron", namn="MELLOTRON", ljudnamn="violiner", melodi=[0, 7, 4, 9, 7], scen=None, motor="mello",
-         satt={"vol": 0.72, "rvb": 0.3, "rsize": 0.6}),
+    # KÖREN "kör": motorn KÖR (mänskliga röster, tre sångare per ton) i ett mjukt rum. A-G-E-G-A.
+    dict(id="koren", namn="KÖREN", ljudnamn="kör", melodi=[9, 7, 4, 7, 9], scen=None, motor="kor",
+         satt={"vol": 0.75, "rvb": 0.32, "rsize": 0.7}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar
@@ -290,8 +289,6 @@ def main():
         pr = [x["name"] for x in MOTOR_DATA[m]["presets"]]
         data["motorer"].append(dict(id=m, namn=mn, prefix=pre, forsta=forsta, ljud=pr, delade=sorted(DELADE),
                                     params=[x["id"] for x in MOTOR_DATA[m]["params"]]))
-        if "band" in MOTOR_DATA[m]:   # MELLO: banden (namn, grundton, längd) till scenen och webben
-            data["motorer"][-1]["band"] = [dict(namn=b["namn"], rot=b["rot"], sek=b["sek"]) for b in MOTOR_DATA[m]["band"]]
         forsta += len(pr)
     data["hemliga"] = []
     for i_, h in enumerate(HEMLIGA):

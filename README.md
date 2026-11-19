@@ -21,6 +21,25 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.20.0
+
+- **Ny hemlig patch: KÖREN** (SECRET 08, A-G-E-G-A) i stället för MELLOTRON, som är borttagen. Den nya motorn KÖR
+  (blonda-motor 0.9.0) är en kör av mänskliga röster: tre sångare per ton, vokalerna U, O, A, E och I, röstläge från
+  bas till barn, styrka, sångarformant, vibrato som kommer efter ansatsen, små ojämnheter i tonhöjd och styrka (liv),
+  andning och en mun som öppnar sig i ansatsen. 12 ljud (kör, ooh, mmm, katedral, barnkör, mansröster, opera,
+  viskning, änglar, gospel, eee). Scenen är en kör i ett mörkt kyrkorum med ljus i händerna: varje ton får tre
+  sångare att sjunga, ljusen flammar upp och munnarna formar vokalen.
+- **ANALOG** börjar på MOOGBAS. ONE har 20 nya ljud (blonda-motor 0.8.0).
+- **BRIS MPE: ANALOG och NATTÅGET har uttryck per ton**, som BRIS: egen böj per ton, slide på det som SLIDE UP väljer
+  (FILTER, VIBRATO, TREMOLO, PWM, WAH) och tryck som ger vibrato (motorerna ONE MPE och STAV MPE).
+- **NATTÅGET** svajar mer (djupare tremolo, mer wow och flutter i bandet).
+- **NORRSKEN:**
+  - Skogen har djup: en dimmig ås med små granar längst bort, strandskogen med riktiga granar i olika höjd och
+    gläntor, och en skogklädd udde till vänster som sticker ut i sjön (närmare, med större granar och egen
+    spegelbild). Spegeln är lite krusig ända in mot stranden.
+  - Späckhuggarna följer sin bana genom ytan: kroppen böjer sig efter bågen (huvudet först, sedan rygg och fena,
+    sist stjärten), slår lite med stjärten, hanens fena vickar, och bakom dem breder ett kölvatten ut sig i ett V.
+
 ## 1.19.1
 
 - **iPad/iPhone: appen blev svart när den startades från Xcode.** Parametrarnas namn är UTF-8 (SLÖJA), men pluggen
@@ -350,7 +369,7 @@ Releases → **senaste**.
 ## Uppdatera BRIS-ljudet
 
 Ljudet ändras bara i `blonda-motor`. Kopiera sedan `include/blonda/{motor,effekt,gen_runtime}.h` och
-`motorer/{bris,brismpe,rum,vibe,sliten,mood,orgel,sloja,stav,one}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
+`motorer/{bris,brismpe,rum,vibe,sliten,mood,orgel,sloja,stav,one,kor,onempe,stavmpe}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
 och kör testerna.
 
 © BLONDA. Byggt med JUCE 8.

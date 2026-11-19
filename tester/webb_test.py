@@ -435,25 +435,19 @@ with sync_playwright() as p:
             for n in (45, 57): pg.evaluate(f"__bris.off({n})")
             krav(a1["utslag"] > a0["utslag"] + 0.05 and a1["styrka"] > a0["styrka"] and a1["ton"] and "HZ" in a1["ton"],
                  f"ANALOG: strålen visar vågformen när man spelar, och tonen står i hörnet ({a0} -> {a1})")
-            # MELLOTRON (C-G-E-A-G): bandinstrumentet MELLO; banden hämtas när motorn väljs, och scenen visar banden som rullar
-            hemlig("mellotron", [60, 67, 64, 69, 67], "MELLOTRON", "08")
-            pg.wait_for_timeout(1800)
-            for n in (55, 62, 67): pg.evaluate(f"__bris.note({n}, 100)")
+            # KÖREN (A-G-E-G-A): motorn KÖR, och kören i kyrkan där varje ton får tre sångare att sjunga
+            hemlig("koren", [69, 67, 64, 67, 69], "KÖREN", "08")
+            pg.wait_for_timeout(1500)
+            for n in (48, 72): pg.evaluate(f"__bris.note({n}, 100)")
             pk = 0
             for _ in range(9): pg.wait_for_timeout(100); pk = max(pk, pg.evaluate("__bris.S.m.pk || 0"))
-            m1 = pg.evaluate("__bris.scen('mellotron').matt()"); pg.screenshot(path=f"{UT}/mellotron.png")
-            for n in (55, 62, 67): pg.evaluate(f"__bris.off({n})")
-            krav(pk > 0.05 and m1["rullar"] == 3 and m1["langst"] > 0.05 and m1["band"] == "VIOLINS",
-                 f"MELLOTRON: banden låter och rullar, skylten visar bandet (topp {pk:.3f}, {m1})")
-            pg.wait_for_timeout(1200)
-            m2 = pg.evaluate("__bris.scen('mellotron').matt()")
-            krav(m2["rullar"] == 0 and m2["langst"] < 0.01, f"MELLOTRON: släppta band dras tillbaka ({m2})")
-            pg.evaluate("__bris.tab('osc')"); pg.wait_for_timeout(250)
-            pg.evaluate("[...document.querySelectorAll('#left .choice .opt')].find((b) => b.textContent.includes('CHOIR')).click()"); pg.wait_for_timeout(300)
-            m3 = pg.evaluate("({ b: __bris.S.v.mlband, s: __bris.scen('mellotron').matt().band })")
-            krav(m3["b"] == 6 and m3["s"] == "CHOIR", f"MELLOTRON: bandväljaren byter band och skylten följer ({m3})")
-            pg.evaluate("__bris.tab('play')")
-            for hid, mot, flik, namn in (("norrsken", 2, "VEIL", "NORRSKEN"), ("nattag", 3, "TINE", "NATTÅGET"), ("orgel", 1, "STOPS", "ORGELN"), ("mellotron", 5, "TAPES", "MELLOTRON"), ("analog", 4, "OSC", "ANALOG")):
+            k1 = pg.evaluate("__bris.scen('koren').matt()"); pg.screenshot(path=f"{UT}/koren.png")
+            for n in (48, 72): pg.evaluate(f"__bris.off({n})")
+            krav(pk > 0.05 and k1["sjunger"] == 6, f"KÖREN: kören sjunger, tre sångare per ton (topp {pk:.3f}, {k1})")
+            pg.wait_for_timeout(2500)
+            k2 = pg.evaluate("__bris.scen('koren').matt()")
+            krav(k2["sjunger"] == 0 and k2["ljus"] < k1["ljus"] * 0.5, f"KÖREN: sångarna tystnar när tangenterna släpps ({k2})")
+            for hid, mot, flik, namn in (("norrsken", 2, "VEIL", "NORRSKEN"), ("nattag", 3, "TINE", "NATTÅGET"), ("orgel", 1, "STOPS", "ORGELN"), ("koren", 5, "VOICES", "KÖREN"), ("analog", 4, "OSC", "ANALOG")):
                 pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(500)
                 r = pg.evaluate("({ m: __bris.S.v.motor, p: __bris.S.preset, tabs: [...document.querySelectorAll('#tabs button')].map((b) => b.textContent) })")
                 flikar_ok = r["tabs"] == ["PLAY", "OSC", "FILTER", "AMP", "MOD", "FX", "MOOD", "ARP"] if hid == "analog" else ("MOD" not in r["tabs"] and "OSC" not in r["tabs"])
@@ -473,7 +467,7 @@ with sync_playwright() as p:
             pg.wait_for_timeout(600)
             pg.click("#menuBtn"); pg.wait_for_timeout(300)
             hm = pg.evaluate("[...document.querySelectorAll('#list .grp.hemlig .it')].map((b) => b.dataset.hem + (b.classList.contains('on') ? '*' : ''))")
-            krav(hm == ["kristall", "sjon", "kassett", "norrsken", "nattag", "orgel", "analog*", "mellotron"], f"menyn: SECRET med alla åtta, ANALOG vald ({hm})")
+            krav(hm == ["kristall", "sjon", "kassett", "norrsken", "nattag", "orgel", "analog*", "koren"], f"menyn: SECRET med alla åtta, ANALOG vald ({hm})")
             pg.screenshot(path=f"{UT}/hemliga_meny.png")
             pg.click("#menuClose"); pg.wait_for_timeout(200)
             pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)

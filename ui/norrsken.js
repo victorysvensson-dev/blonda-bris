@@ -76,15 +76,30 @@ const Norrsken = (() => {
       vec3 lin = pow(b.rgb, vec3(2.2)) / uFjM.x * uFjG.x + pow(k.rgb, vec3(2.2)) / uFjM.y * ljus * uFjG.y;
       return vec4(lin, b.a * inne);
     }
-    // granarna längs stranden: en rad med grenvåningar ovanpå en låg ås. Ger täckning och höjden i granen (0..1)
-    vec2 gran(float x, float upp, float w, float hmax, float seed, float aa) {
-      float c = floor(x / w), f = fract(x / w), r = hash(vec2(c, seed));
-      float th = hmax * (0.45 + 0.55 * r), y = upp / th;
-      if (y > 1.0 || y < 0.0) return vec2(0.0);
-      float u = abs(f - 0.5 - (hash(vec2(c, seed + 3.0)) - 0.5) * 0.35) * 2.0;
-      float vaning = fract(y * (4.0 + 3.0 * r) + r);
-      float halv = (1.0 - y) * (0.55 + 0.45 * (1.0 - vaning)) + 0.03;
-      return vec2(smoothstep(halv + aa, halv - aa, u), y);
+    // en gran: smal kon med hängande grenvåningar (sågtand i kanten) och en tunn topp. y 0..1 uppåt i granen,
+    // dx sidled i granens höjder, r slump. Ger täckning.
+    float granform(float dx, float y, float r, float aa) {
+      if (y < 0.0 || y > 1.0) return 0.0;
+      float vaning = fract(y * (5.0 + 4.0 * r) + r * 3.0);
+      float halv = pow(1.0 - y, 1.15) * (0.2 + 0.1 * r) * (0.6 + 0.4 * (1.0 - vaning)) + 0.004;
+      return smoothstep(halv + aa, halv - aa, abs(dx));
+    }
+    // en skog av granar längs en linje: två förskjutna rader med celler (så att det inte blir ett jämnt mönster),
+    // olika höjd (högre bestånd här och där), och gläntor där det inte står några. upp = höjd över skogens fot,
+    // hmax = högsta granen, w = cellernas bredd, glest = hur mycket gläntor. Ger täckning och höjden i granen.
+    vec2 granar(float x, float upp, float w, float hmax, float seed, float aa, float glest) {
+      float tack = 0.0, hy = 0.0;
+      if (upp < 0.0 || upp > hmax) return vec2(0.0);
+      for (int k = 0; k < 2; k++) {
+        float o = float(k) * 0.5, c = floor(x / w + o), r = hash(vec2(c, seed + float(k) * 17.0));
+        if (hash(vec2(c, seed + 5.0 + float(k))) < glest * (0.4 + 0.9 * noise(vec2(x * 1.3, seed)))) continue;
+        float bestand = 0.55 + 0.6 * noise(vec2(x * 2.2, seed + 9.0));
+        float th = hmax * (0.35 + 0.5 * pow(r, 0.7)) * bestand;
+        float cx = (c - o + 0.5 + (hash(vec2(c, seed + 3.0)) - 0.5) * 0.6) * w;
+        float tk = granform((x - cx) / th, upp / th, r, aa / th);
+        if (tk > tack) { tack = tk; hy = upp / th; }
+      }
+      return vec2(tack, hy);
     }
     vec3 himmel(vec2 s, float skarpa) {
       float upp = uHy - s.y, x = s.x * uAsp;
@@ -101,15 +116,19 @@ const Norrsken = (() => {
       float aa = 0.0016 / skarpa;
       vec4 fj = fjall(x, upp, sken);
       c = mix(c, fj.rgb, fj.a);
-      // stranden: en låg ås med granar, nästan svart, toppen fångar lite av norrskenet
-      if (upp < 0.03 && upp > -0.01) {
-        float as = 0.002 + 0.004 * noise(vec2(x * 3.0, 1.7)) + 0.002 * noise(vec2(x * 13.0, 3.1));
+      // skogen i två lager med djup: längst bort en mjuk ås med små granar i dis (ljusare, nästan himlens färg), och
+      // närmast strandskogen: större granar i olika höjd med gläntor, nästan svart, topparna fångar lite av norrskenet
+      if (upp < 0.075 && upp > -0.01) {
+        float ga = 0.0012 / skarpa;
+        float asB = 0.005 + 0.02 * fbm(vec2(x * 0.8, 4.2));
+        vec2 gB = granar(x + 7.3, upp - asB * 0.85, 0.004, 0.013, 11.0, ga, 0.12);
+        vec3 dis = mix(c, vec3(0.03, 0.05, 0.07) + sken * 0.1, 0.8);
+        c = mix(c, dis, max(gB.x, smoothstep(asB + ga, asB - ga, upp)));
+        float as = 0.0012 + 0.003 * noise(vec2(x * 2.0, 1.7)) + 0.001 * noise(vec2(x * 11.0, 3.1));
         vec3 svart = vec3(0.003, 0.005, 0.007);
-        vec2 g1 = gran(x + 2.1, upp - as * 0.6, 0.0045, 0.011, 7.0, 0.05 / skarpa);
-        c = mix(c, svart + sken * 0.05 * g1.y, g1.x);
-        c = mix(c, svart, smoothstep(as + aa, as - aa, upp));
-        vec2 g2 = gran(x, upp - as * 0.8, 0.007, 0.017, 3.0, 0.05 / skarpa);
-        c = mix(c, svart + sken * 0.06 * g2.y * g2.y, g2.x);
+        c = mix(c, svart, smoothstep(as + ga, as - ga, upp));
+        vec2 g1 = granar(x + 2.1, upp - as * 0.7, 0.0095, 0.042, 7.0, ga, 0.35);
+        c = mix(c, svart + sken * 0.07 * g1.y * g1.y, g1.x);
       }
       return c;
     }
@@ -120,21 +139,24 @@ const Norrsken = (() => {
       return c * (0.62 + 0.2 * (1.0 - exp(-(m - 0.62) / 0.5))) / m;   // långsamt mot taket, så strålarna syns kvar
     }
     // Späckhuggarna: en flock på tre (en hane med hög, rak ryggfena och två mindre med böjd fena) som simmar förbi och
-    // kommer upp och andas två gånger var. Varje andetag är en mjuk båge: nosen pekar uppåt när den bryter ytan (huvudet
-    // och blåsten kommer först), planar ut så att ryggen och fenan syns, och lutar sedan nedåt så att stjärten går ner
-    // sist. Där kroppen bryter ytan skummar det, och där den kom upp sprider sig ringar på vattnet (det är vågorna).
+    // kommer upp och andas två gånger var. Varje andetag är en båge genom ytan, och kroppen följer bågen som ett tåg
+    // följer rälsen: huvudet kommer upp först (med blåsten), sedan rullar ryggen och fenan över ytan och böjer sig efter
+    // bågen, och sist går stjärtspolen ner. Kroppen slår lite med stjärten medan den simmar, och hanens höga fena
+    // vickar. Där kroppen bryter ytan skummar det, bakom huvudet breder ett kölvatten ut sig i ett V, och där den kom
+    // upp sprider sig ringar (det är späckhuggarna som gör vågorna).
     // uSp: starttid, riktning (±1), avstånd (raden under horisonten, d0) och var de börjar (x).
-    // Mått i kroppslängder L (längre bort = mindre på skärmen); nosen är vid +0,5, stjärten vid -0,5.
-    const float SP_TID = 3.4, SP_FART = 0.45;
+    // Mått i kroppslängder L (längre bort = mindre på skärmen). Bågen: ryggradens höjd P(u) = SP_HT - SP_K u²
+    // (u framåt från bågens topp, uppåt från vattenytan); nosen är kroppens +0,5, stjärten -0,5.
+    const float SP_FART = 0.85, SP_HT = -0.012, SP_K = 0.42, SP_U0 = -1.1, SP_TID = 3.3;
     float blast = 0.0, skum = 0.0, glans = 0.0, flack = 0.0;
     // kroppens tjocklek: trubbigt huvud, tjockast en bit bakom huvudet, och en stjärtspole som är hög sedd från sidan
     float sprofil(float bx) {
       float q = clamp(bx + 0.5, 0.0, 1.0);
       return pow(q, 0.5) * pow(1.0 - q, 0.38) / 0.5478;
     }
-    // en späckhuggare i kroppens egna mått (bx framåt, by uppåt). hf = fenans höjd, krok = hur böjd den är.
-    // Ger täckning (x) och glans (y).
-    vec2 kropp(float bx, float by, float hf, float krok, float aa) {
+    // en späckhuggare i kroppens egna mått (bx längs kroppen, by ut från ryggraden). hf = fenans höjd, krok = hur böjd
+    // den är, vick = fenans topp just nu. Ger täckning (x) och glans (y).
+    vec2 kropp(float bx, float by, float hf, float krok, float vick, float aa) {
       float e = sprofil(bx), ovan = 0.105 * e, under = -0.085 * e;
       // stjärtfenorna ligger vågrätt: från sidan en kort, platt kil bakom stjärtspolen
       float stj = clamp((-0.47 - bx) / 0.09, 0.0, 1.0);
@@ -142,7 +164,7 @@ const Norrsken = (() => {
       float inne = clamp(min(min(ovan - by, by - under), min(bx + 0.56, 0.5 - bx)) / aa + 0.5, 0.0, 1.0);
       // ryggfenan: hanens rak och hög, de andras lägre och bakåtböjd
       float bas = 0.105 * sprofil(0.05), hh = (by - bas) / hf;
-      float topp = mix(0.055, -0.035, krok);
+      float topp = mix(0.055, -0.035, krok) + vick * hh * hh;
       float fram = 0.125 - (0.125 - topp) * pow(clamp(hh, 0.0, 1.0), mix(1.0, 0.7, krok));
       float bak = -0.02 + (topp + 0.02) * hh + krok * 0.025 * sin(3.14159 * clamp(hh, 0.0, 1.0));
       float fen = clamp(min(min(1.0 - hh, hh + 0.15) * hf, min(bx - bak, fram - bx)) / aa + 0.5, 0.0, 1.0);
@@ -154,59 +176,70 @@ const Norrsken = (() => {
       flack = max(flack, (exp(-dot(o, o)) * 0.9 + exp(-dot(sa, sa)) * 0.5) * inne);
       return vec2(max(inne, fen), g);
     }
-    // var kroppen är under ett andetag: höjd och lutning (s = 0..1 genom andetaget)
-    vec2 sbana(float s) { return vec2(-0.3 + 0.27 * sin(3.14159 * s), 0.5 * cos(3.14159 * s)); }
-    // från vattnets mått till kroppens: flytta, luta, och böj kroppen i en båge (ändarna lägre än ryggen)
-    vec2 tillkropp(vec2 p, vec2 bana) {
-      p.y -= bana.x; float c = cos(bana.y), n = sin(bana.y);
-      vec2 b = vec2(p.x * c + p.y * n, -p.x * n + p.y * c);
-      return vec2(b.x, b.y + 0.1 * b.x * b.x);
+    // punkten (u, v) i bågens mått -> kroppens mått (bx, by), när nosen är vid uh. Kroppen följer bågen: punkten
+    // projiceras på ryggraden (två steg räcker, bågen är svag), och avståndet längs bågen från nosen ger bx.
+    vec2 tillkropp(float u, float v, float uh, float tid) {
+      float us = u, n = 0.0;
+      for (int it = 0; it < 2; it++) {
+        float pp = -2.0 * SP_K * us, c = inversesqrt(1.0 + pp * pp), sn = pp * c;
+        n = (u - us) * (-sn) + (v - (SP_HT - SP_K * us * us)) * c;
+        us = u + n * sn;
+      }
+      float pm = -SP_K * (uh + us), bx = 0.5 - (uh - us) * sqrt(1.0 + pm * pm);
+      // stjärtslaget: en våg bakåt längs kroppen, större mot stjärten
+      float sv = 0.5 - bx;
+      n -= 0.014 * sin(6.2832 * (bx * 1.1 + tid * 1.5)) * sv * sv * 2.0;
+      return vec2(bx, n);
     }
     vec4 spack(float x, float d) {
       vec4 r = vec4(0.0); blast = 0.0; skum = 0.0; glans = 0.0; flack = 0.0;
       float t = uT - uSp.x;
-      if (t < 0.0 || t > 22.0) return r;
+      if (t < 0.0 || t > 24.0) return r;
       float dir = uSp.y;
+      float ub = -sqrt((SP_HT + 0.093) / SP_K);          // där andningshålet bryter ytan
+      float tb = (ub + 0.17 - SP_U0) / SP_FART;           // när det händer (andningshålet är 0,17 bakom nosen)
       for (int i = 0; i < 3; i++) {
         float fi = float(i), hane = step(fi, 0.5);
         float d0 = uSp.z * (1.0 + (fi - 1.0) * 0.07);                  // lite olika långt bort
         float L = d0 * 1.4 * mix(0.82, 1.0, hane);
         float hf = mix(0.12, 0.19, hane), krok = 1.0 - hane;
+        float vick = hane * 0.018 * sin(uT * 2.3 + fi);
         float aa = 0.0028 / L;
         for (int k = 0; k < 2; k++) {
           float start = fi * 1.4 + float(k) * 5.6, ts = t - start;   // tid sedan andetaget började
           if (ts < 0.0 || ts > 14.0) continue;
-          float x0 = uSp.w + dir * L * (SP_FART * start - fi * 1.6);  // där andetaget börjar
-          float v = (d0 - d) / L;
-          if (ts <= SP_TID) {
-            float sx = ts / SP_TID;
-            vec2 bana = sbana(sx);
-            float u = (x - x0) * dir / L - SP_FART * ts;
-            if (abs(u) < 0.8 && abs(v) < 0.45) {
-              // ovanför ytan: kroppen; under: dess spegelbild (samma punkt speglad i ytan)
-              vec2 b = tillkropp(vec2(u, abs(v)), bana);
-              vec2 kb = kropp(b.x, b.y, hf, krok, aa);
-              if (v > 0.0) { r.x = max(r.x, kb.x); glans = max(glans, kb.y); }
-              else r.y = max(r.y, kb.x * 0.45 * smoothstep(-0.3, 0.0, v));
-              // skum där kroppen skär genom ytan
-              vec2 b0 = tillkropp(vec2(u, 0.004), bana);
-              float yta = kropp(b0.x, b0.y, hf, krok, aa).x;
-              skum = max(skum, yta * exp(-pow(v / 0.022, 2.0)) * (0.55 + 0.45 * noise(vec2(u * 50.0, uT * 4.0))));
-            }
+          float X0 = uSp.w + dir * L * (SP_FART * start - fi * 1.6 - SP_U0);   // bågens topp
+          float u = (x - X0) * dir / L, v = (d0 - d) / L, uh = SP_U0 + SP_FART * ts;
+          if (ts <= SP_TID && abs(u - uh + 0.5) < 0.95 && abs(v) < 0.45) {
+            // ovanför ytan: kroppen; under: dess spegelbild (samma punkt speglad i ytan)
+            vec2 b = tillkropp(u, abs(v), uh, uT);
+            vec2 kb = kropp(b.x, b.y, hf, krok, vick, aa);
+            if (v > 0.0) { r.x = max(r.x, kb.x); glans = max(glans, kb.y); }
+            else r.y = max(r.y, kb.x * 0.45 * smoothstep(-0.3, 0.0, v));
+            // skum där kroppen skär genom ytan
+            vec2 b0 = tillkropp(u, 0.004, uh, uT);
+            float yta = kropp(b0.x, b0.y, hf, krok, vick, aa).x;
+            skum = max(skum, yta * exp(-pow(v / 0.022, 2.0)) * (0.55 + 0.45 * noise(vec2(u * 50.0, uT * 4.0))));
           }
-          // blåsten: när huvudet bryter ytan står en dimma som stiger och sprids där den blåstes
-          float ba = ts - SP_TID * 0.095;
+          // kölvattnet: ett V bakom nosen (vi ser sjön snett, så det blir platt), medan kroppen är nära ytan
+          float xr = u - uh, w = (d - d0) / L * 3.6;
+          if (xr < 0.0 && xr > -3.0 && ts < SP_TID + 2.0) {
+            float lin = abs(w) + xr * 0.34;
+            r.w += 0.004 * exp(-lin * lin / 0.004) * sin(xr * 22.0 + ts * 9.0) * exp(xr * 0.7)
+                   * smoothstep(-0.2, 0.3, uh + 0.6) * smoothstep(SP_TID + 2.0, SP_TID, ts);
+          }
+          // blåsten: när andningshålet når ytan står en dimma som stiger och sprids där den blåstes
+          float ba = ts - tb;
           if (ba > 0.0 && ba < 2.6) {
-            vec2 bp = vec2((x - x0) * dir / L - SP_FART * SP_TID * 0.095 - 0.257, v - 0.08 - ba * 0.2);
+            vec2 bp = vec2(u - ub, v - 0.08 - ba * 0.2);
             float br = 0.035 + ba * 0.08;
             bp /= vec2(br, br * 2.0);
             blast = max(blast, 0.7 * exp(-dot(bp, bp)) * exp(-ba * 1.3) * smoothstep(0.0, 0.15, ba) * step(0.0, v));
           }
-          // ringarna där den kom upp: platta ellipser (vi ser sjön snett), som sprider sig och klingar av
-          float tau = ts - SP_TID * 0.2;
+          // ringarna där den kom upp: platta ellipser, som sprider sig och klingar av
+          float tau = ts - tb;
           if (tau > 0.0) {
-            float xm = x0 + dir * L * SP_FART * SP_TID * 0.5;
-            float rr = length(vec2((x - xm) / L, (d - d0) / L * 3.6));
+            float rr = length(vec2(u, w));
             float front = smoothstep(tau * 1.5 + 0.7, tau * 1.5, rr);
             r.w += 0.007 * sin(rr * 10.0 - tau * 6.0) * exp(-rr * 0.6) * exp(-tau * 0.3) * front * smoothstep(0.0, 0.6, tau);
           }
@@ -224,9 +257,10 @@ const Norrsken = (() => {
       float kr = (noise(vec2(s.x * uAsp * 22.0, d * 90.0 - uT * 0.5)) - 0.5) * 0.005 * nara
                + 0.002 * sin(d * 80.0 + s.x * uAsp * 1.3 - uT * 0.7 + noise(vec2(s.x * uAsp * 3.0, uT * 0.08)) * 2.5) * smoothstep(0.02, 0.3, d)
                + sp4.w;
+      kr += (noise(vec2(s.x * uAsp * 60.0, d * 400.0 - uT * 0.4)) - 0.5) * 0.0016 * smoothstep(0.0, 0.03, d);   // spegeln är inte helt blank ens närmast stranden
       // himlen ritas en gång per pixel (antingen rakt eller speglad), så att bilden läses lika i alla pixlar
       vec2 q = sjo > 0.0 ? vec2(s.x + kr * 0.5, uHy - d + kr) : s;
-      vec3 h = himmel(q, sjo > 0.0 ? 0.55 : 1.0);
+      vec3 h = himmel(q, sjo > 0.0 ? 0.45 : 1.0);
       vec3 c = h;
       if (sjo > 0.0) {
         c = h * (0.55 + 0.25 * nara) + vec3(0.004, 0.008, 0.012);
@@ -239,6 +273,25 @@ const Norrsken = (() => {
         c = mix(c, c * 0.4, sp4.y);
         c += (vec3(0.16, 0.19, 0.21) + sken * 0.4) * blast + (vec3(0.06, 0.08, 0.09) + sken * 0.25) * skum * (1.0 - sp4.x);
         c *= 1.0 - 0.35 * smoothstep(0.35, 0.6, d);   // mörkare närmast tangentbordet
+      }
+      // udden: en skogklädd udde som sticker ut i sjön till vänster, närmare än stranden (större granar), och dess
+      // spegelbild i vattnet (speglad i uddens egen strandlinje)
+      {
+        float ux = s.x * uAsp, ub = 0.3 * min(uAsp, 1.6);
+        if (ux < ub) {
+          float ds = 0.05 * (1.0 - smoothstep(ub * 0.3, ub, ux)) * (0.85 + 0.15 * noise(vec2(ux * 9.0, 2.0)));
+          float gh = 0.03 + ds * 2.2, ga = 0.0015;
+          vec3 svart = vec3(0.002, 0.004, 0.006);
+          vec3 kant = norrsken(vec2(s.x, uHy - 0.24), pulser(s.x), 0.0) * 0.08;
+          float land = step(0.0, d) * smoothstep(ds + ga, ds - ga, d);
+          vec2 tr = granar(ux + 5.0, ds - d, 0.016, gh, 23.0, ga, 0.15);
+          c = mix(c, svart + kant * tr.y * tr.y, max(land, tr.x));
+          if (d > ds) {   // spegelbilden, mörk och lite krusig
+            float dm = 2.0 * ds - d + kr * 1.5;
+            vec2 trs = granar(ux + 5.0 + kr * 0.5, ds - dm, 0.016, gh, 23.0, ga * 3.0, 0.15);
+            c = mix(c, c * 0.25, trs.x * 0.85 * smoothstep(gh * 2.2, 0.0, d - ds));
+          }
+        }
       }
       gl_FragColor = vec4(tak(c), 1.0);
     }`;

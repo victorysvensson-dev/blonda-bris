@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 151;
+constexpr int kNumExtra = 162;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -175,28 +175,39 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"onuniint", "ONE Unison Interval", -12, 12, 0, true},
     {"onvelf", "ONE Velocity > EG1", 0, 1, 0.3, false},
     {"onvela", "ONE Velocity > Amp", 0, 1, 0.5, false},
-    {"mlband", "MELLO Tape", 0, 6, 2, true},
-    {"mlton", "MELLO Tone", 0, 1, 0.5, false},
-    {"mlwow", "MELLO Wow & Flutter", 0, 1, 0.3, false},
-    {"mlslit", "MELLO Wear", 0, 1, 0.25, false},
-    {"mlfart", "MELLO Speed", -1, 1, 0, false},
-    {"mlaa", "MELLO Attack", 0, 1, 0.08, false},
-    {"mlar", "MELLO Release", 0, 1, 0.3, false},
-    {"mlvela", "MELLO Velocity > Amp", 0, 1, 0.2, false},
-    {"mlmwosc", "MELLO Wheel > Vibrato", 0, 1, 0.5, false},
-    {"mlbredd", "MELLO Width", 0, 1, 0.8, false},
+    {"krvok", "KÖR Vowel", 0, 1, 0.5, false},
+    {"krkropp", "KÖR Voice", 0, 1, 0.5, false},
+    {"krstyrka", "KÖR Effort", 0, 1, 0.5, false},
+    {"krglans", "KÖR Ring", 0, 1, 0.3, false},
+    {"krvib", "KÖR Vibrato", 0, 1, 0.35, false},
+    {"krvtakt", "KÖR Vibrato Rate", 0, 1, 0.5, false},
+    {"krandning", "KÖR Breath", 0, 1, 0.3, false},
+    {"krens", "KÖR Ensemble", 0, 1, 0.5, false},
+    {"krliv", "KÖR Life", 0, 1, 0.5, false},
+    {"krord", "KÖR Mouth", 0, 1, 0.4, false},
+    {"krbredd", "KÖR Width", 0, 1, 0.7, false},
+    {"kraa", "KÖR Attack", 0, 1, 0.5, false},
+    {"krad", "KÖR Decay", 0, 1, 0.6, false},
+    {"krasus", "KÖR Sustain", 0, 1, 0.9, false},
+    {"krar", "KÖR Release", 0, 1, 0.55, false},
+    {"krvela", "KÖR Velocity > Amp", 0, 1, 0.3, false},
+    {"krlage", "KÖR Voice Mode", 0, 3, 0, true},
+    {"kruniint", "KÖR Unison Interval", -12, 12, 0, true},
+    {"krporta", "KÖR Portamento", 0, 1, 0, false},
+    {"krdetune", "KÖR Detune", 0, 1, 0.1, false},
+    {"krmwosc", "KÖR Wheel > Vibrato", 0, 1, 0.5, false},
 };
 
 // de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS
 struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };
 constexpr int kNumMotorer = 5;
-constexpr int kNumAllPresets = 174;
+constexpr int kNumAllPresets = 192;
 inline constexpr MotorInfo kMotorer[kNumMotorer] = {
     {"orgel", "ORGEL", "og", 90, 7},
     {"sloja", "SLÖJA", "sj", 97, 7},
     {"stav", "STAV", "sv", 104, 6},
-    {"one", "ONE", "on", 110, 50},
-    {"mello", "MELLO", "ml", 160, 14},
+    {"one", "ONE", "on", 110, 70},
+    {"kor", "KÖR", "kr", 180, 12},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)
