@@ -1,0 +1,364 @@
+{
+ "motor": "mello",
+ "params": [
+  {
+   "id": "band",
+   "name": "Tape",
+   "min": 0,
+   "max": 6,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "ton",
+   "name": "Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "wow",
+   "name": "Wow & Flutter",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "slit",
+   "name": "Wear",
+   "min": 0,
+   "max": 1,
+   "default": 0.25,
+   "integer": false
+  },
+  {
+   "id": "fart",
+   "name": "Speed",
+   "min": -1,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "aa",
+   "name": "Attack",
+   "min": 0,
+   "max": 1,
+   "default": 0.08,
+   "integer": false
+  },
+  {
+   "id": "ar",
+   "name": "Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "mwosc",
+   "name": "Wheel > Vibrato",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "bredd",
+   "name": "Width",
+   "min": 0,
+   "max": 1,
+   "default": 0.8,
+   "integer": false
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0.0,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0.0,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  }
+ ],
+ "keep": [
+  "bendr",
+  "vol"
+ ],
+ "uiOnly": [],
+ "voices": 12,
+ "types": [
+  "FLUTE",
+  "VIBES",
+  "VIOLINS",
+  "BRASS",
+  "SAX",
+  "CELLO",
+  "CHOIR"
+ ],
+ "band": [
+  {
+   "id": "band1",
+   "namn": "FLUTE",
+   "rot": 60,
+   "ramar": 186667,
+   "sek": 5.833,
+   "gain": 0.996
+  },
+  {
+   "id": "band2",
+   "namn": "VIBES",
+   "rot": 72,
+   "ramar": 92069,
+   "sek": 2.877,
+   "gain": 0.5213
+  },
+  {
+   "id": "band3",
+   "namn": "VIOLINS",
+   "rot": 60,
+   "ramar": 195280,
+   "sek": 6.103,
+   "gain": 0.7915
+  },
+  {
+   "id": "band4",
+   "namn": "BRASS",
+   "rot": 72,
+   "ramar": 16960,
+   "sek": 0.53,
+   "gain": 0.4068
+  },
+  {
+   "id": "band5",
+   "namn": "SAX",
+   "rot": 60,
+   "ramar": 64160,
+   "sek": 2.005,
+   "gain": 0.8073
+  },
+  {
+   "id": "band6",
+   "namn": "CELLO",
+   "rot": 60,
+   "ramar": 84960,
+   "sek": 2.655,
+   "gain": 0.8807
+  },
+  {
+   "id": "band7",
+   "namn": "CHOIR",
+   "rot": 60,
+   "ramar": 204320,
+   "sek": 6.385,
+   "gain": 0.7104
+  }
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "violiner",
+   "values": {
+    "band": 2,
+    "ton": 0.48,
+    "wow": 0.3,
+    "slit": 0.25,
+    "aa": 0.12,
+    "ar": 0.35
+   }
+  },
+  {
+   "name": "flöjt",
+   "values": {
+    "band": 0,
+    "ton": 0.52,
+    "wow": 0.3,
+    "slit": 0.2,
+    "aa": 0.06,
+    "ar": 0.3
+   }
+  },
+  {
+   "name": "vibrafon",
+   "values": {
+    "band": 1,
+    "ton": 0.55,
+    "wow": 0.2,
+    "slit": 0.15,
+    "aa": 0.0,
+    "ar": 0.45,
+    "vela": 0.5
+   }
+  },
+  {
+   "name": "mässing",
+   "values": {
+    "band": 3,
+    "ton": 0.55,
+    "wow": 0.25,
+    "slit": 0.25,
+    "aa": 0.02,
+    "ar": 0.2,
+    "vela": 0.4
+   }
+  },
+  {
+   "name": "saxofon",
+   "values": {
+    "band": 4,
+    "ton": 0.5,
+    "wow": 0.25,
+    "slit": 0.2,
+    "aa": 0.03,
+    "ar": 0.3
+   }
+  },
+  {
+   "name": "cello",
+   "values": {
+    "band": 5,
+    "ton": 0.45,
+    "wow": 0.3,
+    "slit": 0.25,
+    "aa": 0.1,
+    "ar": 0.35
+   }
+  },
+  {
+   "name": "kör",
+   "values": {
+    "band": 6,
+    "ton": 0.47,
+    "wow": 0.3,
+    "slit": 0.25,
+    "aa": 0.15,
+    "ar": 0.45
+   }
+  },
+  {
+   "name": "slitna violiner",
+   "values": {
+    "band": 2,
+    "ton": 0.32,
+    "wow": 0.75,
+    "slit": 0.8,
+    "aa": 0.12,
+    "ar": 0.35
+   }
+  },
+  {
+   "name": "ekoflöjt",
+   "values": {
+    "band": 0,
+    "ton": 0.5,
+    "wow": 0.35,
+    "slit": 0.25,
+    "aa": 0.06,
+    "ar": 0.35,
+    "dmix": 0.3,
+    "dtime": 0.5,
+    "dfb": 0.45
+   }
+  },
+  {
+   "name": "långsam kör",
+   "values": {
+    "band": 6,
+    "ton": 0.42,
+    "wow": 0.4,
+    "slit": 0.3,
+    "fart": -0.35,
+    "aa": 0.35,
+    "ar": 0.6,
+    "chorus": 0.35
+   }
+  },
+  {
+   "name": "mörk cello",
+   "values": {
+    "band": 5,
+    "ton": 0.28,
+    "wow": 0.35,
+    "slit": 0.4,
+    "aa": 0.15,
+    "ar": 0.4
+   }
+  },
+  {
+   "name": "ljus vibrafon",
+   "values": {
+    "band": 1,
+    "ton": 0.7,
+    "wow": 0.15,
+    "slit": 0.1,
+    "ar": 0.55,
+    "vela": 0.6,
+    "chorus": 0.4
+   }
+  },
+  {
+   "name": "sliten mässing",
+   "values": {
+    "band": 3,
+    "ton": 0.38,
+    "wow": 0.6,
+    "slit": 0.75,
+    "aa": 0.02,
+    "ar": 0.2,
+    "vela": 0.4
+   }
+  }
+ ]
+}

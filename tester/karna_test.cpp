@@ -2,6 +2,8 @@
 // Test av ljudkärnan: alla fabriksljud låter, inga NaN, nivåer rimliga, frasspelaren fungerar, CPU-tid.
 #include <chrono>
 #include <cstdio>
+#include <cstring>
+#include <cmath>
 #include <string>
 #include <vector>
 #include "bris_core.h"
@@ -19,8 +21,52 @@ template <class C> static std::vector<int> klingar(C& c) {
 }
 static std::string str(const std::vector<int>& v) { std::string s; for (int x : v) s += std::to_string(x) + " "; return s; }
 
+// MELLOTRONs band (ui/mellotron/band_<n>.wav, 16 bitar stereo) – skalen läser dem på samma sätt
+static std::vector<int16_t> melloData[mello::kNumBand];
+static double melloSr[mello::kNumBand];
+static bool lasBand() {
+    for (int b = 0; b < mello::kNumBand; ++b) {
+        if (!melloData[b].empty()) continue;
+        const std::string fil = "ui/mellotron/band_" + std::to_string(b + 1) + ".wav";
+        FILE* f = std::fopen(fil.c_str(), "rb"); if (!f) return false;
+        std::vector<uint8_t> d; uint8_t buf[65536]; size_t k;
+        while ((k = std::fread(buf, 1, sizeof buf, f)) > 0) d.insert(d.end(), buf, buf + k);
+        std::fclose(f);
+        auto u32 = [&](size_t i) { return (uint32_t)d[i] | (uint32_t)d[i + 1] << 8 | (uint32_t)d[i + 2] << 16 | (uint32_t)d[i + 3] << 24; };
+        for (size_t i = 12; i + 8 <= d.size();) {
+            const size_t len = u32(i + 4), bb = i + 8;
+            if (std::memcmp(&d[i], "fmt ", 4) == 0) melloSr[b] = u32(bb + 4);
+            if (std::memcmp(&d[i], "data", 4) == 0) { melloData[b].resize(len / 2); std::memcpy(melloData[b].data(), &d[bb], len / 2 * 2); break; }
+            i = bb + len + (len & 1);
+        }
+    }
+    return true;
+}
+static void laddaMello(Core& c) {
+    for (int b = 0; b < mello::kNumBand; ++b) c.setMelloBand(b, melloData[b].data(), (int)melloData[b].size() / 2, melloSr[b]);
+}
+// grundtonen (Hz) i ett stycke ljud: autokorrelation
+// (den kortaste perioden vars korrelation är nära den bästa, så att undertoner inte väljs), med parabelinterpolation
+static double grundton(const std::vector<float>& x, double sr) {
+    const int l0 = (int)(sr / 1200), l1 = (int)(sr / 60);
+    std::vector<double> ac(l1 + 2, 0.0);
+    double e = 0; for (float v : x) e += v * v;
+    double best = 0;
+    for (int lag = l0; lag <= l1 + 1; ++lag) {
+        double a = 0; for (size_t i = 0; i + lag < x.size(); ++i) a += x[i] * x[i + lag];
+        ac[lag] = a / (e + 1e-12); if (lag <= l1) best = std::max(best, ac[lag]);
+    }
+    for (int lag = l0 + 1; lag <= l1; ++lag)
+        if (ac[lag] >= 0.9 * best && ac[lag] >= ac[lag - 1] && ac[lag] >= ac[lag + 1]) {
+            const double d = ac[lag - 1] - 2 * ac[lag] + ac[lag + 1];
+            return sr / (lag + (d != 0 ? 0.5 * (ac[lag - 1] - ac[lag + 1]) / d : 0.0));
+        }
+    return 0;
+}
+
 int main() {
     const double sr = 48000; const int B = 256;
+    if (!lasBand()) { std::printf("FEL: kunde inte läsa ui/mellotron/band_*.wav (kör från repots rot)\n"); return 1; }
     std::vector<float> L(B), R(B);
     double tot = 0; double tsec = 0;
     double cur[kMaxParams], nv[kMaxParams];
@@ -374,7 +420,7 @@ int main() {
         for (int m = 1; m <= kNumMotorer; ++m) {
             const MotorInfo& mi = kMotorer[m - 1];
             for (int k = 0; k < mi.numPresets; ++k) {
-                Core c; c.prepare(sr);
+                Core c; c.prepare(sr); laddaMello(c);
                 c.loadPreset(mi.firstPreset + k);
                 KRAV(c.motor() == m && (int)c.getParam(cp.motor) == m, "%s ljud %d: motorn väljs inte (%d)", mi.id, k, c.motor());
                 c.noteOn(48, 100); c.noteOn(60, 100); c.noteOn(64, 90); c.noteOn(67, 80);
@@ -426,6 +472,67 @@ int main() {
         double tyst = 0; for (int b = 0; b < 8; ++b) { d.process(L.data(), R.data(), B); for (int s = 0; s < B; ++s) tyst = std::max(tyst, (double)std::fabs(L[s])); }
         KRAV(tyst < 1e-3, "det klingar kvar efter bytet och släppet (%.5f)", tyst);
         std::printf("MOTORER: värsta cpu %.1f%% av realtid, byte: ut %.3f, ny %.3f, tyst %.1e\n", 100 * mcpu, efter, ny, tyst);
+    }
+    // MELLOTRON (MELLO): banden spelas i rätt tonhöjd, tar slut som riktiga band, samma tangent börjar om bandet,
+    // och utan band är tangenterna tysta (inga krascher)
+    {
+        const CoreParams& cp = coreParams();
+        const int forsta = kMotorer[4].firstPreset;
+        auto spela = [&](Core& c, int ton, double sek, double slapp) {
+            std::vector<float> ut;
+            c.noteOn(ton, 100);
+            for (int b = 0; b < (int)(sek * sr / B); ++b) {
+                if (b == (int)(slapp * sr / B)) c.noteOff(ton);
+                c.process(L.data(), R.data(), B);
+                for (int s2 = 0; s2 < B; ++s2) ut.push_back(0.5f * (L[s2] + R[s2]));
+            }
+            return ut;
+        };
+        auto rmsAv = [](const std::vector<float>& x, double a, double b2, double sr2) {
+            double r = 0; long n = 0; for (long i = (long)(a * sr2); i < (long)(b2 * sr2) && i < (long)x.size(); ++i) { r += x[i] * x[i]; ++n; }
+            return n ? std::sqrt(r / n) : 0.0;
+        };
+        { Core c; c.prepare(sr); c.loadPreset(forsta + 1); c.setParam(cp.find("rvb"), 0);
+          auto x = spela(c, 60, 1.0, 0.8);
+          KRAV(rmsAv(x, 0, 1, sr) < 1e-6, "MELLO utan band ska vara tyst (%.2e)", rmsAv(x, 0, 1, sr)); }
+        for (int b = 0; b < mello::kNumBand; ++b) {
+            Core c; c.prepare(sr); laddaMello(c); c.loadPreset(forsta + 1);
+            c.setParam(cp.find("rvb"), 0); c.setParam(cp.find("mlband"), b); c.setParam(cp.find("mlwow"), 0); c.setParam(cp.find("mlslit"), 0);
+            const int rot = mello::kBand[b].root;
+            auto x = spela(c, rot, 0.6, 0.55), y = spela(c, rot + 7, 0.6, 0.55);
+            std::vector<float> xa(x.begin() + (long)(0.32 * sr), x.begin() + (long)(0.52 * sr)), ya(y.begin() + (long)(0.32 * sr), y.begin() + (long)(0.52 * sr));
+            const double fx = grundton(xa, sr), fy = grundton(ya, sr);
+            const double vantat = 440.0 * std::pow(2.0, (rot - 69) / 12.0);
+            const double cx = 1200 * std::log2(fx / vantat), cy = 1200 * std::log2(fy / (vantat * 1.4983));
+            std::printf("MELLO band %d %-8s %.1f Hz (%+.0f cent), en kvint upp %.1f Hz (%+.0f cent), rms %.3f\n", b + 1, mello::kBand[b].name, fx, cx, fy, cy, rmsAv(x, 0.05, 0.45, sr));
+            KRAV(std::fabs(cx) < 45 || std::fabs(std::fabs(cx) - 1200) < 45, "MELLO band %d: fel tonhöjd (%.0f cent)", b + 1, cx);
+            KRAV(std::fabs(cy - cx) < 30, "MELLO band %d: kvinten stämmer inte (%.0f mot %.0f cent)", b + 1, cy, cx);
+            KRAV(rmsAv(x, 0.05, 0.45, sr) > 0.03 && rmsAv(x, 0.05, 0.45, sr) < 0.4, "MELLO band %d: nivån (%.3f)", b + 1, rmsAv(x, 0.05, 0.45, sr));
+        }
+        { // bandet tar slut: MÄSSING (0,53 s) hålls i 2 s, och tystnar när bandet är slut
+          Core c; c.prepare(sr); laddaMello(c); c.loadPreset(forsta + 4); c.setParam(cp.find("rvb"), 0);
+          c.setParam(cp.find("dmix"), 0); c.setParam(cp.find("chorus"), 0);
+          const double lang = mello::kBand[3].frames / mello::kBandSr;
+          auto x = spela(c, mello::kBand[3].root, 2.0, 1.9);
+          const double fore = rmsAv(x, 0.05, lang - 0.1, sr), efter = rmsAv(x, lang + 0.1, 1.8, sr);
+          std::printf("MELLO bandet tar slut: %.3f under bandet, %.5f efter\n", fore, efter);
+          KRAV(fore > 0.03 && efter < 0.002, "MELLO: bandet tar inte slut (%.3f -> %.5f)", fore, efter); }
+        { // samma tangent igen: bandet börjar om (ingen extra röst som ligger kvar), och släppet tystnar
+          Core c; c.prepare(sr); laddaMello(c); c.loadPreset(forsta + 1); c.setParam(cp.find("rvb"), 0);
+          c.noteOn(60, 100); for (int b = 0; b < 40; ++b) c.process(L.data(), R.data(), B);
+          c.noteOn(60, 100); for (int b = 0; b < 40; ++b) c.process(L.data(), R.data(), B);
+          int roster = 0; for (int m = c.motorRef(5).numParams(), i = 0; i < 1 && m; ++i) roster = __builtin_popcount(((mello::Mello&)c.motorRef(5)).voiceMask());
+          KRAV(roster == 1, "MELLO: samma tangent ska ta om bandet (%d röster)", roster);
+          c.noteOff(60); for (int b = 0; b < (int)(3.0 * sr / B); ++b) c.process(L.data(), R.data(), B);
+          KRAV(((mello::Mello&)c.motorRef(5)).voiceMask() == 0, "MELLO: rösten tystnar inte efter släppet"); }
+        { // slitage ger brus och svaj ändrar tonhöjden lite (men inte mer än några tiotals cent)
+          Core a; a.prepare(sr); laddaMello(a); a.loadPreset(forsta + 1); a.setParam(cp.find("rvb"), 0);
+          a.setParam(cp.find("mlwow"), 0); a.setParam(cp.find("mlslit"), 0);
+          Core b2; b2.prepare(sr); laddaMello(b2); b2.loadPreset(forsta + 1); b2.setParam(cp.find("rvb"), 0);
+          b2.setParam(cp.find("mlwow"), 1); b2.setParam(cp.find("mlslit"), 1);
+          auto x = spela(a, 60, 1.0, 0.9), y = spela(b2, 60, 1.0, 0.9);
+          double d = 0; for (size_t i = 0; i < x.size(); ++i) d = std::max(d, (double)std::fabs(x[i] - y[i]));
+          KRAV(d > 0.01, "MELLO: svaj och slitage hörs inte (%.4f)", d); }
     }
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);

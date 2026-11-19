@@ -98,7 +98,9 @@ private:
     // apparatens ljud (knappar, lucka, band), avkodade ur BinaryData i konstruktorn; kärnan får pekare
     std::vector<float> sfxData[blonda::app::Ljudeffekter::kAntal];
     double sfxRate[blonda::app::Ljudeffekter::kAntal] {};
+    std::vector<int16_t> melloData[blonda::app::mello::kNumBand];   // MELLOTRONs band (16 bitar stereo)
     void loadSfx();
+    void loadMello();
 
     // rullen
     juce::SpinLock patLock;

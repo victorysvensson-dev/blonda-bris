@@ -36,6 +36,12 @@ class BrisProcessor extends AudioWorkletProcessor {
         e.bris_sfx_set(m.i | 0, m.d.length, m.sr);
         break;
       }
+      case "mellodata": {   // MELLOTRONs band, avkodade i webbläsaren (16 bitar stereo)
+        const ramar = m.d.length >> 1, p = e.bris_mello_buf(m.b | 0, ramar); if (!p) break;
+        new Int16Array(e.memory.buffer, p, ramar * 2).set(m.d);
+        e.bris_mello_set(m.b | 0, ramar, m.sr);
+        break;
+      }
       case "pattern":
         e.bris_pattern_begin(m.rate);
         for (const n of m.notes) e.bris_pattern_add(n[0], n[1], n[2], n[3]);

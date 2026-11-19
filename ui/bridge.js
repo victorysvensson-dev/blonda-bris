@@ -74,6 +74,7 @@ const Bridge = (() => {
     node.port.onmessage = (ev) => { const m = ev.data; if (m.t === "m") on.meters && on.meters(m); };
     postAllParams();
     pending.splice(0).forEach((m) => node.port.postMessage(m));
+    if (st && st.params && st.params.motor === melloMotor()) melloLadda();
     await p;
     midi();
     // apparatens ljud (knappar, lucka, band): avkodas här och skickas till kärnan i ljudtråden
@@ -85,6 +86,28 @@ const Bridge = (() => {
       } catch (e) { /* utan ljudet: knapparna är tysta */ }
     });
   }
+
+  // MELLOTRONs band (ca 3 MB) hämtas först när motorn MELLO väljs: avkodas här och skickas till kärnan som 16 bitar stereo
+  let melloHamtad = false;
+  function melloLadda() {
+    if (melloHamtad || !ctx || !node) return;
+    melloHamtad = true;
+    const antal = ((D.motorer || []).find((x) => x.id === "mello") || { band: [] }).band.length || 7;
+    for (let b = 0; b < antal; ++b) {
+      (async () => {
+        try {
+          const ab = await ctx.decodeAudioData(await (await fetch(`mellotron/band_${b + 1}.wav`)).arrayBuffer());
+          const l = ab.getChannelData(0), r = ab.numberOfChannels > 1 ? ab.getChannelData(1) : l, d = new Int16Array(l.length * 2);
+          for (let i = 0; i < l.length; ++i) {
+            d[2 * i] = Math.max(-32768, Math.min(32767, Math.round(l[i] * 32768)));
+            d[2 * i + 1] = Math.max(-32768, Math.min(32767, Math.round(r[i] * 32768)));
+          }
+          node.port.postMessage({ t: "mellodata", b, d, sr: ab.sampleRate }, [d.buffer]);
+        } catch (e) { melloHamtad = false; }
+      })();
+    }
+  }
+  const melloMotor = () => (D.motorer || []).findIndex((x) => x.id === "mello") + 1;
 
   async function midi() {
     if (!navigator.requestMIDIAccess) return;
@@ -102,12 +125,13 @@ const Bridge = (() => {
   function send(m) {
     switch (m.t) {
       case "hello": break;
-      case "param": st.params[m.id] = m.v; post({ t: "param", i: idx[m.id], v: m.v }); save(); break;
+      case "param": st.params[m.id] = m.v; post({ t: "param", i: idx[m.id], v: m.v }); save(); if (m.id === "motor" && m.v === melloMotor()) melloLadda(); break;
       case "gesture": break;
       case "preset": {
         const v = presetValues(m.i);
         st.params = v; st.preset = m.i; save();
         postAllParams();
+        if (v.motor === melloMotor()) melloLadda();
         on.params && on.params(v); on.preset && on.preset(m.i);
         break;
       }

@@ -39,7 +39,8 @@
   const hemOf = (id) => HEM.find((h) => h.id === id);
   const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" },
     norrsken: { accent: "#6dffb0", bg: "#03080c" }, nattag: { accent: "#ffc46b", bg: "#07070b" }, orgel: { accent: "#e8c27a", bg: "#0d0a08" },
-    analog: { accent: "#ffa848", bg: "#0b0806" } };
+    analog: { accent: "#ffa848", bg: "#0b0806" },
+    mellotron: { accent: "#e6b878", bg: "#0d0907" } };
   // ljuspass-scenernas ljus per ton (linjär färg): KRISTALL lila/bärnsten, ORGELN levande ljus (djupare nertill)
   const ljusFarg = (n) => {
     if (S.secret === "orgel") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.5 + 0.25 * t, 0.2 + 0.25 * t]; }
@@ -51,6 +52,7 @@
     if (S.secret === "norrsken") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [Math.round(90 + 110 * t), Math.round(255 - 150 * t), Math.round(150 + 90 * t)]; }   // grönt nertill, lila upptill
     if (S.secret === "nattag") return [255, 196, 110];   // gatlyktornas natriumljus
     if (S.secret === "analog") return [255, 168, 72];    // oscilloskopets bärnstensfosfor
+    if (S.secret === "mellotron") return [230, 184, 120]; // bandets brunt i lampljus
     if (S.secret === "orgel") return [240, 196, 120];    // levande ljus mot tenn
     return krBarn(n) ? KR.barn : KR.lila;
   };
@@ -110,6 +112,15 @@
       mod: { name: "MOD", kt: "LFO", knobs: [["onlrate", "RATE"], ["onlfoosc", "VIB"], ["onlfopwm", "PWM"], ["onlfocut", "FILT"]],
         rt: "VOICE", right: [["c", "onlwave", ["TRI", "UP", "DOWN", "SQR", "RND"]], ["c", "onlage", ["STEREO", "POLY", "MONO", "UNISON"]],
           ["s", "onporta", "GLIDE"], ["s", "ondetune", "DETUNE"]] },
+    },
+    // MELLO (MELLOTRON): banden och motorn, sedan ansatsen och rummet
+    mello: {
+      play: [["s", "mlton", "TONE"], ["s", "mlwow", "WOW"], ["s", "rvb", "REVERB"]],
+      osc: { name: "TAPES", kt: "TAPE", pre: [["c", "mlband", ((D.motorer || []).find((x) => x.id === "mello") || { band: [] }).band.map((b) => b.namn)]],
+        knobs: [["mlton", "TONE"], ["mlwow", "WOW"], ["mlslit", "WEAR"], ["mlbredd", "WIDTH"]],
+        rt: "MOTOR", right: [["s", "mlfart", "SPEED"], ["s", "mlmwosc", "WHEEL VIB"], ["s", "bendr", "BEND"]] },
+      filter: { name: "AMP", kt: "PRESSURE PAD", knobs: [["mlaa", "ATTACK"], ["mlar", "RELEASE"], ["mlvela", "VELOCITY"], ["vol", "VOLUME"]],
+        rt: "SPACE", right: [["s", "rvb", "REVERB"], ["s", "rsize", "SIZE"], ["s", "drive", "DRIVE"]] },
     },
     stav: {
       play: [["s", "svton", "TONE"], ["s", "svtrem", "TREMOLO"], ["s", "rvb", "REVERB"]],
@@ -1345,6 +1356,7 @@
     if (h.id === "norrsken" && h.scen && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body, h.scen, "norrsken/");
     if (h.id === "nattag" && typeof Nattag !== "undefined") SCEN.nattag = Nattag.create(document.body);
     if (h.id === "analog" && typeof Analog !== "undefined") SCEN.analog = Analog.create(document.body, () => S.m.scope);
+    if (h.id === "mellotron" && typeof Mellotron !== "undefined") SCEN.mellotron = Mellotron.create(document.body, (MOT.find((x) => x.id === "mello") || {}).band || []);
     if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
   }

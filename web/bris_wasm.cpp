@@ -17,6 +17,8 @@ float meters[27];   // 0-8 som förut, 9-16 tangenterna (8 x 16 bitar), 17 FOLLO
                     // 20-26 bandspelaren: position, fart, inspelat, sekunder, läge, VU vänster, VU höger
 float* sfxBuf[blonda::app::Ljudeffekter::kAntal] {};   // apparatens ljud (worklet fyller dem), ägs här
 int sfxCap[blonda::app::Ljudeffekter::kAntal] {};
+int16_t* melloBuf[blonda::app::mello::kNumBand] {};   // MELLOTRONs band (worklet fyller dem), ägs här
+int melloCap[blonda::app::mello::kNumBand] {};
 }
 
 EXPORT(bris_init) void bris_init(double sr) {
@@ -65,6 +67,17 @@ EXPORT(bris_sfx_set) void bris_sfx_set(int id, int n, double sr) {
     if (id < 0 || id >= blonda::app::Ljudeffekter::kAntal || !sfxBuf[id]) return;
     core->setSfx(id, sfxBuf[id], std::min(n, sfxCap[id]), sr);
 }
+// MELLOTRONs band: worklet ber om plats för n ramar stereo (16 bitar), fyller den och anmäler den (bris_mello_set)
+EXPORT(bris_mello_buf) int16_t* bris_mello_buf(int b, int ramar) {
+    if (b < 0 || b >= blonda::app::mello::kNumBand || ramar <= 0) return nullptr;
+    if (melloCap[b] < ramar) { core->setMelloBand(b, nullptr, 0, 0); delete[] melloBuf[b]; melloBuf[b] = new int16_t[(size_t)ramar * 2]; melloCap[b] = ramar; }
+    return melloBuf[b];
+}
+EXPORT(bris_mello_set) void bris_mello_set(int b, int ramar, double sr) {
+    if (b < 0 || b >= blonda::app::mello::kNumBand || !melloBuf[b]) return;
+    core->setMelloBand(b, melloBuf[b], std::min(ramar, melloCap[b]), sr);
+}
+EXPORT(bris_mello_har) int bris_mello_har(int b) { return core && core->harMelloBand(b) ? 1 : 0; }
 EXPORT(bris_set_tempo) void bris_set_tempo(double bpm) { core->setTempo(bpm); }
 EXPORT(bris_set_glid) void bris_set_glid(int mode, double amount) { core->setGlid(mode, amount); }
 EXPORT(bris_set_playing) void bris_set_playing(int on) { core->setPlaying(on != 0); }

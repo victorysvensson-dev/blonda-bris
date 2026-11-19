@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 141;
+constexpr int kNumExtra = 151;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -76,7 +76,7 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
     {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
     {"tarec", "TAPE Rec Level", 0.0, 1.0, 0.6, false},
-    {"motor", "Engine", 0.0, 4.0, 0.0, true},
+    {"motor", "Engine", 0.0, 5.0, 0.0, true},
     {"ogb16", "ORGEL Bourdon 16'", 0, 1, 0.4, false},
     {"ogp8", "ORGEL Principal 8'", 0, 1, 0.8, false},
     {"ogf8", "ORGEL Flute 8'", 0, 1, 0, false},
@@ -175,17 +175,28 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"onuniint", "ONE Unison Interval", -12, 12, 0, true},
     {"onvelf", "ONE Velocity > EG1", 0, 1, 0.3, false},
     {"onvela", "ONE Velocity > Amp", 0, 1, 0.5, false},
+    {"mlband", "MELLO Tape", 0, 6, 2, true},
+    {"mlton", "MELLO Tone", 0, 1, 0.5, false},
+    {"mlwow", "MELLO Wow & Flutter", 0, 1, 0.3, false},
+    {"mlslit", "MELLO Wear", 0, 1, 0.25, false},
+    {"mlfart", "MELLO Speed", -1, 1, 0, false},
+    {"mlaa", "MELLO Attack", 0, 1, 0.08, false},
+    {"mlar", "MELLO Release", 0, 1, 0.3, false},
+    {"mlvela", "MELLO Velocity > Amp", 0, 1, 0.2, false},
+    {"mlmwosc", "MELLO Wheel > Vibrato", 0, 1, 0.5, false},
+    {"mlbredd", "MELLO Width", 0, 1, 0.8, false},
 };
 
 // de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS
 struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };
-constexpr int kNumMotorer = 4;
-constexpr int kNumAllPresets = 160;
+constexpr int kNumMotorer = 5;
+constexpr int kNumAllPresets = 174;
 inline constexpr MotorInfo kMotorer[kNumMotorer] = {
     {"orgel", "ORGEL", "og", 90, 7},
     {"sloja", "SLÖJA", "sj", 97, 7},
     {"stav", "STAV", "sv", 104, 6},
     {"one", "ONE", "on", 110, 50},
+    {"mello", "MELLO", "ml", 160, 14},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

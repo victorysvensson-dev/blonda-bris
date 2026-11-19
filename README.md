@@ -21,6 +21,17 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.19.0
+
+- **Ny hemlig patch: MELLOTRON** (SECRET 08, C-G-E-A-G). En egen motor, MELLO (core/mello.h), som spelar sju riktiga
+  mellotronband: flöjt, vibrafon, violiner, mässing, saxofon, cello och kör. Som i en mellotron spelar varje tangent
+  sitt band från början tills det tar slut, och alla band drivs av samma motor (gemensamt svaj och fladder). Rattar:
+  bandet, ton, svaj, slitage (brus, mättnad, mindre diskant), bredd, fart, ansats, släpp och anslag, och BRIS ensemble
+  och eko efter rösterna. 14 ljud. Scenen är bandramen inuti: de 35 banden hänger under valsen och det som spelas
+  trycks mot capstan och rullar, tills det tar slut eller dras tillbaka när tangenten släpps.
+- Banden görs i ordning med tools/mellotron.py (32 kHz, 16 bitar stereo, ui/mellotron/). Pluggen har dem inbyggda;
+  webben hämtar dem först när MELLOTRON väljs.
+
 ## 1.18.1
 
 - **NORRSKEN:**
