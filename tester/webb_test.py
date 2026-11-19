@@ -270,9 +270,13 @@ with sync_playwright() as p:
             # vara så långsamma att riktiga musklick kommer för glest)
             tryck = lambda k, n: pg.evaluate(f"""(() => {{ const [x, y] = __bris.scen('sjon').plats(); const e = document.elementFromPoint(x, y);
                 for (let i = 0; i < {n}; i++) e.dispatchEvent(new PointerEvent('pointerdown', {{ bubbles: true, clientX: x, clientY: y }})); }})()""")
-            tryck("mane", 4)
-            krav(pg.evaluate("__bris.scen('sjon').lage().mal") == 0, "SJÖN: fyra tryck på månen gör inget")
-            tryck("mane", 1); pg.wait_for_timeout(1500)
+            # fyra tryck, läget, och det femte i samma anrop: trycken räknas bara inom 1,2 s från varandra, och i CI kan
+            # varje anrop vänta på en långsam bildruta
+            fyra = pg.evaluate("""(() => { const [x, y] = __bris.scen('sjon').plats(); const e = document.elementFromPoint(x, y);
+                const t = () => e.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+                for (let i = 0; i < 4; i++) t(); const mal = __bris.scen('sjon').lage().mal; t(); return mal; })()""")
+            krav(fyra == 0, "SJÖN: fyra tryck på månen gör inget")
+            pg.wait_for_timeout(1500)
             l1 = pg.evaluate("__bris.scen('sjon').lage()")
             krav(l1["mal"] == 1 and 0.05 < l1["p"] < 0.4 and l1["dag"] < 0.01, f"SJÖN: fem tryck på månen: det börjar bli dag, gradvis ({l1})")
             pg.evaluate("__bris.scen('sjon').dag(true, true)"); pg.wait_for_timeout(300)
