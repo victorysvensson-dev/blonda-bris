@@ -16,6 +16,9 @@ SEQ.3 på Mac och iOS, på webben eller i hårdvara, och låter likadant överal
 | `onempe` | BLONDA ONE MPE – ONE där varje ton har egen böj, egen slide och eget tryck (MPE), som BRIS MPE. Slide styr filter, vibrato, tremolo, PWM eller wah (`slm`). Utan uttryck exakt ONE | 6 | samma som ONE |
 | `stavmpe` | BLONDA STAV MPE – STAV med MPE. Slide gör tonen ljusare, ger vibrato, tremolo, morr (pickupen) eller wah (`slm`); trycket ger vibrato. Utan uttryck exakt STAV | 6 | samma som STAV |
 | `kor` | BLONDA KÖR – mänskliga röster: tre sångare per ton med alla deltoner upp till 36 genom fyra formanter (vokalerna U, O, A, E, I), röstläge (bas till barn), styrka, sångarformant, vibrato som kommer efter ansatsen, jitter, shimmer och vandring (liv), andning genom formanterna och en mun som öppnar sig i ansatsen | 6 | 11 egna |
+| `kormpe` | BLONDA KÖR MPE – KÖR med MPE. Slide flyttar vokalen, ger vibrato, tremolo, styrka eller en vokal som böljar (wah) (`slm`); trycket ger vibrato och styrka. Utan uttryck exakt KÖR | 6 | samma som KÖR |
+| `orgelmpe` | BLONDA ORGEL MPE – ORGEL med MPE. Slide gör pipan ljusare, ger vibrato, tremolo, svävning (celeste) eller wah (`slm`); trycket ger tremulant. Utan uttryck exakt ORGEL | 8 | samma som ORGEL |
+| `slojampe` | BLONDA SLÖJA MPE – SLÖJA med MPE. Slide gör tonen ljusare, ger vibrato, tremolo, udda deltoner (ihåligt, som PWM) eller wah (`slm`); trycket ger vibrato. Utan uttryck exakt SLÖJA | 6 | samma som SLÖJA |
 
 **PULS och toner:** tonnummer % 12 väljer trumljud, så alla oktaver fungerar och C1 = 36 följer General MIDI för de
 vanligaste: C BD, C# RS, D SD, D# CP, E SD, F/G/A/B puka (låg → hög), F# CH, G# CB, A# OH. `Puls::hit(röst, styrka)`
@@ -147,6 +150,10 @@ Kräver CMake 3.16+, en C++17-kompilator, Python 3 och Node (bara för paritetst
 CI kör allt på Linux, macOS och Windows vid varje push.
 
 ## Version
+
+0.10.0 – KÖR MPE, ORGEL MPE och SLÖJA MPE: KÖR, ORGEL och SLÖJA med egen böj, slide och tryck per ton
+(generatorerna med `mpe=True`, gemensamma bitar i `bris.py`: `MPE_GEN`, `mpe_param`, `mpe_hist`, `mpe_uttryck`).
+Nu har alla motorer som BLONDA BRIS använder en MPE-variant. KÖR, ORGEL och SLÖJA låter exakt som förut (facit oförändrat).
 
 0.9.0 – tre nya motorer. KÖR: en kör av mänskliga röster (additiv röstkälla genom fyra formanter, vokaler U–I,
 röstläge, sångarformant, vibrato, jitter/shimmer, andning, ansats med stängd mun). ONE MPE och STAV MPE: ONE och STAV med

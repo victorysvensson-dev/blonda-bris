@@ -27,6 +27,9 @@
 #if BRIS_MPE
 #include "onempe/onempe.h"
 #include "stavmpe/stavmpe.h"
+#include "kormpe/kormpe.h"
+#include "orgelmpe/orgelmpe.h"
+#include "slojampe/slojampe.h"
 #endif
 #include "orgel/orgel.h"
 #include "sloja/sloja.h"
@@ -43,12 +46,24 @@ namespace blonda::app {
 #if BRIS_MPE
 namespace syn = blonda::brismpe;
 using Synth = brismpe::BrisMpe;
-// BRIS MPE: ANALOG och NATTÅGET har uttryck per ton (ONE MPE och STAV MPE, samma rattar och ljud plus slide-målet)
+// BRIS MPE: alla hemliga motorer har uttryck per ton (MPE-varianterna: samma rattar och ljud plus slide-målet)
+namespace morgel = blonda::orgelmpe;
+namespace msloja = blonda::slojampe;
 namespace mone = blonda::onempe;
 namespace mstav = blonda::stavmpe;
+namespace mkor = blonda::kormpe;
+using OrgelMotor = orgelmpe::OrgelMpe;
+using SlojaMotor = slojampe::SlojaMpe;
 using OneMotor = onempe::OneMpe;
 using StavMotor = stavmpe::StavMpe;
+using KorMotor = kormpe::KorMpe;
 #else
+namespace morgel = blonda::orgel;
+namespace msloja = blonda::sloja;
+namespace mkor = blonda::kor;
+using OrgelMotor = orgel::Orgel;
+using SlojaMotor = sloja::Sloja;
+using KorMotor = kor::Kor;
 namespace syn = blonda::bris;
 using Synth = bris::Bris;
 namespace mone = blonda::one;
@@ -63,11 +78,11 @@ struct MotorTabell { const ParamInfo* params; int numParams; const PresetInfo* p
 inline const MotorTabell& motorTabell(int m) {
     static const MotorTabell t[kNumMotorer + 1] = {
         {nullptr, 0, nullptr, nullptr},
-        {orgel::kParams, orgel::kNumParams, orgel::kPresets, orgel::kPresetValues},
-        {sloja::kParams, sloja::kNumParams, sloja::kPresets, sloja::kPresetValues},
+        {morgel::kParams, morgel::kNumParams, morgel::kPresets, morgel::kPresetValues},
+        {msloja::kParams, msloja::kNumParams, msloja::kPresets, msloja::kPresetValues},
         {mstav::kParams, mstav::kNumParams, mstav::kPresets, mstav::kPresetValues},
         {mone::kParams, mone::kNumParams, mone::kPresets, mone::kPresetValues},
-        {kor::kParams, kor::kNumParams, kor::kPresets, kor::kPresetValues},
+        {mkor::kParams, mkor::kNumParams, mkor::kPresets, mkor::kPresetValues},
     };
     static_assert(kNumMotorer == 5, "motorTabell, motorRef och mätarna känner till fem motorer");
     return t[std::max(0, std::min(kNumMotorer, m))];
@@ -259,12 +274,16 @@ public:
 #if BRIS_MPE
     // Tangenterna på skärmen i BRIS MPE: varje ton får en egen MPE-kanal (2-16), så att fingrets slide (uiSlide)
     // bara påverkar den tonen.
-    // motorn som spelar, om den har uttryck per ton (BRIS, ANALOG och NATTÅGET): f får den
+    // motorn som spelar (alla har uttryck per ton i BRIS MPE): f får den
     template <class F> bool medMpe(F&& f) {
-        if (mot_ == 0) { f(synth_); return true; }
-        if (mot_ == 3) { f(sv_); return true; }
-        if (mot_ == 4) { f(on_); return true; }
-        return false;
+        switch (mot_) {
+            case 1: f(og_); return true;
+            case 2: f(sj_); return true;
+            case 3: f(sv_); return true;
+            case 4: f(on_); return true;
+            case 5: f(kr_); return true;
+            default: f(synth_); return true;
+        }
     }
     void synthOn(int n, int v) {
         if (n < 0 || n > 127) return;
@@ -273,7 +292,7 @@ public:
         for (int k = 0; k < 15 && ch < 0; ++k) { const int c = 1 + (uiNext_ + k) % 15; if (uiUsed_[c] == 0) ch = c; }
         if (ch < 0) ch = 1 + uiNext_ % 15;
         const bool ok = medMpe([&](auto& m) { m.channelBend(ch, 0); m.channelSlide(ch, 0); m.channelPressure(ch, 0); m.noteOnCh(ch, n, v); });
-        if (!ok) { syn().noteOn(n, v); return; }   // ORGEL, SLÖJA och KÖR har inget uttryck per ton
+        if (!ok) { syn().noteOn(n, v); return; }
         uiNext_ = ch % 15;
         if (uiCh_[n] <= 0) ++uiUsed_[ch]; else { --uiUsed_[uiCh_[n]]; ++uiUsed_[ch]; }
         uiCh_[n] = ch;
@@ -743,11 +762,11 @@ private:
     }
 
     Synth synth_;
-    orgel::Orgel og_;   // ORGELN
-    sloja::Sloja sj_;   // NORRSKEN
+    OrgelMotor og_;     // ORGELN (ORGEL, i BRIS MPE med uttryck per ton)
+    SlojaMotor sj_;     // NORRSKEN (SLÖJA, i BRIS MPE med uttryck per ton)
     StavMotor sv_;      // NATTÅGET (STAV, i BRIS MPE med uttryck per ton)
     OneMotor on_;       // ANALOG (ONE, i BRIS MPE med uttryck per ton)
-    kor::Kor kr_;       // KÖREN
+    KorMotor kr_;       // KÖREN (KÖR, i BRIS MPE med uttryck per ton)
     int mot_ = 0, forra_ = -1;  // motorn som spelar (0 = BRIS), och den som klingar ut efter ett byte (-1 = ingen)
     double forraTyst_ = 0.0;
     GenEffect<rum::Dsp> rum_;

@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdio>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include "bris_core.h"
 using namespace blonda::app;
@@ -154,11 +155,11 @@ int main() {
         KRAV(md == 0.0, "vanlig MIDI på kanal 1 låter annorlunda än motorn (%.2e)", md);
     }
 #if BRIS_MPE
-    // BRIS MPE: ANALOG (ONE MPE) och NATTÅGET (STAV MPE) har också uttryck per ton: fingrets slide går bara till dess
-    // ton, slide-målet (FILTER, VIBRATO ...) följer BRIS, och slide hörs; ORGELN, NORRSKEN och KÖREN spelar som förut
+    // BRIS MPE: alla hemliga motorer (ORGEL, SLÖJA, STAV, ONE, KÖR MPE) har också uttryck per ton: fingrets slide går
+    // bara till dess ton, slide-målet (FILTER, VIBRATO ...) följer BRIS, och slide hörs
     {
         const CoreParams& cp = coreParams();
-        for (int m : {3, 4}) {
+        for (int m : {1, 2, 3, 4, 5}) {
             Core c; c.prepare(sr); c.loadPreset(kMotorer[m - 1].firstPreset + 1);
             c.setParam(cp.find("rvb"), 0);
             c.setGlid(1, 0);   // FILTER
@@ -169,8 +170,13 @@ int main() {
             const int slm = mo.findParam("slm");
             KRAV(slm >= 0 && mo.getParam(slm) == 1, "%s: slide-målet följer inte BRIS (%d)", kMotorer[m - 1].id, slm >= 0 ? (int)mo.getParam(slm) : -1);
             double es[6], nn[6];
-            if (m == 3) { auto& d = static_cast<StavMotor&>(mo).dsp(); double a[6] = {d.es0, d.es1, d.es2, d.es3, d.es4, d.es5}, b[6] = {d.n0, d.n1, d.n2, d.n3, d.n4, d.n5}; for (int i = 0; i < 6; ++i) { es[i] = a[i]; nn[i] = b[i]; } }
-            else { auto& d = static_cast<OneMotor&>(mo).dsp(); double a[6] = {d.es0, d.es1, d.es2, d.es3, d.es4, d.es5}, b[6] = {d.n0, d.n1, d.n2, d.n3, d.n4, d.n5}; for (int i = 0; i < 6; ++i) { es[i] = a[i]; nn[i] = b[i]; } }
+            auto las = [&](auto* typ) {   // röst 0..5 (ORGEL har 8, men två toner hamnar i de första)
+                auto& d = static_cast<std::remove_pointer_t<decltype(typ)>&>(mo).dsp();
+                double a[6] = {d.es0, d.es1, d.es2, d.es3, d.es4, d.es5}, b[6] = {d.n0, d.n1, d.n2, d.n3, d.n4, d.n5};
+                for (int i = 0; i < 6; ++i) { es[i] = a[i]; nn[i] = b[i]; }
+            };
+            if (m == 1) las((OrgelMotor*)nullptr); else if (m == 2) las((SlojaMotor*)nullptr);
+            else if (m == 3) las((StavMotor*)nullptr); else if (m == 4) las((OneMotor*)nullptr); else las((KorMotor*)nullptr);
             double s57 = -1, s64 = -1;
             for (int i = 0; i < 6; ++i) { if (nn[i] == 57) s57 = es[i]; if (nn[i] == 64) s64 = es[i]; }
             std::printf("%s MPE på skärmen: slide 57 = %.2f, 64 = %.2f\n", kMotorer[m - 1].id, s57, s64);
@@ -181,10 +187,11 @@ int main() {
             std::vector<float> L2(B), R2(B); double diff = 0, ref = 0;
             for (int b = 0; b < 100; ++b) { c.process(L.data(), R.data(), B); d2.process(L2.data(), R2.data(), B);
                 for (int s2 = 0; s2 < B; ++s2) { diff += std::fabs(L[s2] - L2[s2]); ref += std::fabs(L2[s2]); } }
+            std::printf("%s MPE: slide ändrar ljudet %.0f %%\n", kMotorer[m - 1].id, 100 * diff / std::max(1e-9, ref));
             KRAV(diff > 0.05 * ref, "%s: slide hörs inte (%.3f)", kMotorer[m - 1].id, diff / std::max(1e-9, ref));
             c.allNotesOff();
         }
-        // KÖREN (utan uttryck per ton) spelar och tystnar som vanligt i BRIS MPE
+        // KÖREN spelar i BRIS MPE
         Core k; k.prepare(sr); k.loadPreset(kMotorer[4].firstPreset + 1);
         k.noteOn(60, 100); double pk = 0;
         for (int b = 0; b < 100; ++b) { k.process(L.data(), R.data(), B); for (int s2 = 0; s2 < B; ++s2) pk = std::max(pk, (double)std::fabs(L[s2])); }

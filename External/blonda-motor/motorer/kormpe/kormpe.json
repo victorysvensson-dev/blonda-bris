@@ -1,0 +1,458 @@
+{
+ "motor": "kormpe",
+ "params": [
+  {
+   "id": "vok",
+   "name": "Vowel",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "kropp",
+   "name": "Voice",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "styrka",
+   "name": "Effort",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "glans",
+   "name": "Ring",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "vib",
+   "name": "Vibrato",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "vtakt",
+   "name": "Vibrato Rate",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "andning",
+   "name": "Breath",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "ens",
+   "name": "Ensemble",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "liv",
+   "name": "Life",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "ord",
+   "name": "Mouth",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "bredd",
+   "name": "Width",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "aa",
+   "name": "Attack",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "ad",
+   "name": "Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "asus",
+   "name": "Sustain",
+   "min": 0,
+   "max": 1,
+   "default": 0.9,
+   "integer": false
+  },
+  {
+   "id": "ar",
+   "name": "Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.55,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "lage",
+   "name": "Voice Mode",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "uniint",
+   "name": "Unison Interval",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "porta",
+   "name": "Portamento",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "detune",
+   "name": "Detune",
+   "min": 0,
+   "max": 1,
+   "default": 0.1,
+   "integer": false
+  },
+  {
+   "id": "mwosc",
+   "name": "Wheel > Vibrato",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0.15,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "slm",
+   "name": "Slide Target",
+   "min": 0,
+   "max": 5,
+   "default": 1,
+   "integer": true
+  }
+ ],
+ "keep": [
+  "bendr",
+  "vol",
+  "slm"
+ ],
+ "uiOnly": [],
+ "factoryBank": 11,
+ "voices": 6,
+ "vowels": [
+  "U",
+  "O",
+  "A",
+  "E",
+  "I"
+ ],
+ "slideTargets": [
+  "OFF",
+  "VOWEL",
+  "VIBRATO",
+  "TREMOLO",
+  "EFFORT",
+  "WAH"
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "kör",
+   "values": {
+    "vok": 0.5,
+    "kropp": 0.5,
+    "styrka": 0.45,
+    "glans": 0.3,
+    "vib": 0.35,
+    "andning": 0.3,
+    "ens": 0.6,
+    "liv": 0.55,
+    "ord": 0.35,
+    "aa": 0.52,
+    "ar": 0.58,
+    "chorus": 0.35,
+    "dmix": 0.12
+   }
+  },
+  {
+   "name": "ooh",
+   "values": {
+    "vok": 0.12,
+    "kropp": 0.5,
+    "styrka": 0.3,
+    "glans": 0.1,
+    "vib": 0.25,
+    "andning": 0.35,
+    "ens": 0.65,
+    "liv": 0.5,
+    "ord": 0.5,
+    "aa": 0.58,
+    "ar": 0.62,
+    "chorus": 0.45,
+    "dmix": 0.15
+   }
+  },
+  {
+   "name": "mmm",
+   "values": {
+    "vok": 0.0,
+    "kropp": 0.45,
+    "styrka": 0.2,
+    "glans": 0.0,
+    "vib": 0.15,
+    "andning": 0.15,
+    "ens": 0.55,
+    "liv": 0.45,
+    "ord": 1.0,
+    "aa": 0.55,
+    "ar": 0.55,
+    "chorus": 0.4
+   }
+  },
+  {
+   "name": "katedral",
+   "values": {
+    "vok": 0.45,
+    "kropp": 0.45,
+    "styrka": 0.5,
+    "glans": 0.45,
+    "vib": 0.3,
+    "andning": 0.25,
+    "ens": 0.75,
+    "liv": 0.6,
+    "ord": 0.3,
+    "aa": 0.62,
+    "ar": 0.72,
+    "chorus": 0.4,
+    "dmix": 0.25,
+    "dtime": 0.65,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "barnkör",
+   "values": {
+    "vok": 0.55,
+    "kropp": 0.95,
+    "styrka": 0.4,
+    "glans": 0.15,
+    "vib": 0.12,
+    "andning": 0.4,
+    "ens": 0.7,
+    "liv": 0.65,
+    "ord": 0.3,
+    "aa": 0.45,
+    "ar": 0.5,
+    "chorus": 0.3
+   }
+  },
+  {
+   "name": "mansröster",
+   "values": {
+    "vok": 0.35,
+    "kropp": 0.12,
+    "styrka": 0.55,
+    "glans": 0.35,
+    "vib": 0.3,
+    "andning": 0.25,
+    "ens": 0.6,
+    "liv": 0.55,
+    "ord": 0.45,
+    "aa": 0.5,
+    "ar": 0.55,
+    "chorus": 0.25
+   }
+  },
+  {
+   "name": "opera",
+   "values": {
+    "vok": 0.5,
+    "kropp": 0.6,
+    "styrka": 0.8,
+    "glans": 0.9,
+    "vib": 0.7,
+    "vtakt": 0.55,
+    "andning": 0.1,
+    "ens": 0.3,
+    "liv": 0.4,
+    "ord": 0.2,
+    "aa": 0.42,
+    "ar": 0.5,
+    "chorus": 0.15,
+    "dmix": 0.18
+   }
+  },
+  {
+   "name": "viskning",
+   "values": {
+    "vok": 0.55,
+    "kropp": 0.55,
+    "styrka": 0.1,
+    "glans": 0.0,
+    "vib": 0.1,
+    "andning": 1.0,
+    "ens": 0.7,
+    "liv": 0.7,
+    "ord": 0.25,
+    "aa": 0.5,
+    "ar": 0.55,
+    "chorus": 0.5,
+    "dmix": 0.2
+   }
+  },
+  {
+   "name": "änglar",
+   "values": {
+    "vok": 0.82,
+    "kropp": 0.8,
+    "styrka": 0.35,
+    "glans": 0.25,
+    "vib": 0.2,
+    "andning": 0.35,
+    "ens": 0.85,
+    "liv": 0.6,
+    "ord": 0.4,
+    "aa": 0.7,
+    "ar": 0.78,
+    "chorus": 0.6,
+    "dmix": 0.3,
+    "dtime": 0.7,
+    "dfb": 0.55
+   }
+  },
+  {
+   "name": "gospel",
+   "values": {
+    "vok": 0.48,
+    "kropp": 0.55,
+    "styrka": 0.85,
+    "glans": 0.55,
+    "vib": 0.45,
+    "vtakt": 0.65,
+    "andning": 0.2,
+    "ens": 0.55,
+    "liv": 0.75,
+    "ord": 0.2,
+    "aa": 0.35,
+    "ar": 0.4,
+    "chorus": 0.25
+   }
+  },
+  {
+   "name": "eee",
+   "values": {
+    "vok": 0.92,
+    "kropp": 0.5,
+    "styrka": 0.5,
+    "glans": 0.35,
+    "vib": 0.3,
+    "andning": 0.25,
+    "ens": 0.6,
+    "liv": 0.55,
+    "ord": 0.3,
+    "aa": 0.5,
+    "ar": 0.55,
+    "chorus": 0.35,
+    "dmix": 0.12
+   }
+  }
+ ]
+}

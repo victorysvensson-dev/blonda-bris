@@ -109,7 +109,7 @@ HEMLIGA = [
     dict(id="analog", namn="ANALOG", ljudnamn="moogbas", melodi=[2, 4, 0, 0, 7], scen=None, motor="one",
          satt={"vol": 0.7, "rvb": 0.18, "rsize": 0.45}),
     # KÖREN "kör": motorn KÖR (mänskliga röster, tre sångare per ton) i ett mjukt rum. A-G-E-G-A.
-    dict(id="koren", namn="KÖREN", ljudnamn="kör", melodi=[9, 7, 4, 7, 9], scen=None, motor="kor",
+    dict(id="koren", namn="KÖREN", ljudnamn="kör", melodi=[9, 7, 4, 7, 9], scen="koren", motor="kor",
          satt={"vol": 0.75, "rvb": 0.32, "rsize": 0.7}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.

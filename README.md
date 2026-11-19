@@ -21,6 +21,17 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.21.0
+
+- **Alla har MPE i BRIS MPE:** ORGELN, NORRSKEN och KÖREN har nu också uttryck per ton (blonda-motor 0.10.0: ORGEL MPE,
+  SLÖJA MPE och KÖR MPE), som BRIS, ANALOG och NATTÅGET. Varje finger glider på sin egen ton. KÖREN: FILTER flyttar
+  vokalen (raden heter VOWEL), PWM ger mer styrka (EFFORT), WAH låter vokalen bölja, trycket ger vibrato och styrka.
+  ORGELN: FILTER gör piporna ljusare, PWM tar in svävningen (CELESTE), trycket ger tremulant. NORRSKEN: FILTER gör
+  slöjan ljusare, PWM gör den ihålig (HOLLOW). Utan glid låter allt exakt som förut.
+- **KÖREN i kyrkan, på riktigt:** en kör i kåpor med djupa luvor som döljer ansiktena, ljus i händerna, i en mörk
+  stenkyrka med höga blyinfattade fönster i månsken. Renderad i Blender (tools/koren.py) med ett ljuspass per läge
+  på tangentbordet, som ORGELN: där man spelar brinner sångarnas ljus upp och lyser upp luvorna, och lågorna fladdrar.
+
 ## 1.20.2
 
 - **SJÖN på dagen ser ut som dag:** klarblå sommarhimmel, en ljus disig ås längst bort, skogen i solbelyst grönt

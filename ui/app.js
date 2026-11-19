@@ -44,6 +44,7 @@
   // ljuspass-scenernas ljus per ton (linjär färg): KRISTALL lila/bärnsten, ORGELN levande ljus (djupare nertill)
   const ljusFarg = (n) => {
     if (S.secret === "orgel") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.5 + 0.25 * t, 0.2 + 0.25 * t]; }
+    if (S.secret === "koren") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.62 + 0.1 * t, 0.3 + 0.12 * t]; }   // ljuslågor
     return krBarn(n) ? KR.barnL : KR.lilaL;
   };
   const hemFarg = (n) => {
@@ -620,6 +621,17 @@
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
     document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("hem") ? S.secret === b.dataset.hem : b.dataset.i !== undefined && !S.eget && !S.secret && +b.dataset.i === S.preset));
+    glidEtiketter();
+  }
+  // slide-målens namn: i BRIS MPE har de hemliga motorerna egna mål där det skiljer (KÖR: vokalen, ORGEL: svävningen ...)
+  function glidEtiketter() {
+    const EGNA = { kor: { 1: ["VOWEL", "VOW"], 4: ["EFFORT", "EFF"] }, orgel: { 4: ["CELESTE", "CEL"] },
+      sloja: { 4: ["HOLLOW", "HOLL"] }, stav: { 4: ["BARK", "BARK"] } };
+    const h = S.mpe && S.secret ? hemOf(S.secret) : null, egna = (h && EGNA[h.motor]) || {};
+    document.querySelectorAll("#kbar .opt[data-m]").forEach((b) => {
+      const m = +b.dataset.m, t = D.glid.targets[m - 1], [l, k] = egna[m] || (t ? [t.name, t.short] : ["OFF", "OFF"]);
+      b.querySelector(".l").textContent = l; b.querySelector(".s").textContent = k;
+    });
   }
   function selectPreset(i) { lamnaHemlig(); S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
   // en hemlig patch: ett fabriksljud med inställningar ovanpå (MOOD, bandet ...), en egen scen och det mörka läget.
@@ -1093,7 +1105,7 @@
     if (cv.width !== Math.round(W * sk) || cv.height !== Math.round(Hh * sk)) { cv.width = Math.round(W * sk); cv.height = Math.round(Hh * sk); }
     // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
     const pa = new Set();
-    const krL = S.secret === "kristall" || S.secret === "orgel";   // patcharna med ljuspass-scen (glaset, orgeln)
+    const krL = S.secret === "kristall" || S.secret === "orgel" || S.secret === "koren";   // patcharna med ljuspass-scen (glaset, orgeln, kören)
     const paL = krL || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
     // KRISTALL med arpen igång: bara arpens ton lyser, och varje nytt slag tänder den på nytt (även samma ton
     // två gånger i rad: notantalet nc räknas upp vid varje anslag); annars lyser tonerna som hålls
@@ -1114,14 +1126,16 @@
     const lsc = krL && SCEN[S.secret];
     if (lsc) {
       const lista = [];
-      for (const [n, v] of ljus.v) lista.push({ f: fLage(n, L), v, c: ljusFarg(n) });
+      // kören: lågorna fladdrar (var och en i sin egen takt) så länge de brinner
+      const fl = S.secret === "koren" && S.motion ? (n) => 1 + 0.1 * Math.sin(nu * 0.0131 + n * 1.7) + 0.06 * Math.sin(nu * 0.0293 + n * 0.83) : () => 1;
+      for (const [n, v] of ljus.v) lista.push({ f: fLage(n, L), v: v * fl(n), c: ljusFarg(n) });
       const sig = S.secret + lista.map((l) => l.f.toFixed(3) + ":" + l.v.toFixed(3)).join();
       if (sig !== ljus.sig) { ljus.sig = sig; lsc.ljus(lista); }
     }
     if (!ljus.v.size) { if (!ljus.tomt) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); ljus.tomt = true; } return; }   // hela duken (utan halveringen)
     ljus.tomt = false;
     g.setTransform(sk, 0, 0, sk, 0, 0); g.clearRect(0, 0, W, Hh);
-    if (krL) { stralar(g, r, pos); return; }
+    if (krL) { if (S.secret !== "koren") stralar(g, r, pos); return; }   // kören: ljusen själva är ljuset (inga strålar)
     let A = 0; for (const v of ljus.v.values()) A = Math.max(A, v);
     // skuggan över allt, jämn (en svag lutning över hela höjden ger synliga trappsteg i 8 bitar)
     g.fillStyle = `rgba(58,42,34,${0.1 * A})`; g.fillRect(0, 0, W, Hh);
@@ -1225,7 +1239,7 @@
       const o = el("button", "opt" + (m === S.glid.m ? " on" : ""), `<i></i><span class="l">${lang}</span><span class="s">${kort}</span>`);
       o.dataset.m = m; o.onclick = () => setGlidMode(m); row.append(o);
     });
-    bar.append(row);
+    bar.append(row); glidEtiketter();
     // zoom: färre och större tangenter (+) eller fler och mindre (−)
     const z = el("div", "zoom");
     const zo = el("button", "", '<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>');
@@ -1355,7 +1369,7 @@
     if (h.id === "norrsken" && h.scen && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body, h.scen, "norrsken/");
     if (h.id === "nattag" && typeof Nattag !== "undefined") SCEN.nattag = Nattag.create(document.body);
     if (h.id === "analog" && typeof Analog !== "undefined") SCEN.analog = Analog.create(document.body, () => S.m.scope);
-    if (h.id === "koren" && typeof Koren !== "undefined") SCEN.koren = Koren.create(document.body);
+    if (h.id === "koren" && h.scen && typeof Kristall !== "undefined") SCEN.koren = Kristall.create($("#stage"), h.scen, "koren/", "koren");
     if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
   }

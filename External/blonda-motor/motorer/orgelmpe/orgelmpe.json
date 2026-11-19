@@ -1,0 +1,348 @@
+{
+ "motor": "orgelmpe",
+ "params": [
+  {
+   "id": "b16",
+   "name": "Bourdon 16'",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "p8",
+   "name": "Principal 8'",
+   "min": 0,
+   "max": 1,
+   "default": 0.8,
+   "integer": false
+  },
+  {
+   "id": "f8",
+   "name": "Flute 8'",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "p4",
+   "name": "Octave 4'",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "q223",
+   "name": "Nasard 2 2/3'",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "p2",
+   "name": "Super Octave 2'",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "t135",
+   "name": "Tierce 1 3/5'",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "mixt",
+   "name": "Mixture IV",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "trp",
+   "name": "Trumpet 8'",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "cel",
+   "name": "Celeste",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "chf",
+   "name": "Chiff",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "vind",
+   "name": "Wind",
+   "min": 0,
+   "max": 1,
+   "default": 0.25,
+   "integer": false
+  },
+  {
+   "id": "ton",
+   "name": "Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "spk",
+   "name": "Speech",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "rel",
+   "name": "Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "trem",
+   "name": "Tremulant",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "trate",
+   "name": "Tremulant Rate",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "swell",
+   "name": "Swell",
+   "min": 0,
+   "max": 1,
+   "default": 1,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "lage",
+   "name": "Voice Mode",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "uniint",
+   "name": "Unison Interval",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "slm",
+   "name": "Slide Target",
+   "min": 0,
+   "max": 5,
+   "default": 1,
+   "integer": true
+  }
+ ],
+ "keep": [
+  "bendr",
+  "vol",
+  "slm"
+ ],
+ "uiOnly": [],
+ "factoryBank": 6,
+ "voices": 8,
+ "slideTargets": [
+  "OFF",
+  "FILTER",
+  "VIBRATO",
+  "TREMOLO",
+  "CELESTE",
+  "WAH"
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "katedral",
+   "values": {
+    "b16": 0.55,
+    "p8": 1,
+    "p4": 0.8,
+    "p2": 0.6,
+    "mixt": 0.7,
+    "trp": 0.25,
+    "chf": 0.35,
+    "vind": 0.2,
+    "ton": 0.55,
+    "spk": 0.4,
+    "rel": 0.45
+   }
+  },
+  {
+   "name": "flöjt",
+   "values": {
+    "b16": 0,
+    "p8": 0,
+    "f8": 1,
+    "p4": 0.35,
+    "p2": 0,
+    "chf": 0.6,
+    "vind": 0.45,
+    "ton": 0.35,
+    "spk": 0.3,
+    "trem": 0.45,
+    "trate": 0.45,
+    "swell": 0.9
+   }
+  },
+  {
+   "name": "principal",
+   "values": {
+    "b16": 0,
+    "p8": 1,
+    "p4": 0.6,
+    "p2": 0,
+    "chf": 0.45,
+    "vind": 0.25,
+    "ton": 0.5
+   }
+  },
+  {
+   "name": "kornett",
+   "values": {
+    "b16": 0.3,
+    "p8": 0.8,
+    "f8": 0.4,
+    "p4": 0.6,
+    "q223": 0.7,
+    "p2": 0.5,
+    "t135": 0.6,
+    "chf": 0.4,
+    "ton": 0.6
+   }
+  },
+  {
+   "name": "tutti",
+   "values": {
+    "b16": 0.7,
+    "p8": 1,
+    "f8": 0.4,
+    "p4": 0.9,
+    "q223": 0.4,
+    "p2": 0.8,
+    "mixt": 0.9,
+    "trp": 0.8,
+    "chf": 0.3,
+    "vind": 0.15,
+    "ton": 0.65,
+    "spk": 0.45,
+    "rel": 0.5
+   }
+  },
+  {
+   "name": "vox",
+   "values": {
+    "b16": 0,
+    "p8": 0,
+    "f8": 1,
+    "p4": 0,
+    "p2": 0,
+    "trp": 0.55,
+    "cel": 0.7,
+    "chf": 0.15,
+    "vind": 0.3,
+    "ton": 0.3,
+    "spk": 0.5,
+    "rel": 0.5,
+    "trem": 0.6,
+    "trate": 0.55,
+    "swell": 0.85
+   }
+  }
+ ]
+}

@@ -1,0 +1,348 @@
+{
+ "motor": "slojampe",
+ "params": [
+  {
+   "id": "ton",
+   "name": "Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "jamn",
+   "name": "Odd / Even",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "sken",
+   "name": "Shimmer",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "glit",
+   "name": "Glitter",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "andas",
+   "name": "Breath",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "form",
+   "name": "Formant",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "rorl",
+   "name": "Motion",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "bredd",
+   "name": "Width",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "sub",
+   "name": "Sub",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "aa",
+   "name": "Attack",
+   "min": 0,
+   "max": 1,
+   "default": 0.55,
+   "integer": false
+  },
+  {
+   "id": "ad",
+   "name": "Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "asus",
+   "name": "Sustain",
+   "min": 0,
+   "max": 1,
+   "default": 0.85,
+   "integer": false
+  },
+  {
+   "id": "ar",
+   "name": "Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "lage",
+   "name": "Voice Mode",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "uniint",
+   "name": "Unison Interval",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "porta",
+   "name": "Portamento",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "detune",
+   "name": "Detune",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "mwosc",
+   "name": "Wheel > Vibrato",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "slm",
+   "name": "Slide Target",
+   "min": 0,
+   "max": 5,
+   "default": 1,
+   "integer": true
+  }
+ ],
+ "keep": [
+  "bendr",
+  "vol",
+  "slm"
+ ],
+ "uiOnly": [],
+ "factoryBank": 6,
+ "voices": 6,
+ "slideTargets": [
+  "OFF",
+  "FILTER",
+  "VIBRATO",
+  "TREMOLO",
+  "PWM",
+  "WAH"
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "polarljus",
+   "values": {
+    "ton": 0.5,
+    "sken": 0.55,
+    "glit": 0.35,
+    "andas": 0.5,
+    "form": 0.35,
+    "rorl": 0.3,
+    "bredd": 0.85,
+    "sub": 0.15,
+    "aa": 0.62,
+    "ar": 0.68,
+    "chorus": 0.5,
+    "dmix": 0.25,
+    "dtime": 0.6,
+    "dfb": 0.45
+   }
+  },
+  {
+   "name": "slöja",
+   "values": {
+    "ton": 0.35,
+    "jamn": 0.45,
+    "sken": 0.2,
+    "glit": 0.1,
+    "andas": 0.7,
+    "form": 0.3,
+    "rorl": 0.22,
+    "sub": 0.25,
+    "aa": 0.66,
+    "ar": 0.7,
+    "chorus": 0.55,
+    "dmix": 0.15
+   }
+  },
+  {
+   "name": "glitter",
+   "values": {
+    "ton": 0.72,
+    "jamn": 0.6,
+    "sken": 0.85,
+    "glit": 0.85,
+    "andas": 0.3,
+    "form": 0.6,
+    "rorl": 0.5,
+    "sub": 0.05,
+    "aa": 0.5,
+    "ar": 0.66,
+    "chorus": 0.45,
+    "dmix": 0.35,
+    "dtime": 0.55,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "kör",
+   "values": {
+    "ton": 0.45,
+    "jamn": 0.4,
+    "sken": 0.15,
+    "glit": 0.05,
+    "andas": 0.85,
+    "form": 0.45,
+    "rorl": 0.35,
+    "sub": 0.1,
+    "aa": 0.58,
+    "ar": 0.62,
+    "detune": 0.35,
+    "chorus": 0.7,
+    "dmix": 0.15
+   }
+  },
+  {
+   "name": "djup",
+   "values": {
+    "ton": 0.25,
+    "jamn": 0.3,
+    "sken": 0.2,
+    "glit": 0.15,
+    "andas": 0.4,
+    "form": 0.2,
+    "rorl": 0.15,
+    "sub": 0.75,
+    "aa": 0.65,
+    "ar": 0.72,
+    "chorus": 0.5,
+    "dmix": 0.2,
+    "dtime": 0.7,
+    "dfb": 0.5
+   }
+  },
+  {
+   "name": "is",
+   "values": {
+    "ton": 0.85,
+    "jamn": 0.15,
+    "sken": 0.6,
+    "glit": 0.5,
+    "andas": 0.25,
+    "form": 0.7,
+    "rorl": 0.4,
+    "sub": 0,
+    "aa": 0.35,
+    "ad": 0.62,
+    "asus": 0.6,
+    "ar": 0.62,
+    "chorus": 0.35,
+    "dmix": 0.3,
+    "dtime": 0.45,
+    "dfb": 0.45
+   }
+  }
+ ]
+}
