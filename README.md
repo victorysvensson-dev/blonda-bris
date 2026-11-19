@@ -21,6 +21,17 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.18.1
+
+- **NORRSKEN:**
+  - Starkare norrsken igen, som förut när man spelar lite. Det ljusaste stannar vid ungefär 80 % av det gamla maxet
+    (färgen och strålarna syns kvar i stället för att slå i vitt).
+  - Glittret i vattnet är borta; vattnet har bara lugna krusningar och en långsam dyning.
+  - Späckhuggarna är gjorda om från grunden: en riktig späckhuggarkropp (trubbigt huvud, hanens höga raka fena, honornas
+    lägre böjda fena, ögonfläck och sadel). Varje andetag är en mjuk båge: huvudet och blåsten först, sedan ryggen och
+    fenan, sist stjärten. Det är de som gör vågorna: skum där de bryter ytan och ringar som sprider sig där de kom upp.
+    De är närmare och större än förut, och kommer mer sällan (var annan till var tredje minut).
+
 ## 1.18.0
 
 - **Ny hemlig patch: ANALOG** (SECRET 07, D-E-C-C-G – de fem tonerna). Hela motorn ONE (BRIS möter Moog: tre

@@ -426,7 +426,9 @@ with sync_playwright() as p:
             # bland motorns ljud utan att lämna patchen, och det låter
             # ANALOG (D-E-C-C-G): motorn ONE med alla sina ljud, och ett oscilloskop som visar ljudet
             hemlig("analog", [62, 64, 60, 60, 67], "ANALOG", "07")
-            pg.wait_for_timeout(600)
+            # vänta tills tonföljdens sista ton har klingat ut, så att jämförelsen börjar från en tyst skärm
+            try: pg.wait_for_function("__bris.scen('analog').matt().styrka < 0.6", timeout=6000)
+            except Exception: pass
             a0 = pg.evaluate("__bris.scen('analog').matt()")
             for n in (45, 57): pg.evaluate(f"__bris.note({n}, 110)")
             pg.wait_for_timeout(900); a1 = pg.evaluate("__bris.scen('analog').matt()"); pg.screenshot(path=f"{UT}/analog.png")
