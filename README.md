@@ -21,6 +21,12 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.20.1
+
+- NORRSKEN är lättare att rita: späckhuggarna räknas bara medan de syns (en egen variant av bilden), udden bara där
+  den kan synas, och upplösningen anpassar sig efter grafikkretsen (glesare på en långsam, tillbaka till halv
+  skärmupplösning på en snabb), så att appen alltid hinner med tangenterna.
+
 ## 1.20.0
 
 - **Ny hemlig patch: KÖREN** (SECRET 08, A-G-E-G-A) i stället för MELLOTRON, som är borttagen. Den nya motorn KÖR

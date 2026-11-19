@@ -6,6 +6,7 @@
 const Norrsken = (() => {
   const MAX = 16;
   const VS = `attribute vec2 aP; varying vec2 vUv; void main() { vUv = vec2(aP.x, 1.0 - aP.y); gl_Position = vec4(aP * 2.0 - 1.0, 0.0, 1.0); }`;
+  // två varianter av bilden: med späckhuggarna (bara medan de syns) och utan, så att sjön är billig resten av tiden
   const FS = `precision highp float;
     varying vec2 vUv;                    // 0..1, y nedåt
     uniform float uT, uHy, uAsp, uN;
@@ -89,7 +90,7 @@ const Norrsken = (() => {
     // hmax = högsta granen, w = cellernas bredd, glest = hur mycket gläntor. Ger täckning och höjden i granen.
     vec2 granar(float x, float upp, float w, float hmax, float seed, float aa, float glest) {
       float tack = 0.0, hy = 0.0;
-      if (upp < 0.0 || upp > hmax) return vec2(0.0);
+      if (upp < 0.0 || upp > hmax * 1.15) return vec2(0.0);
       for (int k = 0; k < 2; k++) {
         float o = float(k) * 0.5, c = floor(x / w + o), r = hash(vec2(c, seed + float(k) * 17.0));
         if (hash(vec2(c, seed + 5.0 + float(k))) < glest * (0.4 + 0.9 * noise(vec2(x * 1.3, seed)))) continue;
@@ -120,7 +121,7 @@ const Norrsken = (() => {
       // närmast strandskogen: större granar i olika höjd med gläntor, nästan svart, topparna fångar lite av norrskenet
       if (upp < 0.075 && upp > -0.01) {
         float ga = 0.0012 / skarpa;
-        float asB = 0.005 + 0.02 * fbm(vec2(x * 0.8, 4.2));
+        float asB = 0.005 + 0.013 * noise(vec2(x * 0.8, 4.2)) + 0.007 * noise(vec2(x * 1.9, 8.1));
         vec2 gB = granar(x + 7.3, upp - asB * 0.85, 0.004, 0.013, 11.0, ga, 0.12);
         vec3 dis = mix(c, vec3(0.03, 0.05, 0.07) + sken * 0.1, 0.8);
         c = mix(c, dis, max(gB.x, smoothstep(asB + ga, asB - ga, upp)));
@@ -253,7 +254,11 @@ const Norrsken = (() => {
       float d = s.y - uHy, sjo = step(0.0, d);
       // sjön: en spegel med krusningar (mer närmast), en lång dyning som rör sig, och späckhuggarnas ringar
       float nara = smoothstep(0.0, 0.3, d);
+#if MED_SPACK
       vec4 sp4 = sjo > 0.0 ? spack(s.x * uAsp, d) : vec4(0.0);
+#else
+      vec4 sp4 = vec4(0.0);
+#endif
       float kr = (noise(vec2(s.x * uAsp * 22.0, d * 90.0 - uT * 0.5)) - 0.5) * 0.005 * nara
                + 0.002 * sin(d * 80.0 + s.x * uAsp * 1.3 - uT * 0.7 + noise(vec2(s.x * uAsp * 3.0, uT * 0.08)) * 2.5) * smoothstep(0.02, 0.3, d)
                + sp4.w;
@@ -278,11 +283,11 @@ const Norrsken = (() => {
       // spegelbild i vattnet (speglad i uddens egen strandlinje)
       {
         float ux = s.x * uAsp, ub = 0.3 * min(uAsp, 1.6);
-        if (ux < ub) {
-          float ds = 0.05 * (1.0 - smoothstep(ub * 0.3, ub, ux)) * (0.85 + 0.15 * noise(vec2(ux * 9.0, 2.0)));
-          float gh = 0.03 + ds * 2.2, ga = 0.0015;
+        float ds = 0.05 * (1.0 - smoothstep(ub * 0.3, ub, ux)) * (0.85 + 0.15 * noise(vec2(ux * 9.0, 2.0)));
+        float gh = 0.03 + ds * 2.2, ga = 0.0015;
+        if (ux < ub && d > ds - gh - 0.005 && d < ds + gh * 2.2) {   // bara där udden och dess spegelbild kan synas
           vec3 svart = vec3(0.002, 0.004, 0.006);
-          vec3 kant = norrsken(vec2(s.x, uHy - 0.24), pulser(s.x), 0.0) * 0.08;
+          vec3 kant = vec3(0.006, 0.022, 0.016);   // topparna fångar lite av norrskenets gröna
           float land = step(0.0, d) * smoothstep(ds + ga, ds - ga, d);
           vec2 tr = granar(ux + 5.0, ds - d, 0.016, gh, 23.0, ga, 0.15);
           c = mix(c, svart + kant * tr.y * tr.y, max(land, tr.x));
@@ -302,15 +307,23 @@ const Norrsken = (() => {
     parent.prepend(cv);   // först i body: appen ritas ovanpå
     const gl = cv.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
     let prog = null, u = {}, buf = null, aktiv = false, lugn = 0, tex = null, fjallKlar = false;
+    const PROG = [null, null], U = [{}, {}];   // 0 utan späckhuggare, 1 med
     let sp = [-100, 1, 0.12, 0.5], spNasta = 0;   // späckhuggarna: starttid, riktning, avstånd, x
     const M = meta || { w: 2048, halv: 256, hs: 196, kb: 1, ks: 1 }, A = M.w / M.hs;
     const t0 = performance.now(), P = new Float32Array(MAX * 4), C = new Float32Array(MAX * 3); let n = 0, pos = 0;
     if (gl) {
       try {
         const sh = (typ, src) => { const s = gl.createShader(typ); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
-        prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
-        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-        for (const k of ["uT", "uHy", "uAsp", "uN", "uP", "uC", "uFj", "uFjM", "uFjG", "uFjH", "uSp"]) u[k] = gl.getUniformLocation(prog, k);
+        const vs = sh(gl.VERTEX_SHADER, VS);
+        for (let v = 0; v < 2; v++) {
+          const pr = gl.createProgram(); gl.attachShader(pr, vs);
+          gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS.replace("precision highp float;", `precision highp float;\n#define MED_SPACK ${v}`))); gl.linkProgram(pr);
+          if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+          for (const k of ["uT", "uHy", "uAsp", "uN", "uP", "uC", "uFj", "uFjM", "uFjG", "uFjH", "uSp"]) U[v][k] = gl.getUniformLocation(pr, k);
+          U[v].aP = gl.getAttribLocation(pr, "aP");
+          PROG[v] = pr;
+        }
+        prog = PROG[0]; u = U[0];
         // fjällen: en genomskinlig pixel tills bilden har laddats
         tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
@@ -329,7 +342,6 @@ const Norrsken = (() => {
           im.onerror = () => console.warn("norrsken: kunde inte ladda", meta.bild);
           im.src = (bas || "") + meta.bild;
         }
-        u.aP = gl.getAttribLocation(prog, "aP");
         buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
       } catch (e) { console.warn("norrsken:", e.message); prog = null; }
     }
@@ -337,12 +349,23 @@ const Norrsken = (() => {
     const nu = () => fryst !== null ? fryst : (performance.now() - t0) / 1000;
     const lage = () => { const asp = innerWidth / innerHeight; return { asp, hy: asp > 1.2 ? 0.56 : 0.5 }; };
     function puls(f, styrka, farg) { P.set([f, nu(), styrka, 0], pos * 4); C.set(farg, pos * 3); pos = (pos + 1) % MAX; n = Math.min(MAX, n + 1); }
+    // upplösningen anpassar sig: på en långsam grafikkrets (eller i en emulerad) ritas bilden glesare, så att appen
+    // hinner med tangenterna; på en snabb kommer den tillbaka till halva skärmens upplösning
+    let skala = 0.5, senTick = 0, snittDt = 16, senJust = 0;
+    function anpassa(t) {
+      if (senTick > 0) { const dt = Math.min(500, (t - senTick) * 1000); snittDt += (dt - snittDt) * 0.1; }
+      senTick = t;
+      if (t - senJust < 1) return;
+      if (snittDt > 45 && skala > 0.26) { skala = Math.max(0.25, skala * 0.8); senJust = t; }
+      else if (snittDt < 24 && skala < 0.5) { skala = Math.min(0.5, skala * 1.12); senJust = t; }
+    }
     function rita() {
-      const dpr = Math.min(2, window.devicePixelRatio || 1) * 0.5;
+      const dpr = Math.min(2, window.devicePixelRatio || 1) * skala;
       const w = Math.max(2, Math.round(cv.clientWidth * dpr)), h = Math.max(2, Math.round(cv.clientHeight * dpr));
       if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
       if (!gl || !prog) return;
       const L = lage();
+      const v = nu() - sp[0] < 25 ? 1 : 0; prog = PROG[v]; u = U[v];   // späckhuggarna syns i högst 24 s
       gl.viewport(0, 0, w, h); gl.useProgram(prog);
       gl.uniform1f(u.uT, nu()); gl.uniform1f(u.uHy, L.hy); gl.uniform1f(u.uAsp, L.asp);
       gl.uniform1f(u.uN, n); gl.uniform4fv(u.uP, P); gl.uniform3fv(u.uC, C);
@@ -375,6 +398,7 @@ const Norrsken = (() => {
         const t = nu();   // norrskenet lever även när ingen spelar: en svag puls då och då
         if (t > lugn) { if (lugn > 0) puls(0.15 + Math.random() * 0.7, 0.35, [0.3, 1.0, 0.6]); lugn = t + 4 + Math.random() * 6; }
         if (spNasta > 0 && t > spNasta) spackhuggare();
+        anpassa(performance.now() / 1000);
         rita();
       },
       // tester: medelljuset (0..255) i himlen och hur många pulser som lever
