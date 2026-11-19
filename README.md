@@ -21,6 +21,13 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.21.1
+
+- **Glidet i de hemliga patcharna gör samma sak i BRIS som i BRIS MPE:** de hemliga motorerna är nu alltid
+  MPE-varianterna, och i BRIS (och på webben) blir glidet på tangenterna motorns slide för alla toner. KÖREN: VOWEL
+  flyttar vokalen, EFFORT ger styrka, WAH låter vokalen bölja (tidigare gav glidet i KÖREN bara vibrato). Raden
+  SLIDE UP visar motorns egna namn i båda apparna. Utan glid låter allt exakt som förut.
+
 ## 1.21.0
 
 - **Alla har MPE i BRIS MPE:** ORGELN, NORRSKEN och KÖREN har nu också uttryck per ton (blonda-motor 0.10.0: ORGEL MPE,

@@ -24,13 +24,11 @@
 #include "mood/mood_ljud.h"
 #include "one/one.h"
 #include "kor/kor.h"
-#if BRIS_MPE
 #include "onempe/onempe.h"
 #include "stavmpe/stavmpe.h"
 #include "kormpe/kormpe.h"
 #include "orgelmpe/orgelmpe.h"
 #include "slojampe/slojampe.h"
-#endif
 #include "orgel/orgel.h"
 #include "sloja/sloja.h"
 #include "stav/stav.h"
@@ -46,7 +44,13 @@ namespace blonda::app {
 #if BRIS_MPE
 namespace syn = blonda::brismpe;
 using Synth = brismpe::BrisMpe;
-// BRIS MPE: alla hemliga motorer har uttryck per ton (MPE-varianterna: samma rattar och ljud plus slide-målet)
+#else
+namespace syn = blonda::bris;
+using Synth = bris::Bris;
+#endif
+// De hemliga motorerna är alltid MPE-varianterna (samma rattar och ljud plus slide-målet; utan uttryck låter de exakt
+// som ORGEL, SLÖJA, STAV, ONE och KÖR). I BRIS MPE får varje finger sin egen slide, i BRIS blir glidet slide för alla
+// toner, så att glidet gör samma sak i båda (KÖR: FILTER flyttar vokalen, ORGEL: PWM ger svävning ...).
 namespace morgel = blonda::orgelmpe;
 namespace msloja = blonda::slojampe;
 namespace mone = blonda::onempe;
@@ -57,20 +61,6 @@ using SlojaMotor = slojampe::SlojaMpe;
 using OneMotor = onempe::OneMpe;
 using StavMotor = stavmpe::StavMpe;
 using KorMotor = kormpe::KorMpe;
-#else
-namespace morgel = blonda::orgel;
-namespace msloja = blonda::sloja;
-namespace mkor = blonda::kor;
-using OrgelMotor = orgel::Orgel;
-using SlojaMotor = sloja::Sloja;
-using KorMotor = kor::Kor;
-namespace syn = blonda::bris;
-using Synth = bris::Bris;
-namespace mone = blonda::one;
-namespace mstav = blonda::stav;
-using OneMotor = one::One;
-using StavMotor = stav::Stav;
-#endif
 
 // ------------------------------------------------------------------ parametrar
 // De hemliga patcharnas motorer (motor 1..kNumMotorer, i kMotorer:s ordning): parametrar och fabriksljud.
@@ -664,22 +654,28 @@ private:
         syn().pitchBend(std::min(1.0, std::max(-1.0, semis / br)));
     }
 
-    // Glidet på en motor: FILTER, PWM och WAH gör tonen ljusare (motorns "ton"), VIBRATO är modhjulet (motorns
-    // vibrato/tremulant), TREMOLO motorns tremolo/tremulant om den har en (annars modhjulet).
-    int glidMotorParam() {
-        const char* id = (glidMode_ == 3) ? "trem" : (glidMode_ == 2 ? nullptr : "ton");
-        return id ? syn().findParam(id) : -1;
+    // glidet som slide för alla toner i den hemliga motorn (BRIS: tonerna spelas på kanal 0), med motorns slide-mål
+    template <class F> void medMotor(F&& f) {
+        switch (mot_) {
+            case 1: f(og_); break;
+            case 2: f(sj_); break;
+            case 3: f(sv_); break;
+            case 4: f(on_); break;
+            case 5: f(kr_); break;
+            default: break;
+        }
+    }
+    void motorSlide(double v) {
+        medMotor([&](auto& m) {
+            const int j = m.findParam("slm");
+            if (j >= 0 && (int)m.getParam(j) != glidMode_) m.setParam(j, glidMode_);
+            m.channelSlide(0, v);
+        });
     }
     void applyGlid() {
         const CoreParams& cp = coreParams();
         if (mot_ > 0) {
-            const int j = glidMotorParam();
-            if (j < 0) { syn().modWheel(std::min(1.0, glidSm_)); glidApplied_ = glidSm_; return; }
-            const int ci = cp.motCore[mot_][j];
-            const ParamInfo& p = syn().paramInfo(j);
-            const double bas = ci >= 0 ? val_[ci] : p.def;
-            syn().setParam(j, std::min(p.max, bas + glidSm_ * (p.max - p.min) * (glidMode_ == 3 ? 0.9 : 0.6)));
-            glidApplied_ = glidSm_;
+            motorSlide(glidSm_); glidApplied_ = glidSm_;
             return;
         }
         const GlidInfo& g = kGlid[glidMode_ - 1];
@@ -696,12 +692,7 @@ private:
     void glidRestore() {
         if (glidMode_ <= 0) return;
         const CoreParams& cp = coreParams();
-        if (mot_ > 0) {
-            const int j = glidMotorParam();
-            if (j < 0) syn().modWheel(0);
-            else if (cp.motCore[mot_][j] >= 0) syn().setParam(j, val_[cp.motCore[mot_][j]]);
-            return;
-        }
+        if (mot_ > 0) { motorSlide(0.0); return; }
         const int i = glidIdx_[glidMode_ - 1];
         if (i >= 0) synth_.setParam(cp.brisIdx[i], val_[i]);
         if (iRate_ >= 0) synth_.setParam(cp.brisIdx[iRate_], val_[iRate_]);
@@ -762,11 +753,11 @@ private:
     }
 
     Synth synth_;
-    OrgelMotor og_;     // ORGELN (ORGEL, i BRIS MPE med uttryck per ton)
-    SlojaMotor sj_;     // NORRSKEN (SLÖJA, i BRIS MPE med uttryck per ton)
-    StavMotor sv_;      // NATTÅGET (STAV, i BRIS MPE med uttryck per ton)
-    OneMotor on_;       // ANALOG (ONE, i BRIS MPE med uttryck per ton)
-    KorMotor kr_;       // KÖREN (KÖR, i BRIS MPE med uttryck per ton)
+    OrgelMotor og_;     // ORGELN (ORGEL MPE)
+    SlojaMotor sj_;     // NORRSKEN (SLÖJA MPE)
+    StavMotor sv_;      // NATTÅGET (STAV MPE)
+    OneMotor on_;       // ANALOG (ONE MPE)
+    KorMotor kr_;       // KÖREN (KÖR MPE)
     int mot_ = 0, forra_ = -1;  // motorn som spelar (0 = BRIS), och den som klingar ut efter ett byte (-1 = ingen)
     double forraTyst_ = 0.0;
     GenEffect<rum::Dsp> rum_;

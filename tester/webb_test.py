@@ -448,6 +448,8 @@ with sync_playwright() as p:
                  f"KÖREN: kören sjunger och ljusen lyser upp sångarna där man spelar (topp {pk:.3f}, {k0} -> {k1})")
             pg.wait_for_timeout(2500)
             krav(pg.evaluate("__bris.scen('koren').matt().ljus") < k1["ljus"] * 0.9, "KÖREN: ljuset klingar av när tangenterna släpps")
+            gl = pg.evaluate("[...document.querySelectorAll('#kbar .opt[data-m] .l')].map((e) => e.textContent)")
+            krav(gl == ["OFF", "VOWEL", "VIBRATO", "TREMOLO", "EFFORT", "WAH"], f"KÖREN: glidet har körens egna mål ({gl})")
             for hid, mot, flik, namn in (("norrsken", 2, "VEIL", "NORRSKEN"), ("nattag", 3, "TINE", "NATTÅGET"), ("orgel", 1, "STOPS", "ORGELN"), ("koren", 5, "VOICES", "KÖREN"), ("analog", 4, "OSC", "ANALOG")):
                 pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(500)
                 r = pg.evaluate("({ m: __bris.S.v.motor, p: __bris.S.preset, tabs: [...document.querySelectorAll('#tabs button')].map((b) => b.textContent) })")

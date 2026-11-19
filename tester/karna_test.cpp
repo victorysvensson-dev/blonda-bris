@@ -154,6 +154,35 @@ int main() {
         std::printf("vanlig MIDI på kanal 1: största skillnad mot motorn %.2e\n", md);
         KRAV(md == 0.0, "vanlig MIDI på kanal 1 låter annorlunda än motorn (%.2e)", md);
     }
+#if !BRIS_MPE
+    // BRIS: glidet på tangenterna i en hemlig patch blir motorns slide (för alla toner) med motorns egna slide-mål,
+    // som i BRIS MPE (KÖR: FILTER flyttar vokalen ...). Varje mål hörs, och utan glid låter motorn som förut.
+    {
+        const CoreParams& cp = coreParams();
+        for (int m = 1; m <= kNumMotorer; ++m) {
+            for (int mal = 1; mal <= 5; ++mal) {
+                if (m == 4 && mal == 4) continue;   // ONE-ljudet har sågvåg: PWM hörs bara på puls (testas i blonda-motor)
+                Core c, d2;
+                for (Core* q : {&c, &d2}) { q->prepare(sr); q->loadPreset(kMotorer[m - 1].firstPreset + 1); q->setParam(cp.find("rvb"), 0);
+                    q->setGlid(mal, 0.0); q->noteOn(57, 100); q->noteOn(64, 100); }
+                std::vector<float> L2(B), R2(B); double diff = 0, ref = 0;
+                for (int b = 0; b < 120; ++b) {
+                    c.setGlid(mal, 1.0);
+                    c.process(L.data(), R.data(), B); d2.process(L2.data(), R2.data(), B);
+                    if (b >= 20) for (int s2 = 0; s2 < B; ++s2) { diff += std::fabs(L[s2] - L2[s2]); ref += std::fabs(L2[s2]); }
+                }
+                auto& mo = c.motorRef(m); const int slm = mo.findParam("slm");
+                KRAV(slm >= 0 && (int)mo.getParam(slm) == mal, "%s: glidet sätter inte slide-målet %d", kMotorer[m - 1].id, mal);
+                if (mal == 1) std::printf("%s: glid FILTER ändrar ljudet %.0f %%\n", kMotorer[m - 1].id, 100 * diff / std::max(1e-9, ref));
+                KRAV(diff > 0.05 * ref, "%s: glid-mål %d hörs inte (%.3f)", kMotorer[m - 1].id, mal, diff / std::max(1e-9, ref));
+                // släpp glidet: slide tillbaka till 0, samma ljud som utan glid
+                c.setGlid(mal, 0.0); for (int b = 0; b < 60; ++b) { c.process(L.data(), R.data(), B); d2.process(L2.data(), R2.data(), B); }
+                c.setGlid(0, 0.0); c.process(L.data(), R.data(), B);
+                KRAV(static_cast<blonda::Motor&>(mo).getParam(slm) == mal, "%s: slide-målet ändras när glidet stängs av", kMotorer[m - 1].id);
+            }
+        }
+    }
+#endif
 #if BRIS_MPE
     // BRIS MPE: alla hemliga motorer (ORGEL, SLÖJA, STAV, ONE, KÖR MPE) har också uttryck per ton: fingrets slide går
     // bara till dess ton, slide-målet (FILTER, VIBRATO ...) följer BRIS, och slide hörs

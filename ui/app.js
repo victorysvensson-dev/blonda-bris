@@ -623,11 +623,11 @@
     document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("hem") ? S.secret === b.dataset.hem : b.dataset.i !== undefined && !S.eget && !S.secret && +b.dataset.i === S.preset));
     glidEtiketter();
   }
-  // slide-målens namn: i BRIS MPE har de hemliga motorerna egna mål där det skiljer (KÖR: vokalen, ORGEL: svävningen ...)
+  // slide-målens namn: de hemliga motorerna har egna mål där det skiljer (KÖR: vokalen, ORGEL: svävningen ...)
   function glidEtiketter() {
     const EGNA = { kor: { 1: ["VOWEL", "VOW"], 4: ["EFFORT", "EFF"] }, orgel: { 4: ["CELESTE", "CEL"] },
       sloja: { 4: ["HOLLOW", "HOLL"] }, stav: { 4: ["BARK", "BARK"] } };
-    const h = S.mpe && S.secret ? hemOf(S.secret) : null, egna = (h && EGNA[h.motor]) || {};
+    const h = S.secret ? hemOf(S.secret) : null, egna = (h && EGNA[h.motor]) || {};
     document.querySelectorAll("#kbar .opt[data-m]").forEach((b) => {
       const m = +b.dataset.m, t = D.glid.targets[m - 1], [l, k] = egna[m] || (t ? [t.name, t.short] : ["OFF", "OFF"]);
       b.querySelector(".l").textContent = l; b.querySelector(".s").textContent = k;
