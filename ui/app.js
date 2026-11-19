@@ -33,10 +33,19 @@
   // de hemliga patcharna (tools/kategorier.py HEMLIGA): färger och hur tangenterna glöder i var och en
   const HEM = D.hemliga || [];
   const hemOf = (id) => HEM.find((h) => h.id === id);
-  const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" } };
+  const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" },
+    norrsken: { accent: "#6dffb0", bg: "#03080c" }, nattag: { accent: "#ffc46b", bg: "#07070b" }, orgel: { accent: "#e8c27a", bg: "#0d0a08" } };
+  // ljuspass-scenernas ljus per ton (linjär färg): KRISTALL lila/bärnsten, ORGELN levande ljus (djupare nertill)
+  const ljusFarg = (n) => {
+    if (S.secret === "orgel") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.5 + 0.25 * t, 0.2 + 0.25 * t]; }
+    return krBarn(n) ? KR.barnL : KR.lilaL;
+  };
   const hemFarg = (n) => {
     if (S.secret === "sjon") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [Math.round(80 + 120 * t), Math.round(150 + 85 * t), 255]; }   // djupblått nertill, månljust upptill
     if (S.secret === "kassett") return [255, 168, 72];   // VU-mätarnas varma sken
+    if (S.secret === "norrsken") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [Math.round(90 + 110 * t), Math.round(255 - 150 * t), Math.round(150 + 90 * t)]; }   // grönt nertill, lila upptill
+    if (S.secret === "nattag") return [255, 196, 110];   // gatlyktornas natriumljus
+    if (S.secret === "orgel") return [240, 196, 120];    // levande ljus mot tenn
     return krBarn(n) ? KR.barn : KR.lila;
   };
 
@@ -989,7 +998,7 @@
     if (cv.width !== Math.round(W * sk) || cv.height !== Math.round(Hh * sk)) { cv.width = Math.round(W * sk); cv.height = Math.round(Hh * sk); }
     // ljusets styrka per ton: upp snabbt, ner långsamt (direkt utan rörelse)
     const pa = new Set();
-    const krL = S.secret === "kristall";
+    const krL = S.secret === "kristall" || S.secret === "orgel";   // patcharna med ljuspass-scen (glaset, orgeln)
     const paL = krL || S.ljus;   // det vanliga varma ljuset (S.ljus) är avstängt sedan 1.10
     // KRISTALL med arpen igång: bara arpens ton lyser, och varje nytt slag tänder den på nytt (även samma ton
     // två gånger i rad: notantalet nc räknas upp vid varje anslag); annars lyser tonerna som hålls
@@ -1006,12 +1015,13 @@
     const g = cv.getContext("2d");
     const r = keys.cv.getBoundingClientRect();
     const pos = (n) => { const k = L.whites.find((x) => x.n === n) || L.blacks.find((x) => x.n === n); return k ? r.left + k.x + k.w / 2 : null; };
-    // glasscenen: ljuspassen blandas efter var tonerna ligger på tangentbordet och färgas per ton
-    if (SCEN.kristall && krL) {
+    // ljuspass-scenen: passen blandas efter var tonerna ligger på tangentbordet och färgas per ton
+    const lsc = krL && SCEN[S.secret];
+    if (lsc) {
       const lista = [];
-      for (const [n, v] of ljus.v) lista.push({ f: fLage(n, L), v, c: krBarn(n) ? KR.barnL : KR.lilaL });
-      const sig = lista.map((l) => l.f.toFixed(3) + ":" + l.v.toFixed(3)).join();
-      if (sig !== ljus.sig) { ljus.sig = sig; SCEN.kristall.ljus(lista); }
+      for (const [n, v] of ljus.v) lista.push({ f: fLage(n, L), v, c: ljusFarg(n) });
+      const sig = S.secret + lista.map((l) => l.f.toFixed(3) + ":" + l.v.toFixed(3)).join();
+      if (sig !== ljus.sig) { ljus.sig = sig; lsc.ljus(lista); }
     }
     if (!ljus.v.size) { if (!ljus.tomt) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); ljus.tomt = true; } return; }   // hela duken (utan halveringen)
     ljus.tomt = false;
@@ -1064,7 +1074,7 @@
     g.globalCompositeOperation = "lighter";
     for (const [n, v] of ljus.v) {
       const x = pos(n); if (x === null) continue;
-      const c = (krBarn(n) ? KR.barn : KR.lila).join(",");
+      const c = (S.secret === "kristall" ? (krBarn(n) ? KR.barn : KR.lila) : hemFarg(n)).join(",");
       const pelare = (bredd, a) => {
         g.save(); g.beginPath(); g.rect(x - bredd, y0 - hojd, bredd * 2, hojd); g.clip();
         g.translate(x, y0); g.scale(1, hojd / bredd);
@@ -1247,6 +1257,9 @@
   for (const h of HEM) {
     if (h.id === "kristall" && h.scen && typeof Kristall !== "undefined") SCEN.kristall = Kristall.create($("#stage"), h.scen, "kristall/");
     if (h.id === "sjon" && typeof Sjon !== "undefined") SCEN.sjon = Sjon.create(document.body);
+    if (h.id === "norrsken" && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body);
+    if (h.id === "nattag" && typeof Nattag !== "undefined") SCEN.nattag = Nattag.create(document.body);
+    if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
   }
   // BLONDA: bokstäverna var för sig (de rör sig när appen lyssnar), fem tryck inom tre sekunder börjar lyssna

@@ -79,6 +79,27 @@ HEMLIGA = [
                "fs": 0.45, "fr": 0.55, "aa": 0.04, "ad": 0.6, "asus": 0.82, "ar": 0.58, "detune": 0.12, "chorus": 0.9,
                "lfoosc": 0.03, "lrate": 0.45, "dmix": 0.12, "dtime": 0.4, "dfb": 0.25, "velf": 0.3, "vela": 0.4,
                "drive": 0.1, "rvb": 0.18, "rsize": 0.5, "tape": 1, "tawet": 1, "tabredd": 0.85}, band=0),
+    # NORRSKEN "polarljus": en skimrande pad som tonar in långsamt (såg + puls, PWM, mycket chorus), svävande eko och ett
+    # stort rum. Låses upp med F-A-D-E.
+    dict(id="norrsken", namn="NORRSKEN", ljudnamn="polarljus", melodi=[5, 9, 2, 4], scen=None,
+         satt={"vform": 2, "pw": 0.35, "lfopwm": 0.35, "lrate": 0.12, "sub": 0.05, "cut": 0.58, "res": 0.3, "eg1": 0.25, "kbd": 0.6,
+               "lfocut": 0.06, "fa": 0.55, "fd": 0.7, "fs": 0.6, "fr": 0.8, "aa": 0.5, "ad": 0.8, "asus": 0.85, "ar": 0.8,
+               "detune": 0.3, "chorus": 0.85, "dmix": 0.3, "dtime": 0.7, "dfb": 0.5, "velf": 0.2, "vela": 0.3, "vol": 0.66,
+               "rvb": 0.55, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.92, "mowmod": 0.9, "moblend": 0.45, "motone": 0.55}),
+    # NATTÅGET "nattåg": mjuka keys med tremolo, ett kort eko och lite band (som en gammal inspelning). B-A-G-G-A-G-E.
+    dict(id="nattag", namn="NATTÅGET", ljudnamn="nattåg", melodi=[11, 9, 7, 7, 9, 7, 4], scen=None,
+         satt={"vform": 1, "pw": 0.42, "sub": 0.15, "cut": 0.5, "res": 0.15, "eg1": 0.45, "kbd": 0.7, "fa": 0, "fd": 0.45, "fs": 0.25,
+               "fr": 0.5, "aa": 0, "ad": 0.65, "asus": 0.35, "ar": 0.55, "detune": 0.1, "chorus": 0.6, "lfoamp": 0.18, "lrate": 0.55,
+               "dmix": 0.22, "dtime": 0.5, "dfb": 0.35, "velf": 0.5, "vela": 0.6, "vol": 0.68, "rvb": 0.25, "rsize": 0.55,
+               "tape": 1, "tamedia": 0, "taage": 0.3, "tawow": 0.25, "taflut": 0.2, "tasat": 0.35, "tabrus": 0.15, "taavbr": 0.02,
+               "taton": 0.5, "tawet": 1}),
+    # ORGELN "katedral": en orgel (fyrkant + sub, fullt ljud medan tangenten hålls, ingen filterkurva), lätt vibrato och
+    # ett enormt stenrum. B-A-C-H (B = B♭, H = B).
+    dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel",
+         satt={"vform": 1, "pw": 0.5, "sub": 0.55, "lfopwm": 0, "cut": 0.78, "res": 0.05, "eg1": 0.0, "kbd": 0.5, "fa": 0, "fd": 0.5,
+               "fs": 1, "fr": 0.3, "aa": 0.04, "ad": 1, "asus": 1, "ar": 0.38, "detune": 0.08, "chorus": 0.35, "lfoosc": 0.015,
+               "lrate": 0.6, "dmix": 0, "velf": 0, "vela": 0.15, "vol": 0.36, "rvb": 0.7, "rsize": 1.0,
+               "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.5, "motone": 0.45}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar

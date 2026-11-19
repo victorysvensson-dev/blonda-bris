@@ -1,6 +1,6 @@
-// BLONDA BRIS – den hemliga patchens glasscen.
-// Scenen är renderad i Blender (tools/kristall.py): ett grundpass och ett pass per ljusposition längs tangentbordet,
-// alla i en bild (tools/kristall_bilder.py). Ljus är linjärt, så här blandas passen efter vilka toner som spelas och
+// BLONDA BRIS – de hemliga patcharnas ljuspass-scener: KRISTALLs glasscen och ORGELN.
+// Scenen är renderad i Blender (tools/kristall.py, tools/orgel.py): ett grundpass och ett pass per ljusposition längs
+// tangentbordet, alla i en bild (tools/kristall_bilder.py). Ljus är linjärt, så här blandas passen efter vilka toner som spelas och
 // färgas per ton – glaset, regnbågsskimret, reflexerna i golvet och skuggorna stämmer då med var man spelar.
 "use strict";
 const Kristall = (() => {
@@ -27,8 +27,8 @@ const Kristall = (() => {
       gl_FragColor = vec4(m * a, a);
     }`;
 
-  function create(stage, meta, bas) {
-    const cv = document.createElement("canvas"); cv.id = "kristall"; cv.className = "fl";
+  function create(stage, meta, bas, id = "kristall") {
+    const cv = document.createElement("canvas"); cv.id = id; cv.className = "fl";
     stage.append(cv);
     const gl = cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: false });
     const N = meta.antal + 1, T = new Float32Array(16 * 3);
@@ -41,7 +41,7 @@ const Kristall = (() => {
       u.aP = gl.getAttribLocation(prog, "aP");
       buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
     }
-    if (gl) { try { kompilera(); } catch (e) { console.warn("kristall:", e.message); } }
+    if (gl) { try { kompilera(); } catch (e) { console.warn(id + ":", e.message); } }
 
     function ladda() {
       if (img) return;

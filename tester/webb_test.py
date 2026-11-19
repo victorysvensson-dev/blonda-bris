@@ -308,7 +308,11 @@ with sync_playwright() as p:
             dv, dh = a2["m"]["vinkel"][0] - a0["vinkel"][0], a2["m"]["vinkel"][1] - a0["vinkel"][1]
             krav(dv > 0.3 and dh > dv * 1.2, f"KASSETTEN: spolarna snurrar, den tunna (högra) fortare ({dv:.2f} / {dh:.2f} rad)")
             pg.wait_for_timeout(1500)
-            k2 = knapp("stop", 600)
+            k2 = knapp("stop", 300)
+            # bromsen tar ca en halv sekund ljudtid; i en långsam webbläsare kan ljudet ligga efter klockan, så vänta på läget
+            try: pg.wait_for_function("__bris.S.m.bl === 0 && Math.abs(__bris.S.m.bf) < 0.01", timeout=3000)
+            except Exception: pass
+            k2 = pg.evaluate("({ bl: __bris.S.m.bl, bf: __bris.S.m.bf })")
             krav(k2["bl"] == 0 and abs(k2["bf"]) < 0.01, f"STOP: bandet stannar ({k2['bl']}, fart {k2['bf']:.3f})")
             k3 = knapp("rew", 500)
             krav(k3["bl"] == 3 and k3["bf"] < -2, f"REW: spolar tillbaka ({k3['bl']}, fart {k3['bf']:.2f})")
@@ -377,14 +381,45 @@ with sync_playwright() as p:
             pg.click(".fxrad.vald .fxpa"); pg.wait_for_timeout(200)
             krav(pg.evaluate("__bris.S.v.tape") == 1, "FX: TAPE på igen från kedjan")
             pg.click("[data-tab=play]"); pg.wait_for_timeout(200)
+            # NORRSKEN (F-A-D-E), NATTÅGET (B-A-G-G-A-G-E) och ORGELN (B-A-C-H)
+            def hemlig(hid, toner, namn, nr):
+                lyssna(); spela_foljd(toner)
+                h = pg.evaluate(f"""({{ s: __bris.S.secret, preset: __bris.S.preset, ljud: BRIS_DATA.hemliga.find((h) => h.id === '{hid}').ljud,
+                    cv: getComputedStyle(document.querySelector('#{hid}')).display, ka: getComputedStyle(document.querySelector('#kassett')).display,
+                    nm: document.querySelector('.browser .nm').textContent, skylt: document.querySelector('#hemskylt').textContent }})""")
+                krav(h["s"] == hid and h["preset"] == h["ljud"] and h["cv"] == "block" and h["ka"] == "none" and namn in h["nm"] and f"SECRET {nr}" in h["skylt"],
+                     f"{namn}: tonföljden låser upp och väljer den (SECRET {nr}) ({h}, senaste toner {pg.evaluate('__bris.melodi()')})")
+            def spela_ackord(toner, ms=700):
+                for n in toner: pg.evaluate(f"__bris.note({n}, 110)"); pg.wait_for_timeout(90)
+                pg.wait_for_timeout(ms)
+            def slapp(toner):
+                for n in toner: pg.evaluate(f"__bris.off({n})")
+            hemlig("norrsken", [65, 69, 62, 64], "NORRSKEN", "04")
+            pg.wait_for_timeout(2600)
+            n0 = pg.evaluate("__bris.scen('norrsken').matt()")
+            spela_ackord([48, 60, 67, 76]); n1 = pg.evaluate("__bris.scen('norrsken').matt()"); pg.screenshot(path=f"{UT}/norrsken.png"); slapp([48, 60, 67, 76])
+            krav(n0 and n0["gron"] > 2 and n1["pulser"] >= n0["pulser"] + 3 and n1["himmel"] > n0["himmel"], f"NORRSKEN: grönt norrsken, och tonerna får det att flamma upp ({n0} -> {n1})")
+            hemlig("nattag", [71, 69, 67, 67, 69, 67, 64], "NATTÅGET", "05")
+            krav(pg.evaluate("__bris.S.v.tape") == 1 and pg.evaluate("__bris.S.m.bl") == 0, "NATTÅGET: bandet på (utan att bandspelaren går)")
+            pg.wait_for_timeout(2600)
+            t0 = pg.evaluate("__bris.scen('nattag').matt()")
+            spela_ackord([50, 62, 69, 78], 300); t1 = pg.evaluate("__bris.scen('nattag').matt()"); pg.screenshot(path=f"{UT}/nattag.png"); slapp([50, 62, 69, 78])
+            krav(t0 and t0["varm"] > 0 and t1["ljusen"] >= t0["ljusen"] + 3, f"NATTÅGET: varje ton blir ett ljus som far förbi fönstret ({t0} -> {t1})")
+            hemlig("orgel", [70, 69, 72, 71], "ORGELN", "06")
+            pg.wait_for_function("__bris.scen('orgel').klar()", timeout=10000); pg.wait_for_timeout(2600)
+            o0 = pg.evaluate("__bris.scen('orgel').matt()")
+            spela_ackord([41, 53, 60, 69, 77]); o1 = pg.evaluate("__bris.scen('orgel').matt()"); pg.screenshot(path=f"{UT}/orgel.png"); slapp([41, 53, 60, 69, 77])
+            krav(o0 and o1["ljus"] > o0["ljus"] * 1.25 and o1["varm"] > o0["varm"], f"ORGELN: piporna lyser upp, varmt, där man spelar ({o0} -> {o1})")
+            pg.wait_for_timeout(2500)
+            krav(pg.evaluate("__bris.scen('orgel').matt().ljus") < o1["ljus"] * 0.9, "ORGELN: ljuset klingar av när tangenterna släpps")
             pg.click("#menuBtn"); pg.wait_for_timeout(300)
             hm = pg.evaluate("[...document.querySelectorAll('#list .grp.hemlig .it')].map((b) => b.dataset.hem + (b.classList.contains('on') ? '*' : ''))")
-            krav(hm == ["kristall", "sjon", "kassett*"], f"menyn: SECRET med alla tre, KASSETTEN vald ({hm})")
+            krav(hm == ["kristall", "sjon", "kassett", "norrsken", "nattag", "orgel*"], f"menyn: SECRET med alla sex, ORGELN vald ({hm})")
             pg.screenshot(path=f"{UT}/hemliga_meny.png")
             pg.click("#menuClose"); pg.wait_for_timeout(200)
             pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
             ut = pg.evaluate("({ s: __bris.S.secret, tape: __bris.S.v.tape, mowet: __bris.S.v.mowet, cls: document.documentElement.classList.contains('hemlig'), cv: getComputedStyle(document.querySelector('#kassett')).display })")
-            krav(ut["s"] is None and ut["tape"] == 0 and ut["mowet"] == mo0 and not ut["cls"] and ut["cv"] == "none", f"ett vanligt ljud lämnar KASSETTEN och stänger av bandet ({ut})")
+            krav(ut["s"] is None and ut["tape"] == 0 and ut["mowet"] == mo0 and not ut["cls"] and ut["cv"] == "none", f"ett vanligt ljud lämnar den hemliga patchen och stänger av bandet ({ut})")
             krav(pg.evaluate("__bris.S.m.bl") == 0, "att lämna KASSETTEN stannar bandspelaren")
             pg.click("[data-tab=fx]"); pg.wait_for_timeout(300)
             krav(pg.evaluate("document.querySelector('.fxbox .fxttl span').textContent") == "TAPE" and pg.locator(".fxrad").count() == 3, "FX: TAPE finns kvar i ett vanligt ljud (KASSETTEN är hittad)")
@@ -505,9 +540,9 @@ with sync_playwright() as p:
         for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)")
         pg.wait_for_timeout(700); pg.screenshot(path=f"{UT}/{namn}_kristall.png")
         for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")
-        for hid in ("sjon", "kassett"):
+        for hid in ("sjon", "kassett", "norrsken", "nattag", "orgel"):
             pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(400)
-            if hid == "kassett": pg.wait_for_function("__bris.scen('kassett').klar()", timeout=15000)
+            if hid in ("kassett", "orgel"): pg.wait_for_function(f"__bris.scen('{hid}').klar()", timeout=15000)
             for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.note({n}, 100)"); pg.wait_for_timeout(100)
             pg.wait_for_timeout(500); pg.screenshot(path=f"{UT}/{namn}_{hid}.png")
             for n in (52, 60, 65, 72, 81): pg.evaluate(f"__bris.off({n})")

@@ -21,6 +21,24 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.16.0
+
+- Tre nya hemliga patchar (SECRET 04–06). Lås upp som de andra: tryck fem gånger på BLONDA och spela tonföljden
+  inom fem sekunder (vilken oktav som helst).
+  - **NORRSKEN** (F-A-D-E): norrsken över snöiga fjäll och en stilla sjö, räknat i realtid (ui/norrsken.js). Tre lager
+    slöjor, grönt nertill och lila upptill, med strålar som vandrar. Varje ton får slöjan att flamma upp där man spelar,
+    i tonens färg; fjällens snö lyses upp av norrskenet och sjön speglar alltihop. Ljudet är en långsam, bred pad
+    (polarljus) i ett stort rum.
+  - **NATTÅGET** (B-A-G-G-A-G-E): utsikten genom ett tågfönster en regnig natt, räknat i realtid (ui/nattag.js).
+    Stadens ljus långt bort, en skogskant, banvallen och lyktstolpar glider förbi i olika fart; rutan är immig och full
+    av regndroppar som bryter ljuset (varje droppe visar utsikten upp och ner), och några rinner ner och lämnar ett
+    klart spår. Varje ton blir ett ljus som far förbi (låga toner gula som gatlyktor, höga kallt vita), tåget skakar
+    lätt vid rälsskarvarna. Ljudet (nattåg) går genom bandet.
+  - **ORGELN** (B-A-C-H, B = B♭): en piporgel i en stenkyrka med rosettfönster, renderad i Blender (tools/orgel.py)
+    med ett ljuspass per läge längs tangentbordet, som KRISTALL. Där man spelar lyser piporna upp i levande ljus och
+    deras munnar glöder; låga toner till vänster. Ljudet (katedral) är en orgel i ett enormt stenrum.
+- tools/kristall_bilder.py tar --namn (kristall, orgel), och ui/kristall.js visar båda ljuspass-scenerna.
+
 ## 1.15.1
 
 - SJÖN: stjärnfallen kommer mer sällan (ungefär en gång i minuten), och ibland långt bort: små, korta och svaga,

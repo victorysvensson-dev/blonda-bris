@@ -1,13 +1,13 @@
-"""Gör om glasscenens renderingar (tools/kristall.py, linjära EXR) till en bild för appen.
+"""Gör om en ljuspass-scens renderingar (tools/kristall.py, tools/orgel.py; linjära EXR) till en bild för appen.
 
-Alla pass läggs i ett rutnät i en webp (ui/kristall/kristall.webp) + ui/kristall/kristall.json.
+Alla pass läggs i ett rutnät i en webp (ui/<namn>/<namn>.webp) + ui/<namn>/<namn>.json (namn = kristall, orgel).
 Varje pass:
   - får en mjuk glöd (bloom) inbakad: en suddig kopia av sig själv. Suddning är linjär, så glöden blir rätt
     även när appen blandar passen (glöden av summan = summan av glöden).
   - lagras som e = (v / (1 + v)) ^ (1/2.2), som appen avkodar exakt (v = t / (1 - t), t = e^2.2).
     Det rymmer starka högdagrar i 8 bitar, och grundpasset ser rätt ut även utan avkodning (2D-reserven).
 
-python3 tools/kristall_bilder.py <mapp med bas.exr, ljus0.exr ...> [--bredd 1024]
+python3 tools/kristall_bilder.py <mapp med bas.exr, ljus0.exr ...> [--namn orgel] [--bredd 1024]
 """
 import argparse, json, os, sys
 import cv2, numpy as np, OpenEXR   # pip install opencv-python-headless OpenEXR pillow
@@ -16,6 +16,7 @@ from PIL import Image
 ROT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ap = argparse.ArgumentParser()
 ap.add_argument("mapp")
+ap.add_argument("--namn", default="kristall")
 ap.add_argument("--bredd", type=int, default=1280)
 ap.add_argument("--kol", type=int, default=3)
 ap.add_argument("--skala", type=float, default=1.0, help="ljusstyrka in i bilden (före kodningen)")
@@ -54,13 +55,13 @@ for i, im in enumerate(bilder):
     r, c = divmod(i, a.kol)
     atlas[r * H:(r + 1) * H, c * W:(c + 1) * W] = im
 e = (atlas / (1 + atlas)) ** (1 / 2.2)
-ut = os.path.join(ROT, "ui", "kristall"); os.makedirs(ut, exist_ok=True)
-Image.fromarray(np.clip(np.round(e * 255), 0, 255).astype(np.uint8)).save(os.path.join(ut, "kristall.webp"), quality=a.kvalitet, method=6)
-meta = {"bild": "kristall.webp", "antal": antal, "kol": a.kol, "w": W, "h": H, "exp": 1.0, "styrka": 1.0}
-gammal = os.path.join(ut, "kristall.json")
+ut = os.path.join(ROT, "ui", a.namn); os.makedirs(ut, exist_ok=True)
+Image.fromarray(np.clip(np.round(e * 255), 0, 255).astype(np.uint8)).save(os.path.join(ut, f"{a.namn}.webp"), quality=a.kvalitet, method=6)
+meta = {"bild": f"{a.namn}.webp", "antal": antal, "kol": a.kol, "w": W, "h": H, "exp": 1.0, "styrka": 1.0}
+gammal = os.path.join(ut, f"{a.namn}.json")
 if os.path.exists(gammal):   # exponering och styrka ställs in i json-filen och behålls
     try:
         g = json.load(open(gammal)); meta["exp"] = g.get("exp", 1.0); meta["styrka"] = g.get("styrka", 1.0)
     except Exception: pass
 json.dump(meta, open(gammal, "w"), indent=1)
-print(f"{len(bilder)} pass ({antal} ljus), {W}x{H} -> {a.kol}x{rader}, {os.path.getsize(os.path.join(ut, 'kristall.webp')) // 1024} KB")
+print(f"{len(bilder)} pass ({antal} ljus), {W}x{H} -> {a.kol}x{rader}, {os.path.getsize(os.path.join(ut, a.namn + '.webp')) // 1024} KB")
