@@ -74,6 +74,16 @@ int main() {
     {
         const int iMotor = p.findParam("motor");
         KRAV(iMotor >= 0 && p.findParam("ogp8") >= 0 && p.findParam("sjton") >= 0 && p.findParam("svtyp") >= 0, "motorernas parametrar finns för värdprogrammet");
+        // namnen är UTF-8 (SLÖJA): de ska komma fram rätt till värdprogrammet (en felaktig omvandling stoppar
+        // dessutom appen på en JUCE-kontroll i felsökningsbyggen, som när man kör från Xcode)
+        int felNamn = 0; juce::String forsta;
+        for (int i = 0; i < blonda::app::Core::numParams(); ++i) {
+            const juce::String vant = juce::String::fromUTF8(blonda::app::Core::paramInfo(i).name);
+            const juce::String fick = p.getParameters()[i]->getName(64);
+            if (fick != vant) { if (!felNamn) forsta = fick + " / " + vant; ++felNamn; }
+        }
+        KRAV(felNamn == 0, "parametrarnas namn kommer fram rätt (%d fel, t.ex. %s)", felNamn, forsta.toRawUTF8());
+        KRAV(p.getParameters()[p.findParam("sjton")]->getName(64) == juce::String::fromUTF8("SLÖJA Tone"), "SLÖJA heter SLÖJA för värdprogrammet");
         for (int m = 0; m < blonda::app::kNumMotorer; ++m) {
             const auto& mi = blonda::app::kMotorer[m];
             p.loadPreset(mi.firstPreset + 1);

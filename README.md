@@ -21,6 +21,13 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.19.1
+
+- **iPad/iPhone: appen blev svart när den startades från Xcode.** Parametrarnas namn är UTF-8 (SLÖJA), men pluggen
+  gjorde om dem som ASCII. I ett felsökningsbygge (Kör i Xcode) stannade appen då på en kontroll i JUCE innan något
+  ritades, och i värdprogram kom namnen fram fel ("SLÃJA"). Nu görs de om som UTF-8, och plugintestet kontrollerar
+  alla namn.
+
 ## 1.19.0
 
 - **Ny hemlig patch: MELLOTRON** (SECRET 08, C-G-E-A-G). En egen motor, MELLO (core/mello.h), som spelar sju riktiga

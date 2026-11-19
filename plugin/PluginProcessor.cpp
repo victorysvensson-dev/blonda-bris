@@ -25,11 +25,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout makeLayout() {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     for (int i = 0; i < Core::numParams(); ++i) {
         const auto& p = Core::paramInfo(i);
-        const juce::String id(p.id);
+        const juce::String id(p.id);   // id är ASCII; namnen är UTF-8 (SLÖJA), därför fromUTF8 nedan
         juce::NormalisableRange<float> range((float)p.min, (float)p.max, p.integer ? 1.0f : 0.0f);
         auto attr = juce::AudioParameterFloatAttributes()
                         .withStringFromValueFunction([id](float v, int) { return valueText(id, v); });
-        layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID { id, 1 }, juce::String(p.name), range, (float)p.def, attr));
+        layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID { id, 1 }, juce::String::fromUTF8(p.name), range, (float)p.def, attr));
     }
     return layout;
 }
