@@ -70,6 +70,26 @@ int main() {
     KRAV(q.supportsMPE(), "pluggen anmäler MPE till värdprogrammet");
     KRAV(q.getFollow(), "tillstånd: FOLLOW");
     KRAV(std::abs(q.paramValue(q.findParam("motime")) - 0.81) < 1e-3, "tillstånd: MOOD TIME %.3f", q.paramValue(q.findParam("motime")));
+    // de hemliga patcharnas motorer: ett av motorns ljud väljer motorn (parametern motor), låter, och sparas i tillståndet
+    {
+        const int iMotor = p.findParam("motor");
+        KRAV(iMotor >= 0 && p.findParam("ogp8") >= 0 && p.findParam("sjton") >= 0 && p.findParam("svtyp") >= 0, "motorernas parametrar finns för värdprogrammet");
+        for (int m = 0; m < blonda::app::kNumMotorer; ++m) {
+            const auto& mi = blonda::app::kMotorer[m];
+            p.loadPreset(mi.firstPreset + 1);
+            juce::MidiBuffer mm; mm.addEvent(juce::MidiMessage::noteOn(1, 60, (juce::uint8)100), 0); mm.addEvent(juce::MidiMessage::noteOn(1, 64, (juce::uint8)100), 0);
+            const double r = render(p, 0.8, &mm);
+            juce::MidiBuffer o; o.addEvent(juce::MidiMessage::allNotesOff(1), 0); render(p, 0.05, &o);
+            KRAV((int)p.paramValue(iMotor) == m + 1 && r > 0.01, "%s: motorn väljs och låter (motor %d, rms %.3f)", mi.id, (int)p.paramValue(iMotor), r);
+        }
+        juce::MemoryBlock mm; p.getStateInformation(mm);
+        std::unique_ptr<juce::AudioProcessor> b3(createPluginFilter());
+        auto& q3 = *dynamic_cast<BrisProcessor*>(b3.get());
+        q3.setStateInformation(mm.getData(), (int)mm.getSize());
+        KRAV(q3.currentPreset() == p.currentPreset() && (int)q3.paramValue(iMotor) == blonda::app::kNumMotorer, "tillstånd: motorns ljud och motorn (%d, motor %d)", q3.currentPreset(), (int)q3.paramValue(iMotor));
+        p.setCurrentProgram(3);
+        KRAV((int)p.paramValue(iMotor) == 0, "ett BRIS-program tar tillbaka BRIS (motor %d)", (int)p.paramValue(iMotor));
+    }
     // egna ljud: sparas i en fil och läses tillbaka (filen återställs efteråt)
     {
         const auto f = BrisProcessor::userPresetFile();

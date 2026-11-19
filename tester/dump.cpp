@@ -6,7 +6,9 @@ int main(int argc, char** argv) {
     int p = argc > 1 ? std::atoi(argv[1]) : 1;
     const bool band = argc > 2 && argv[2][0] == 'b';   // bandet (SLITEN, kassett) på, ackord
     const bool extra = argc > 2 && !band;   // MOOD (delay + loop) och ARP med en pad
-    blonda::app::Core c; c.prepare(48000); c.loadPreset(p);
+    blonda::app::Core c; c.prepare(48000);
+    if (p >= blonda::app::kNumFactory) c.loadPreset(0);   // en motors ljud: efter BRIS ljud 0 (effekterna därifrån)
+    c.loadPreset(p);
     auto sp = [&](const char* id, double v) { c.setParam(blonda::app::coreParams().find(id), v); };
     if (extra) { c.setTempo(120); sp("mowet", 1); sp("mowmode", 1); sp("arp", 1); sp("arpm", 2); sp("arpo", 2); c.padNote(57, 100); c.padNote(60, 90); c.padNote(64, 80); }
     else { if (band) { sp("tape", 1); sp("tamedia", 0); sp("tawow", 0.8); sp("tarec", 0.8); c.bandKommando(2); } c.noteOn(60, 100); c.noteOn(64, 90); c.noteOn(67, 80); }

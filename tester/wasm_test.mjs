@@ -13,9 +13,11 @@ let fel = 0;
 const dataJs = fs.readFileSync(new URL("../ui/data.js", import.meta.url), "utf8");
 const PARAMS = JSON.parse(dataJs.slice(dataJs.indexOf("{"), dataJs.lastIndexOf("}") + 1)).params.map((p) => p.id);
 const sp = (id, v) => e.bris_set_param(PARAMS.indexOf(id), v);
-for (const p of [0, 1, 5, 20, 36, 58, 83, 89]) {
+// BRIS ljud, och de hemliga patcharnas motorer (ORGEL, SLÖJA, STAV: index efter BRIS 90, efter BRIS ljud 0 som i dump)
+for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105]) {
   e.bris_init(48000);
   e.bris_all_off();
+  if (p >= 90) e.bris_load_preset(0);
   e.bris_load_preset(p);
   e.bris_note_on(60, 100); e.bris_note_on(64, 90); e.bris_note_on(67, 80);
   const ref = new Float32Array(execFileSync(dumpBin, [String(p)], { maxBuffer: 1 << 26 }).buffer.slice(0));

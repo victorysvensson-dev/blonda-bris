@@ -41,6 +41,18 @@ for _p in SLITEN["params"]:
     EXTRA.append(("ta" + _p["id"], "TAPE " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"] or _p["id"] == "media"))
 # REC LEVEL: hur hårt bandet spelas in på (bandspelaren i KASSETTEN och TAPE under FX). 0.6 = 0 dB.
 EXTRA.append(("tarec", "TAPE Rec Level", 0.0, 1.0, 0.6))
+# MOTORER: de hemliga patcharnas egna ljudmotorer ur blonda-motor (ORGEL, SLÖJA, STAV). "motor" väljer vilken som låter
+# (0 = BRIS), sedan alla motorernas rattar med ett prefix per motor, utom de som delas med BRIS (DELADE: effekterna
+# efter rösterna och volymen; BRIS värde gäller för alla motorer). Motorernas fabriksljud får index efter BRIS
+# (kNumFactory + motorns första + ljudets index).
+MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv")]
+DELADE = {"chorus", "dtime", "dfb", "dmix", "bendr", "vol"}
+MOTOR_DATA = {m: json.load(open(os.path.join(ROT, f"External/blonda-motor/motorer/{m}/{m}.json"), encoding="utf-8")) for m, _, _ in MOTORER}
+EXTRA.append(("motor", "Engine", 0.0, float(len(MOTORER)), 0.0, True))
+for _m, _namn, _pre in MOTORER:
+    for _p in MOTOR_DATA[_m]["params"]:
+        if _p["id"] not in DELADE:
+            EXTRA.append((_pre + _p["id"], _namn + " " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"]))
 EXTRA = [e if len(e) == 6 else e + (False,) for e in EXTRA]
 
 # Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...
@@ -79,27 +91,19 @@ HEMLIGA = [
                "fs": 0.45, "fr": 0.55, "aa": 0.04, "ad": 0.6, "asus": 0.82, "ar": 0.58, "detune": 0.12, "chorus": 0.9,
                "lfoosc": 0.03, "lrate": 0.45, "dmix": 0.12, "dtime": 0.4, "dfb": 0.25, "velf": 0.3, "vela": 0.4,
                "drive": 0.1, "rvb": 0.18, "rsize": 0.5, "tape": 1, "tawet": 1, "tabredd": 0.85}, band=0),
-    # NORRSKEN "polarljus": en skimrande pad som tonar in långsamt (såg + puls, PWM, mycket chorus), svävande eko och ett
-    # stort rum. Låses upp med F-A-D-E.
-    dict(id="norrsken", namn="NORRSKEN", ljudnamn="polarljus", melodi=[5, 9, 2, 4], scen=None,
-         satt={"vform": 2, "pw": 0.35, "lfopwm": 0.35, "lrate": 0.12, "sub": 0.05, "cut": 0.58, "res": 0.3, "eg1": 0.25, "kbd": 0.6,
-               "lfocut": 0.06, "fa": 0.55, "fd": 0.7, "fs": 0.6, "fr": 0.8, "aa": 0.5, "ad": 0.8, "asus": 0.85, "ar": 0.8,
-               "detune": 0.3, "chorus": 0.85, "dmix": 0.3, "dtime": 0.7, "dfb": 0.5, "velf": 0.2, "vela": 0.3, "vol": 0.66,
-               "rvb": 0.55, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.92, "mowmod": 0.9, "moblend": 0.45, "motone": 0.55}),
-    # NATTÅGET "nattåg": mjuka keys med tremolo, ett kort eko och lite band (som en gammal inspelning). B-A-G-G-A-G-E.
-    dict(id="nattag", namn="NATTÅGET", ljudnamn="nattåg", melodi=[11, 9, 7, 7, 9, 7, 4], scen=None,
-         satt={"vform": 1, "pw": 0.42, "sub": 0.15, "cut": 0.5, "res": 0.15, "eg1": 0.45, "kbd": 0.7, "fa": 0, "fd": 0.45, "fs": 0.25,
-               "fr": 0.5, "aa": 0, "ad": 0.65, "asus": 0.35, "ar": 0.55, "detune": 0.1, "chorus": 0.6, "lfoamp": 0.18, "lrate": 0.55,
-               "dmix": 0.22, "dtime": 0.5, "dfb": 0.35, "velf": 0.5, "vela": 0.6, "vol": 0.68, "rvb": 0.25, "rsize": 0.55,
-               "tape": 1, "tamedia": 0, "taage": 0.3, "tawow": 0.25, "taflut": 0.2, "tasat": 0.35, "tabrus": 0.15, "taavbr": 0.02,
-               "taton": 0.5, "tawet": 1}),
-    # ORGELN "katedral": en orgel (fyrkant + sub, fullt ljud medan tangenten hålls, ingen filterkurva), lätt vibrato och
-    # ett enormt stenrum. B-A-C-H (B = B♭, H = B).
-    dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel",
-         satt={"vform": 1, "pw": 0.5, "sub": 0.55, "lfopwm": 0, "cut": 0.78, "res": 0.05, "eg1": 0.0, "kbd": 0.5, "fa": 0, "fd": 0.5,
-               "fs": 1, "fr": 0.3, "aa": 0.04, "ad": 1, "asus": 1, "ar": 0.38, "detune": 0.08, "chorus": 0.35, "lfoosc": 0.015,
-               "lrate": 0.6, "dmix": 0, "velf": 0, "vela": 0.15, "vol": 0.36, "rvb": 0.7, "rsize": 1.0,
-               "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.5, "motone": 0.45}),
+    # NORRSKEN "polarljus": motorn SLÖJA (skimrande additiv pad) med ett svävande eko och ett stort rum. F-A-D-E.
+    dict(id="norrsken", namn="NORRSKEN", ljudnamn="polarljus", melodi=[5, 9, 2, 4], scen="norrsken", motor="sloja",
+         satt={"vol": 0.88, "rvb": 0.5, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.92, "mowmod": 0.9, "moblend": 0.4,
+               "motone": 0.55}),
+    # NATTÅGET "nattåg": motorn STAV (elpiano med tremolo), ett litet rum och lite band (som en gammal inspelning).
+    # B-A-G-G-A-G-E.
+    dict(id="nattag", namn="NATTÅGET", ljudnamn="nattåg", melodi=[11, 9, 7, 7, 9, 7, 4], scen=None, motor="stav",
+         satt={"vol": 0.92, "rvb": 0.25, "rsize": 0.55, "tape": 1, "tamedia": 0, "taage": 0.3, "tawow": 0.25, "taflut": 0.2,
+               "tasat": 0.35, "tabrus": 0.15, "taavbr": 0.02, "taton": 0.5, "tawet": 1}),
+    # ORGELN "katedral": motorn ORGEL (fullt verk) i ett enormt stenrum. B-A-C-H (B = B♭, H = B).
+    dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel", motor="orgel",
+         satt={"vol": 0.8, "rvb": 0.7, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.45,
+               "motone": 0.45}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar
@@ -175,6 +179,11 @@ FRASER = {
 
 
 def main():
+    for _m, _n, pre in MOTORER:
+        egna = [e[0] for e in EXTRA if e[0].startswith(pre)]
+        vant = [pre + x["id"] for x in MOTOR_DATA[_m]["params"] if x["id"] not in DELADE]
+        if egna != vant: sys.exit(f"prefixet {pre} krockar: {sorted(set(egna) - set(vant))}")
+        if any(p["id"].startswith(pre) for p in BRIS["params"]): sys.exit(f"prefixet {pre} krockar med BRIS")
     blom = json.load(open(os.path.join(ROT, "ui/blommor/blommor.json"), encoding="utf-8"))
     for v in VAXTER:
         v["bg"] = blom[v["foto"]]["bg"]
@@ -223,6 +232,16 @@ def main():
           f"constexpr int kNumExtra = {len(EXTRA)};", "inline constexpr ExtraParam kExtra[kNumExtra] = {"]
     for e in EXTRA:
         h.append(f'    {{"{e[0]}", "{e[1]}", {e[2]}, {e[3]}, {e[4]}, {"true" if e[5] else "false"}}},')
+    # motorerna: prefix och var deras fabriksljud börjar
+    forsta, h_m = len(namn), []
+    for m, mn, pre in MOTORER:
+        n_ = len(MOTOR_DATA[m]["presets"])
+        h_m.append(f'    {{"{m}", "{mn}", "{pre}", {forsta}, {n_}}},')
+        forsta += n_
+    h += ["};", "", "// de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS",
+          "struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };",
+          f"constexpr int kNumMotorer = {len(MOTORER)};", f"constexpr int kNumAllPresets = {forsta};",
+          "inline constexpr MotorInfo kMotorer[kNumMotorer] = {"] + h_m
     h += ["};", "", "// glid på tangenterna / MPE-slide (läge = index + 1)",
           "struct GlidInfo { const char* id; const char* name; const char* param; double depth; bool rate; };",
           f"constexpr int kNumGlid = {len(GLID)};", f"constexpr double kGlidRate = {GLID_TAKT};",
@@ -258,12 +277,22 @@ def main():
                 version=open(os.path.join(ROT, "VERSION")).read().strip())
     # de hemliga patcharna: ljudet, inställningarna ovanpå och scenens data (ui/<scen>/<scen>.json)
     giltiga = {p["id"] for p in data["params"]}
+    data["motorer"], forsta = [], len(namn)
+    for m, mn, pre in MOTORER:
+        pr = [x["name"] for x in MOTOR_DATA[m]["presets"]]
+        data["motorer"].append(dict(id=m, namn=mn, prefix=pre, forsta=forsta, ljud=pr, delade=sorted(DELADE),
+                                    params=[x["id"] for x in MOTOR_DATA[m]["params"]]))
+        forsta += len(pr)
     data["hemliga"] = []
     for i_, h in enumerate(HEMLIGA):
         okand = [k for k in h["satt"] if k not in giltiga]
         if okand: sys.exit(f"{h['id']}: okända parametrar {okand}")
         e = dict(id=h["id"], namn=h["namn"], nr=i_ + 1, ljud=namn.index("init"), ljudnamn=h["ljudnamn"], satt=h["satt"],
                  melodi=h["melodi"], band=h.get("band"))
+        if h.get("motor"):   # en egen motor: patchens ljud är motorns fabriksljud med namnet ljudnamn
+            mi = next(x for x in data["motorer"] if x["id"] == h["motor"])
+            if h["ljudnamn"] not in mi["ljud"]: sys.exit(f"{h['id']}: {h['motor']} har inget ljud {h['ljudnamn']!r}")
+            e["motor"] = h["motor"]; e["ljud"] = mi["forsta"] + mi["ljud"].index(h["ljudnamn"])
         if h["scen"]:
             sj = os.path.join(ROT, f"ui/{h['scen']}/{h['scen']}.json")
             if not os.path.exists(sj): sys.exit(f"{h['id']}: saknar {sj}")

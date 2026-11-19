@@ -21,6 +21,27 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.17.0
+
+- **Egna ljudmotorer i de tre nya hemliga patcharna** (ur blonda-motor 0.7.0), var och en med några ljud som man
+  bläddrar mellan med pilarna i ljudväljaren (utan att lämna patchen):
+  - NORRSKEN: **SLÖJA**, en skimrande additiv pad (16 deltoner per röst som andas, skimrar och glittrar):
+    polarljus, slöja, glitter, kör, djup, is.
+  - NATTÅGET: **STAV**, ett FM-elpiano (tonstav, tunga eller FM, pickup, ping, mekanik, stereotremolo):
+    nattåg, sovvagn, tunga, glaspiano, perrong.
+  - ORGELN: **ORGEL**, en piporgel med åtta röster (stämmor 16'–1', blandning, trumpet, celeste, luft och chiff,
+    tremulant, svällare): katedral, flöjt, principal, kornett, tutti, vox.
+- När en sådan patch är vald visar flikarna motorns egna sidor (t.ex. STOPS och PIPES för orgeln) i stället för OSC,
+  FILTER, AMP och MOD, och PLAY har motorns viktigaste reglage. FX (chorus och delay), MOOD och ARP fungerar som vanligt.
+  Glid på tangenterna gör tonen ljusare (FILTER, PWM, WAH), ger vibrato eller tremolo.
+- Kärnan har parametern `motor` (0 = BRIS) och motorernas rattar sist bland parametrarna (prefix `og`, `sj`, `sv`),
+  så att värdprogrammet kan automatisera dem och projekt sparar dem. Motorernas ljud har index efter BRIS 90 ljud.
+  Byter man motor medan något klingar klingar det ut.
+- **NORRSKEN:** riktiga fjäll i stället för spetsiga kägelformer: tre fjällkedjor renderade i Blender
+  (tools/norrsken_fjall.py, höjdfält med snö på det flacka och berg i branterna) i två pass, ett i himlens kalla ljus och
+  ett som färgas av norrskenet rakt ovanför, så att snön lyser upp när man spelar. Slöjorna korsar varandra (inget mörkt
+  band mellan dem), och granskogen vid stranden är lägre.
+
 ## 1.16.0
 
 - Tre nya hemliga patchar (SECRET 04–06). Lås upp som de andra: tryck fem gånger på BLONDA och spela tonföljden
@@ -284,7 +305,7 @@ Releases → **senaste**.
 ## Uppdatera BRIS-ljudet
 
 Ljudet ändras bara i `blonda-motor`. Kopiera sedan `include/blonda/{motor,effekt,gen_runtime}.h` och
-`motorer/{bris,brismpe,rum,vibe,sliten}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
+`motorer/{bris,brismpe,rum,vibe,sliten,mood,orgel,sloja,stav}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
 och kör testerna.
 
 © BLONDA. Byggt med JUCE 8.

@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 42;
+constexpr int kNumExtra = 99;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -76,6 +76,73 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
     {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
     {"tarec", "TAPE Rec Level", 0.0, 1.0, 0.6, false},
+    {"motor", "Engine", 0.0, 3.0, 0.0, true},
+    {"ogb16", "ORGEL Bourdon 16'", 0, 1, 0.4, false},
+    {"ogp8", "ORGEL Principal 8'", 0, 1, 0.8, false},
+    {"ogf8", "ORGEL Flute 8'", 0, 1, 0, false},
+    {"ogp4", "ORGEL Octave 4'", 0, 1, 0.5, false},
+    {"ogq223", "ORGEL Nasard 2 2/3'", 0, 1, 0, false},
+    {"ogp2", "ORGEL Super Octave 2'", 0, 1, 0.3, false},
+    {"ogt135", "ORGEL Tierce 1 3/5'", 0, 1, 0, false},
+    {"ogmixt", "ORGEL Mixture IV", 0, 1, 0, false},
+    {"ogtrp", "ORGEL Trumpet 8'", 0, 1, 0, false},
+    {"ogcel", "ORGEL Celeste", 0, 1, 0, false},
+    {"ogchf", "ORGEL Chiff", 0, 1, 0.4, false},
+    {"ogvind", "ORGEL Wind", 0, 1, 0.25, false},
+    {"ogton", "ORGEL Tone", 0, 1, 0.5, false},
+    {"ogspk", "ORGEL Speech", 0, 1, 0.35, false},
+    {"ogrel", "ORGEL Release", 0, 1, 0.35, false},
+    {"ogtrem", "ORGEL Tremulant", 0, 1, 0, false},
+    {"ogtrate", "ORGEL Tremulant Rate", 0, 1, 0.5, false},
+    {"ogswell", "ORGEL Swell", 0, 1, 1, false},
+    {"ogvela", "ORGEL Velocity > Amp", 0, 1, 0, false},
+    {"oglage", "ORGEL Voice Mode", 0, 3, 0, true},
+    {"oguniint", "ORGEL Unison Interval", -12, 12, 0, true},
+    {"sjton", "SLÖJA Tone", 0, 1, 0.5, false},
+    {"sjjamn", "SLÖJA Odd / Even", 0, 1, 0.5, false},
+    {"sjsken", "SLÖJA Shimmer", 0, 1, 0.3, false},
+    {"sjglit", "SLÖJA Glitter", 0, 1, 0.3, false},
+    {"sjandas", "SLÖJA Breath", 0, 1, 0.4, false},
+    {"sjform", "SLÖJA Formant", 0, 1, 0.4, false},
+    {"sjrorl", "SLÖJA Motion", 0, 1, 0.3, false},
+    {"sjbredd", "SLÖJA Width", 0, 1, 0.7, false},
+    {"sjsub", "SLÖJA Sub", 0, 1, 0.2, false},
+    {"sjaa", "SLÖJA Attack", 0, 1, 0.55, false},
+    {"sjad", "SLÖJA Decay", 0, 1, 0.6, false},
+    {"sjasus", "SLÖJA Sustain", 0, 1, 0.85, false},
+    {"sjar", "SLÖJA Release", 0, 1, 0.6, false},
+    {"sjvela", "SLÖJA Velocity > Amp", 0, 1, 0.3, false},
+    {"sjlage", "SLÖJA Voice Mode", 0, 3, 0, true},
+    {"sjuniint", "SLÖJA Unison Interval", -12, 12, 0, true},
+    {"sjporta", "SLÖJA Portamento", 0, 1, 0, false},
+    {"sjdetune", "SLÖJA Detune", 0, 1, 0.2, false},
+    {"sjmwosc", "SLÖJA Wheel > Vibrato", 0, 1, 0.5, false},
+    {"svtyp", "STAV Type", 0, 2, 0, true},
+    {"svton", "STAV Tone", 0, 1, 0.5, false},
+    {"svvelt", "STAV Velocity > Tone", 0, 1, 0.6, false},
+    {"svbark", "STAV Bark", 0, 1, 0.3, false},
+    {"svping", "STAV Ping", 0, 1, 0.3, false},
+    {"svdecay", "STAV Decay", 0, 1, 0.5, false},
+    {"svrel", "STAV Release", 0, 1, 0.3, false},
+    {"svtrem", "STAV Tremolo", 0, 1, 0.3, false},
+    {"svtrate", "STAV Tremolo Rate", 0, 1, 0.45, false},
+    {"svmek", "STAV Mechanics", 0, 1, 0.2, false},
+    {"svvela", "STAV Velocity > Amp", 0, 1, 0.7, false},
+    {"svlage", "STAV Voice Mode", 0, 3, 0, true},
+    {"svuniint", "STAV Unison Interval", -12, 12, 0, true},
+    {"svporta", "STAV Portamento", 0, 1, 0, false},
+    {"svdetune", "STAV Detune", 0, 1, 0.15, false},
+    {"svmwosc", "STAV Wheel > Vibrato", 0, 1, 0.5, false},
+};
+
+// de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS
+struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };
+constexpr int kNumMotorer = 3;
+constexpr int kNumAllPresets = 110;
+inline constexpr MotorInfo kMotorer[kNumMotorer] = {
+    {"orgel", "ORGEL", "og", 90, 7},
+    {"sloja", "SLÖJA", "sj", 97, 7},
+    {"stav", "STAV", "sv", 104, 6},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

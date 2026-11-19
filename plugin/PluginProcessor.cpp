@@ -72,8 +72,9 @@ void BrisProcessor::gesture(int i, bool begin) {
     if (begin) params[(size_t)i]->beginChangeGesture(); else params[(size_t)i]->endChangeGesture();
 }
 
+// factoryIndex: BRIS fabriksljud (0..kNumFactory-1) eller ett av de hemliga motorernas (kNumFactory..kNumAllPresets-1)
 void BrisProcessor::applyProgramToHost(int factoryIndex) {
-    if (factoryIndex < 0 || factoryIndex >= kNumFactory) return;
+    if (factoryIndex < 0 || factoryIndex >= blonda::app::kNumAllPresets) return;
     std::vector<double> cur(params.size()), nv(params.size());
     for (int i = 0; i < numParams(); ++i) cur[(size_t)i] = paramValue(i);
     Core::presetValues(factoryIndex, cur.data(), nv.data());
@@ -330,7 +331,7 @@ void BrisProcessor::getStateInformation(juce::MemoryBlock& destData) {
 void BrisProcessor::setStateInformation(const void* data, int sizeInBytes) {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
     if (xml == nullptr || !xml->hasTagName(apvts.state.getType())) return;
-    preset.store(juce::jlimit(0, kNumFactory - 1, xml->getIntAttribute("preset", 65)));
+    preset.store(juce::jlimit(0, blonda::app::kNumAllPresets - 1, xml->getIntAttribute("preset", 65)));
     uiTempo.store(xml->getDoubleAttribute("tempo", 120.0));
     uiState = xml->getStringAttribute("ui");
     glidMode.store(juce::jlimit(0, blonda::app::kNumGlid, xml->getIntAttribute("glid", 1)));

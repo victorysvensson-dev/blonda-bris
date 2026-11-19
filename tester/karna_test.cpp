@@ -366,6 +366,67 @@ int main() {
         c.setFollow(false);
 #endif
     }
+    // MOTORERNA (ORGEL, SLÖJA, STAV): varje fabriksljud väljer sin motor och låter, BRIS-ljud tar tillbaka BRIS,
+    // effekter och volym delas med BRIS, och byter man motor medan något klingar så klingar det ut
+    {
+        const CoreParams& cp = coreParams();
+        double mcpu = 0;
+        for (int m = 1; m <= kNumMotorer; ++m) {
+            const MotorInfo& mi = kMotorer[m - 1];
+            for (int k = 0; k < mi.numPresets; ++k) {
+                Core c; c.prepare(sr);
+                c.loadPreset(mi.firstPreset + k);
+                KRAV(c.motor() == m && (int)c.getParam(cp.motor) == m, "%s ljud %d: motorn väljs inte (%d)", mi.id, k, c.motor());
+                c.noteOn(48, 100); c.noteOn(60, 100); c.noteOn(64, 90); c.noteOn(67, 80);
+                double peak = 0, rms = 0; long n = 0; bool nan = false;
+                auto t0 = std::chrono::steady_clock::now();
+                for (int b = 0; b < (int)(2.0 * sr / B); ++b) {
+                    if (b == (int)(1.5 * sr / B)) c.allNotesOff();
+                    c.process(L.data(), R.data(), B);
+                    for (int s = 0; s < B; ++s) { double x = L[s], y = R[s]; if (!std::isfinite(x) || !std::isfinite(y)) nan = true;
+                        peak = std::max(peak, std::max(std::fabs(x), std::fabs(y))); rms += x * x + y * y; ++n; }
+                }
+                const double dt = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+                mcpu = std::max(mcpu, dt / 2.0);
+                rms = std::sqrt(rms / (2 * n));
+                const char* nm = motorTabell(m).presets[k].name;
+                std::printf("%s %-12s peak %.3f rms %.3f  %.1f%% cpu\n", mi.id, nm, peak, rms, 100 * dt / 2.0);
+                KRAV(!nan, "%s %s: NaN", mi.id, nm);
+                KRAV(rms > 0.003, "%s %s: tyst (rms %.4f)", mi.id, nm, rms);
+                KRAV(peak < 2.0, "%s %s: för starkt (peak %.2f)", mi.id, nm, peak);
+            }
+        }
+        KRAV(mcpu < 0.35, "motorerna tar för mycket tid (%.0f%% av realtid)", 100 * mcpu);
+        // ett BRIS-ljud efter en motor: tillbaka till BRIS
+        Core c; c.prepare(sr);
+        c.loadPreset(kMotorer[0].firstPreset + 1);
+        c.loadPreset(5);
+        KRAV(c.motor() == 0, "ett BRIS-ljud ska välja BRIS (motor %d)", c.motor());
+        // effekterna och volymen delas: BRIS chorus syns i motorn
+        c.loadPreset(kMotorer[1].firstPreset + 1);
+        c.setParam(cp.find("chorus"), 0.83);
+        KRAV(std::fabs(c.motorRef(2).getParam(c.motorRef(2).findParam("chorus")) - 0.83) < 1e-9, "chorus delas inte med motorn");
+        c.setParam(cp.find("sjton"), 0.21);
+        KRAV(std::fabs(c.motorRef(2).getParam(c.motorRef(2).findParam("ton")) - 0.21) < 1e-9, "motorns egen ratt når inte motorn");
+        // byte medan en ton klingar: den gamla klingar ut (ingen tvär tystnad), den nya får nästa ton
+        Core d; d.prepare(sr); d.loadPreset(kMotorer[1].firstPreset + 1); d.setParam(cp.find("rvb"), 0);
+        d.noteOn(60, 100);
+        for (int b = 0; b < (int)(1.0 * sr / B); ++b) d.process(L.data(), R.data(), B);
+        d.loadPreset(kMotorer[2].firstPreset + 1);
+        double efter = 0;
+        for (int b = 0; b < 4; ++b) { d.process(L.data(), R.data(), B); for (int s = 0; s < B; ++s) efter = std::max(efter, (double)std::fabs(L[s])); }
+        KRAV(d.motor() == 3 && efter > 0.005, "bytet tystar tvärt (%.4f)", efter);
+        d.noteOff(60);
+        d.noteOn(64, 100); double ny = 0;
+        for (int b = 0; b < (int)(0.3 * sr / B); ++b) { d.process(L.data(), R.data(), B); for (int s = 0; s < B; ++s) ny = std::max(ny, (double)std::fabs(L[s])); }
+        KRAV(ny > 0.02, "den nya motorn låter inte (%.4f)", ny);
+        for (int b = 0; b < (int)(10.0 * sr / B); ++b) d.process(L.data(), R.data(), B);
+        d.allNotesOff();
+        for (int b = 0; b < (int)(8.0 * sr / B); ++b) d.process(L.data(), R.data(), B);
+        double tyst = 0; for (int b = 0; b < 8; ++b) { d.process(L.data(), R.data(), B); for (int s = 0; s < B; ++s) tyst = std::max(tyst, (double)std::fabs(L[s])); }
+        KRAV(tyst < 1e-3, "det klingar kvar efter bytet och släppet (%.5f)", tyst);
+        std::printf("MOTORER: värsta cpu %.1f%% av realtid, byte: ut %.3f, ny %.3f, tyst %.1e\n", 100 * mcpu, efter, ny, tyst);
+    }
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);
     return fel ? 1 : 0;

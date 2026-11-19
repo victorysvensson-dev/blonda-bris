@@ -11,6 +11,10 @@ const Norrsken = (() => {
     uniform float uT, uHy, uAsp, uN;
     uniform vec4 uP[${MAX}];             // puls: x (0..1), starttid, styrka, -
     uniform vec3 uC[${MAX}];             // pulsens färg
+    uniform sampler2D uFj;               // fjällen (tools/norrsken_bilder.py)
+    uniform vec4 uFjM;
+    uniform vec2 uFjG;                   // hur starkt bas- och skenpasset lyser
+    uniform float uFjH;                  // remsans höjd på skärmen (andel av höjden)
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
@@ -42,10 +46,11 @@ const Norrsken = (() => {
       vec3 c = vec3(0.0); float x = s.x * uAsp, t = uT;
       for (int i = 0; i < 3; i++) {
         float fi = float(i);
-        float yb = uHy - 0.2 - 0.07 * fi + 0.06 * sin(x * (0.9 + 0.3 * fi) + t * 0.05 + fi * 2.1)
-                   + 0.035 * (noise(vec2(x * 1.7 + t * 0.03, fi * 5.0)) - 0.5) + vg;
+        // slöjornas nederkanter slingrar sig var för sig och korsar varandra (inga parallella band)
+        float yb = uHy - 0.24 - 0.06 * fi + (0.07 + 0.02 * fi) * sin(x * (0.7 + 0.45 * fi) + t * (0.04 + 0.015 * fi) + fi * 2.7)
+                   + 0.05 * (noise(vec2(x * (1.2 + 0.5 * fi) + t * 0.03, fi * 5.0)) - 0.5) + vg;
         float d = yb - s.y;                                         // över slöjans nederkant: > 0
-        float upp = d > 0.0 ? exp(-d * (5.0 + 2.0 * fi)) : exp(d * 70.0);
+        float upp = d > 0.0 ? exp(-d * (4.5 + 2.0 * fi)) : exp(d * 45.0);
         float stralar = 0.45 + 0.55 * pow(noise(vec2(x * 38.0 + t * 0.25 + fi * 13.0, fi * 3.0 + t * 0.05)), 2.0);
         float veck = 0.35 + 0.65 * smoothstep(0.15, 0.85, noise(vec2(x * 1.4 - t * 0.07 + fi * 7.0, 2.0 + fi)));
         float b = upp * stralar * veck * (0.85 - 0.22 * fi) * (1.0 + pu.w * 2.2);
@@ -55,34 +60,28 @@ const Norrsken = (() => {
       }
       return c;
     }
-    // fjällen: toppar som vassa kägelformer (en topp per cell, den högsta vid x vinner) med lite ojämnhet.
-    // Ger höjden, toppens x och toppens höjd.
-    vec3 berg(float x, float seed, float w, float hmax) {
-      float c = floor(x / w); vec3 b = vec3(-1.0, 0.0, 0.0);
-      for (int k = -1; k <= 1; k++) {
-        float ck = c + float(k);
-        float pc = (ck + 0.2 + 0.6 * hash(vec2(ck, seed))) * w;
-        float hc = hmax * (0.4 + 0.6 * hash(vec2(ck, seed + 1.7)));
-        float dx = x - pc, bredd = w * (dx < 0.0 ? 0.6 + 0.5 * hash(vec2(ck, seed + 4.1)) : 0.6 + 0.5 * hash(vec2(ck, seed + 5.3)));
-        float h = hc * pow(max(0.0, 1.0 - abs(dx) / bredd), 1.5);   // brant upptill, flackare nertill
-        if (h > b.x) b = vec3(h, pc, hc);
-      }
-      b.x += 0.006 * (noise(vec2(x * 28.0, seed)) - 0.5) + 0.0025 * noise(vec2(x * 95.0, seed));
-      return b;
+    // fjällen: renderade i Blender (tools/norrsken_fjall.py) i två pass, ett med himlens svaga ljus och ett med vitt
+    // ljus uppifrån som färgas med norrskenets färg. ty 0 vid stranden .. 1 överst i remsan; ger färg och täckning.
+    // uFjM: kb, ks (passens skalning), remsans bredd/höjd, remsans höjd i bilden (andel av hela höjden)
+    vec4 fjall(float x, float upp, vec3 sken) {
+      float ty = upp / uFjH;
+      if (ty < -0.01 || ty > 1.0) return vec4(0.0);
+      float tx = 0.5 + (x - uAsp * 0.5) / (uFjH * uFjM.z), m = 0.6 / 512.0;
+      vec4 b = texture2D(uFj, vec2(tx, min(0.5 - m, 0.5 - ty * uFjM.w)));
+      vec4 k = texture2D(uFj, vec2(tx, max(0.5 + m, 0.5 + ty * uFjM.w)));
+      vec3 ljus = mix(vec3(dot(sken, vec3(0.3, 0.5, 0.2))), sken, 0.55);   // snön är vit: bara en ton av norrskenets färg
+      vec3 lin = pow(b.rgb, vec3(2.2)) / uFjM.x * uFjG.x + pow(k.rgb, vec3(2.2)) / uFjM.y * ljus * uFjG.y;
+      return vec4(lin, b.a);
     }
-    // färgen på ett fjäll: snö som strålar ner från toppen i rännor, mörka klippor emellan och längre ner, den sida
-    // som vetter mot norrskenet (vänster) lite ljusare och toppen ljusast
-    vec3 bergfarg(float x, float upp, vec3 b, float seed, vec3 sken) {
-      // rännorna går snett ner från kanten (fallinjen), så de aldrig trängs ihop vid en flack kontur
-      float djup = max(b.x - upp, 0.0), sx = x < b.y ? -1.0 : 1.0;
-      float u = x - sx * djup * 0.55 + 0.004 * noise(vec2(x * 40.0, djup * 60.0));
-      float rannor = noise(vec2(u * 45.0 + seed, djup * 8.0 + seed)) * 0.7 + noise(vec2(u * 120.0, djup * 20.0 + seed)) * 0.3;
-      float topp = clamp(upp / max(b.z, 0.01), 0.0, 1.0);
-      float sno = smoothstep(0.36, 0.74, rannor * 0.72 + topp * 0.5);
-      float sida = x < b.y ? 1.0 : 0.6;
-      vec3 snof = (vec3(0.12, 0.155, 0.2) + sken * 0.45) * sida * (0.65 + 0.35 * topp);
-      vec3 klippa = vec3(0.01, 0.013, 0.018) + sken * 0.03 * sida;
-      return mix(klippa, snof, sno);
+    // granarna längs stranden: en rad med grenvåningar ovanpå en låg ås. Ger täckning och höjden i granen (0..1)
+    vec2 gran(float x, float upp, float w, float hmax, float seed, float aa) {
+      float c = floor(x / w), f = fract(x / w), r = hash(vec2(c, seed));
+      float th = hmax * (0.45 + 0.55 * r), y = upp / th;
+      if (y > 1.0 || y < 0.0) return vec2(0.0);
+      float u = abs(f - 0.5 - (hash(vec2(c, seed + 3.0)) - 0.5) * 0.35) * 2.0;
+      float vaning = fract(y * (4.0 + 3.0 * r) + r);
+      float halv = (1.0 - y) * (0.55 + 0.45 * (1.0 - vaning)) + 0.03;
+      return vec2(smoothstep(halv + aa, halv - aa, u), y);
     }
     vec3 himmel(vec2 s, float skarpa) {
       float upp = uHy - s.y, x = s.x * uAsp;
@@ -93,20 +92,22 @@ const Norrsken = (() => {
       c += vec3(0.7, 0.8, 1.0) * ljus * (0.85 + 0.15 * sin(uT * (0.4 + 1.2 * st) + st * 60.0)) * smoothstep(0.0, 0.1, upp);
       vec4 pu = pulser(s.x); float vg = vag(s.x);
       vec3 nk = norrsken(s, pu, vg);
-      c += nk;
+      c += nk + vec3(0.01, 0.045, 0.025) * exp(-abs(upp - 0.3) * 5.0) * (0.6 + 0.4 * noise(vec2(x * 0.8 + uT * 0.02, 7.0)));
       // norrskenets ljus på snön: hur starkt det lyser rakt ovanför fjällen
       vec3 sken = norrsken(vec2(s.x, uHy - 0.24), pu, vg) * 1.4 + vec3(0.02, 0.03, 0.05);
-      vec3 b1 = berg(x, 3.0, 0.32, 0.16), b2 = berg(x + 0.7, 11.0, 0.22, 0.1);
-      float aa = 0.0015 / skarpa;
-      if (upp < b1.x + aa && upp > -0.01) {   // bortre raden: disig
-        vec3 f1 = mix(bergfarg(x, upp, b1, 3.0, sken), c + vec3(0.01, 0.02, 0.03), 0.55);
-        c = mix(c, f1, smoothstep(b1.x + aa, b1.x - aa, upp));
+      float aa = 0.0016 / skarpa;
+      vec4 fj = fjall(x, upp, sken);
+      c = mix(c, fj.rgb, fj.a);
+      // stranden: en låg ås med granar, nästan svart, toppen fångar lite av norrskenet
+      if (upp < 0.03 && upp > -0.01) {
+        float as = 0.002 + 0.004 * noise(vec2(x * 3.0, 1.7)) + 0.002 * noise(vec2(x * 13.0, 3.1));
+        vec3 svart = vec3(0.003, 0.005, 0.007);
+        vec2 g1 = gran(x + 2.1, upp - as * 0.6, 0.0045, 0.011, 7.0, 0.05 / skarpa);
+        c = mix(c, svart + sken * 0.05 * g1.y, g1.x);
+        c = mix(c, svart, smoothstep(as + aa, as - aa, upp));
+        vec2 g2 = gran(x, upp - as * 0.8, 0.007, 0.017, 3.0, 0.05 / skarpa);
+        c = mix(c, svart + sken * 0.06 * g2.y * g2.y, g2.x);
       }
-      if (upp < b2.x + aa && upp > -0.01) {   // närmre raden
-        c = mix(c, bergfarg(x + 0.7, upp, b2, 11.0, sken), smoothstep(b2.x + aa, b2.x - aa, upp));
-      }
-      // strandens snö längs vattnet: en tunn, svag kant
-      if (upp >= 0.0 && upp < 0.004) c = mix(c, vec3(0.08, 0.1, 0.13) + sken * 0.2, 0.6 * smoothstep(0.004, 0.0015, upp));
       return c;
     }
     void main() {
@@ -121,18 +122,38 @@ const Norrsken = (() => {
       gl_FragColor = vec4(c, 1.0);
     }`;
 
-  function create(parent) {
+  // meta: ui/norrsken/norrsken.json (bild, w, halv, hs, kb, ks), bas: katalogen bilden ligger i
+  function create(parent, meta, bas) {
     const cv = document.createElement("canvas"); cv.id = "norrsken"; cv.className = "himmel";
     parent.prepend(cv);   // först i body: appen ritas ovanpå
     const gl = cv.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
-    let prog = null, u = {}, buf = null, aktiv = false, lugn = 0;
+    let prog = null, u = {}, buf = null, aktiv = false, lugn = 0, tex = null, fjallKlar = false;
+    const M = meta || { w: 2048, halv: 256, hs: 196, kb: 1, ks: 1 }, A = M.w / M.hs;
     const t0 = performance.now(), P = new Float32Array(MAX * 4), C = new Float32Array(MAX * 3); let n = 0, pos = 0;
     if (gl) {
       try {
         const sh = (typ, src) => { const s = gl.createShader(typ); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
         prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-        for (const k of ["uT", "uHy", "uAsp", "uN", "uP", "uC"]) u[k] = gl.getUniformLocation(prog, k);
+        for (const k of ["uT", "uHy", "uAsp", "uN", "uP", "uC", "uFj", "uFjM", "uFjG", "uFjH"]) u[k] = gl.getUniformLocation(prog, k);
+        // fjällen: en genomskinlig pixel tills bilden har laddats
+        tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        if (meta && meta.bild) {
+          const im = new Image();
+          im.onload = () => {
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            fjallKlar = true;
+          };
+          im.onerror = () => console.warn("norrsken: kunde inte ladda", meta.bild);
+          im.src = (bas || "") + meta.bild;
+        }
         u.aP = gl.getAttribLocation(prog, "aP");
         buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
       } catch (e) { console.warn("norrsken:", e.message); prog = null; }
@@ -149,6 +170,10 @@ const Norrsken = (() => {
       gl.viewport(0, 0, w, h); gl.useProgram(prog);
       gl.uniform1f(u.uT, nu()); gl.uniform1f(u.uHy, L.hy); gl.uniform1f(u.uAsp, L.asp);
       gl.uniform1f(u.uN, n); gl.uniform4fv(u.uP, P); gl.uniform3fv(u.uC, C);
+      // fjällremsan: lika hög som förut på liggande skärmar, men alltid minst så hög att den täcker hela bredden
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(u.uFj, 0);
+      gl.uniform4f(u.uFjM, M.kb, M.ks, A, M.hs / (2 * M.halv)); gl.uniform2f(u.uFjG, 1.6, 1.5);
+      gl.uniform1f(u.uFjH, Math.max(L.asp > 1.2 ? 0.2 : 0.17, L.asp / A * 1.02));
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(u.aP); gl.vertexAttribPointer(u.aP, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
@@ -174,7 +199,7 @@ const Norrsken = (() => {
         }
         return { himmel: himmel / Math.max(1, nh), gron: gron / Math.max(1, nh), pulser: n };
       },
-      klar() { return !!(gl && prog); },
+      klar() { return !!(gl && prog && fjallKlar); },
     };
   }
   return { create };

@@ -1,0 +1,283 @@
+{
+ "motor": "stav",
+ "params": [
+  {
+   "id": "typ",
+   "name": "Type",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "ton",
+   "name": "Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "velt",
+   "name": "Velocity > Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.6,
+   "integer": false
+  },
+  {
+   "id": "bark",
+   "name": "Bark",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "ping",
+   "name": "Ping",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "decay",
+   "name": "Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "rel",
+   "name": "Release",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "trem",
+   "name": "Tremolo",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "trate",
+   "name": "Tremolo Rate",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "mek",
+   "name": "Mechanics",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "vela",
+   "name": "Velocity > Amp",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "lage",
+   "name": "Voice Mode",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "uniint",
+   "name": "Unison Interval",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "integer": true
+  },
+  {
+   "id": "porta",
+   "name": "Portamento",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "detune",
+   "name": "Detune",
+   "min": 0,
+   "max": 1,
+   "default": 0.15,
+   "integer": false
+  },
+  {
+   "id": "mwosc",
+   "name": "Wheel > Vibrato",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "chorus",
+   "name": "Chorus",
+   "min": 0,
+   "max": 1,
+   "default": 0.2,
+   "integer": false
+  },
+  {
+   "id": "dtime",
+   "name": "Delay Time",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "dfb",
+   "name": "Delay Feedback",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "dmix",
+   "name": "Delay Mix",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "integer": false
+  },
+  {
+   "id": "bendr",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "integer": true
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  }
+ ],
+ "keep": [
+  "bendr",
+  "vol"
+ ],
+ "uiOnly": [],
+ "factoryBank": 5,
+ "voices": 6,
+ "types": [
+  "TINE",
+  "REED",
+  "FM"
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "nattåg",
+   "values": {
+    "typ": 0,
+    "ton": 0.42,
+    "bark": 0.35,
+    "ping": 0.25,
+    "decay": 0.55,
+    "rel": 0.32,
+    "trem": 0.45,
+    "trate": 0.38,
+    "mek": 0.25,
+    "chorus": 0.25,
+    "dmix": 0.15,
+    "dtime": 0.45
+   }
+  },
+  {
+   "name": "sovvagn",
+   "values": {
+    "typ": 0,
+    "ton": 0.22,
+    "velt": 0.4,
+    "bark": 0.1,
+    "ping": 0.12,
+    "decay": 0.62,
+    "rel": 0.45,
+    "trem": 0.25,
+    "trate": 0.3,
+    "mek": 0.15,
+    "chorus": 0.4,
+    "dmix": 0.12,
+    "dtime": 0.5
+   }
+  },
+  {
+   "name": "tunga",
+   "values": {
+    "typ": 1,
+    "ton": 0.5,
+    "velt": 0.7,
+    "bark": 0.45,
+    "ping": 0.2,
+    "decay": 0.5,
+    "rel": 0.25,
+    "trem": 0.35,
+    "trate": 0.55,
+    "mek": 0.3,
+    "chorus": 0.1
+   }
+  },
+  {
+   "name": "glaspiano",
+   "values": {
+    "typ": 2,
+    "ton": 0.5,
+    "velt": 0.5,
+    "bark": 0.05,
+    "ping": 0.55,
+    "decay": 0.6,
+    "rel": 0.4,
+    "trem": 0,
+    "mek": 0.05,
+    "chorus": 0.55,
+    "dmix": 0.25,
+    "dtime": 0.5,
+    "dfb": 0.4
+   }
+  },
+  {
+   "name": "perrong",
+   "values": {
+    "typ": 0,
+    "ton": 0.7,
+    "velt": 0.75,
+    "bark": 0.7,
+    "ping": 0.35,
+    "decay": 0.45,
+    "rel": 0.25,
+    "trem": 0,
+    "mek": 0.35,
+    "chorus": 0.1
+   }
+  }
+ ]
+}

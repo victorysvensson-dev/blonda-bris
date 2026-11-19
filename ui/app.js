@@ -24,7 +24,11 @@
     pads: { list: [[57, 60, 64, 67], [53, 57, 60, 64], [48, 55, 60, 64], [55, 59, 62, 67]], hold: false, follow: false, open: false, rec: false, armed: -1, active: -1 },   // egna ljud { name, base, values } och namnet på det som är laddat   // tangenternas zoom (1 = ca 56 px per vit tangent) och höjd (andel av fönstret, null = standard)
   };
   D.params.forEach((p) => (S.v[p.id] = p.def));
-  const plantOf = (i) => D.plants[D.presets[i].plant];
+  // de hemliga patcharnas motorer (ORGEL, SLÖJA, STAV): deras fabriksljud har index efter BRIS (tools/kategorier.py)
+  const MOT = D.motorer || [];
+  const motorAv = (i) => MOT.find((m) => i >= m.forsta && i < m.forsta + m.ljud.length);
+  const motorLjudNamn = (i) => { const m = motorAv(i); return m ? m.ljud[i - m.forsta] : null; };
+  const plantOf = (i) => D.plants[(D.presets[i] || D.presets[D.order[0]]).plant];
   let INK = "43,37,33";   // text och linjer som ritas i dukarna (ljust i det mörka läget)
   // den hemliga patchen: accent, bakgrund och ljusets två färger (lila och bärnsten, per ton)
   const KR = { accent: "#a47cff", bg: "#0b0a13", lila: [150, 100, 255], barn: [255, 172, 82], lilaL: [0.42, 0.20, 1.0], barnL: [1.0, 0.52, 0.16] };
@@ -72,6 +76,46 @@
     { id: "arp", name: "ARP", kt: "ARPEGGIO", pre: [["t", [["arp", "ARP"]]], ["c", "arpm", ["UP", "DOWN", "UP-DOWN", "RANDOM"]]],
       rt: "RATE", right: [["c", "arpr", ["1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"]], ["c", "arpo", ["1 OCT", "2 OCT", "3 OCT", "4 OCT"]], ["s", "arpg", "GATE"]] },
   ];
+
+  // De hemliga patcharnas motorer har egna sidor på OSC- och FILTER-platserna (med egna namn), egna reglage till höger
+  // på PLAY, och AMP och MOD döljs. play = PLAY-sidans högra reglage.
+  const MOTOR_SIDOR = {
+    orgel: {
+      play: [["s", "ogswell", "SWELL"], ["s", "ogrel", "RELEASE"], ["s", "rvb", "REVERB"]],
+      osc: { name: "STOPS", kt: "PRINCIPALS", knobs: [["ogb16", "16'"], ["ogp8", "8'"], ["ogp4", "4'"], ["ogp2", "2'"]],
+        rt: "STOPS", right: [["s", "ogf8", "FLUTE 8'"], ["s", "ogq223", "NASARD"], ["s", "ogt135", "TIERCE"], ["s", "ogmixt", "MIXTURE"]] },
+      filter: { name: "PIPES", kt: "PIPES", knobs: [["ogtrp", "TRUMPET"], ["ogcel", "CELESTE"], ["ogchf", "CHIFF"], ["ogvind", "WIND"]],
+        rt: "SOUND", right: [["s", "ogton", "TONE"], ["s", "ogspk", "SPEECH"], ["s", "ogtrem", "TREMULANT"], ["s", "ogtrate", "TREM RATE"]] },
+    },
+    sloja: {
+      play: [["s", "sjton", "TONE"], ["s", "sjsken", "SHIMMER"], ["s", "rvb", "REVERB"]],
+      osc: { name: "VEIL", kt: "SPECTRUM", knobs: [["sjton", "TONE"], ["sjjamn", "ODD/EVEN"], ["sjsken", "SHIMMER"], ["sjglit", "GLITTER"]],
+        rt: "MOTION", right: [["s", "sjandas", "BREATH"], ["s", "sjform", "FORMANT"], ["s", "sjrorl", "MOTION"], ["s", "sjbredd", "WIDTH"]] },
+      filter: { name: "AMP", kt: "ENVELOPE", knobs: [["sjaa", "A"], ["sjad", "D"], ["sjasus", "S"], ["sjar", "R"]],
+        rt: "VOICE", right: [["s", "sjsub", "SUB"], ["s", "sjdetune", "DETUNE"], ["s", "sjvela", "VELOCITY"], ["s", "sjporta", "GLIDE"]] },
+    },
+    stav: {
+      play: [["s", "svton", "TONE"], ["s", "svtrem", "TREMOLO"], ["s", "rvb", "REVERB"]],
+      osc: { name: "TINE", kt: "HAMMER", pre: [["c", "svtyp", ["TINE", "REED", "FM"]]],
+        knobs: [["svton", "TONE"], ["svvelt", "VEL TONE"], ["svbark", "BARK"], ["svping", "PING"]],
+        rt: "DECAY", right: [["s", "svdecay", "DECAY"], ["s", "svrel", "RELEASE"], ["s", "svmek", "MECHANICS"], ["s", "svvela", "VELOCITY"]] },
+      filter: { name: "TREMOLO", kt: "TREMOLO", knobs: [["svtrem", "DEPTH"], ["svtrate", "RATE"], ["svdetune", "DETUNE"], ["svporta", "GLIDE"]],
+        rt: "VOICE", right: [["c", "svlage", ["STEREO", "POLY", "MONO", "UNISON"]], ["s", "svmwosc", "WHEEL VIB"], ["s", "bendr", "BEND"]] },
+    },
+  };
+  const motorNu = () => { const h = S.secret && hemOf(S.secret); return h && h.motor ? h.motor : null; };
+  // flikarna just nu: BRIS sidor, eller motorns
+  function sidor() {
+    const m = motorNu(); if (!m) return PAGES;
+    const ms = MOTOR_SIDOR[m];
+    return PAGES.filter((p) => p.id !== "amp" && p.id !== "mod").map((p) => {
+      if (p.id === "play") return { ...p, rt: (MOT.find((x) => x.id === m) || {}).namn || p.rt, right: ms.play };   // rubriken = motorns namn
+      if (ms[p.id]) return { id: p.id, wave: "scope", ...ms[p.id] };
+      return p;
+    });
+  }
+  // är ljud i den hemliga patchens ljud? (en motor: alla motorns fabriksljud)
+  const hemLjud = (id, i) => { const h = hemOf(id); if (!h) return false; return h.motor ? (motorAv(i) || {}).id === h.motor : i === h.ljud; };
 
   // FX-kedjan i ljudets ordning. av = parametern som slår på/av effekten (de som saknar den är alltid med och visar
   // bara en lampa när de gör något), las = den hemliga patch som låser upp effekten. Fler effekter läggs till här.
@@ -353,8 +397,12 @@
 
   // ---------------------------------------------------------------- bygg sidan
   let knobEls = [], browserEl = null;
+  let flikSig = "";
   function buildPanels() {
-    const pg = PAGES.find((p) => p.id === S.tab) || PAGES[0];
+    const lista = sidor();
+    const pg = lista.find((p) => p.id === S.tab) || lista[0];
+    const sig = lista.map((p) => p.name).join();
+    if (sig !== flikSig) buildTabs();
     for (const k in binds) delete binds[k];
     for (const k in modB) delete modB[k];
     S.mod = {};   // nästa bildruta skickar moduleringen till de nya reglagen
@@ -375,7 +423,9 @@
     br._upd = () => {
       const pr = D.presets[S.preset], pl = plantOf(S.preset);
       if (S.eget) { cur.textContent = "MY SOUND"; nm.textContent = S.eget; return; }
-      if (S.secret) { const h = hemOf(S.secret); cur.textContent = "SECRET " + String(h.nr).padStart(2, "0"); nm.textContent = h.namn + " · " + h.ljudnamn.toUpperCase(); return; }
+      if (S.secret) { const h = hemOf(S.secret); cur.textContent = "SECRET " + String(h.nr).padStart(2, "0");
+        nm.textContent = h.namn + " · " + ((h.motor && motorLjudNamn(S.preset)) || h.ljudnamn).toUpperCase(); return; }
+      if (!pr) { const m = motorAv(S.preset); cur.textContent = m ? m.namn : "SOUND"; nm.textContent = (motorLjudNamn(S.preset) || "").toUpperCase(); return; }
       cur.textContent = `${pl.cat} ${String(pr.nr).padStart(2, "0")}`; nm.textContent = pr.name.toUpperCase();
     };
     browserEl = br; br._upd();
@@ -521,9 +571,10 @@
   }
 
   function buildTabs() {
+    const lista = sidor(); flikSig = lista.map((p) => p.name).join();
     for (const n of ["#tabs", "#tabs2"]) {
       const t = $(n); t.innerHTML = "";
-      PAGES.forEach((p) => { const b = el("button", "", p.name); b.dataset.tab = p.id; b.onclick = () => { S.tab = p.id; buildPanels(); saveUi(); }; t.append(b); });
+      lista.forEach((p) => { const b = el("button", "", p.name); b.dataset.tab = p.id; b.onclick = () => { S.tab = p.id; buildPanels(); saveUi(); }; t.append(b); });
     }
   }
 
@@ -654,9 +705,19 @@
     if (var_ === "kassett") { Bridge.send({ t: "band", k: 0, tyst: 1 }); setTimeout(buildPanels, 0); }   // bandet stannar (tyst)
     if (S.fore) for (const k in S.fore) if (S.fore[k] !== undefined) setParam(k, S.fore[k], true);
     S.fore = null;
+    if (hemOf(var_) && hemOf(var_).motor) setTimeout(buildPanels, 0);   // BRIS flikar tillbaka
   }
   function onPreset(i) { S.preset = i; applyTheme(); }
-  function step(d) { const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]); }
+  function step(d) {
+    const m = motorNu() && MOT.find((x) => x.id === motorNu());
+    if (m) {   // i en hemlig patch med egen motor: pilarna bläddrar bland motorns ljud (utom init)
+      const n = m.ljud.length - 1, k = Math.max(0, S.preset - m.forsta - 1);
+      valjMotorLjud(m.forsta + 1 + ((k + d + n) % n)); return;
+    }
+    const o = D.order, k = o.indexOf(S.preset); selectPreset(o[(k + d + o.length) % o.length]);
+  }
+  // ett av motorns ljud utan att lämna den hemliga patchen (inställningarna ovanpå, som rummet och MOOD, ligger kvar)
+  function valjMotorLjud(i) { S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); buildMenu(); saveUi(); }
 
   // ---------------------------------------------------------------- menyn
   const KRYSS = '<svg class="ic" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>';
@@ -736,7 +797,7 @@
     spara.onclick = () => {   // en rad med namn i menyns nederkant
       f.innerHTML = "";
       const inp = el("input", "namn"); inp.type = "text"; inp.maxLength = 28; inp.placeholder = "NAME";
-      inp.value = S.eget || D.presets[S.preset].name.toUpperCase() + " 2";
+      inp.value = S.eget || ((D.presets[S.preset] ? D.presets[S.preset].name : motorLjudNamn(S.preset)) || "SOUND").toUpperCase() + " 2";
       const ok = el("button", "", "SAVE"), av = el("button", "mute", "CANCEL");
       ok.onclick = () => { sparaEget(inp.value); buildFoot(); };
       av.onclick = () => buildFoot();
@@ -1257,7 +1318,7 @@
   for (const h of HEM) {
     if (h.id === "kristall" && h.scen && typeof Kristall !== "undefined") SCEN.kristall = Kristall.create($("#stage"), h.scen, "kristall/");
     if (h.id === "sjon" && typeof Sjon !== "undefined") SCEN.sjon = Sjon.create(document.body);
-    if (h.id === "norrsken" && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body);
+    if (h.id === "norrsken" && h.scen && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body, h.scen, "norrsken/");
     if (h.id === "nattag" && typeof Nattag !== "undefined") SCEN.nattag = Nattag.create(document.body);
     if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
@@ -1358,7 +1419,7 @@
     S.pads.active = -1; S.pads.armed = -1; S.pads.rec = false;
     if (st.glid >= 0 && st.glid < GLID.length) S.glid.m = st.glid;   // pluggens sparade läge gäller
     S.preset = st.preset ?? S.preset;
-    if (S.secret && S.preset !== hemOf(S.secret).ljud) lamnaHemlig();   // ljudet byttes utanför (t.ex. i Logic)
+    if (S.secret && !hemLjud(S.secret, S.preset)) lamnaHemlig();   // ljudet byttes utanför (t.ex. i Logic)
     S.egna = Array.isArray(st.user) ? st.user.filter((e) => e && e.name && e.values) : [];
     if (S.eget && !S.egna.some((e) => e.name === S.eget)) S.eget = null;
     setMotion(S.motion); buildMenu();
@@ -1377,7 +1438,7 @@
     flower.signals({ cut: S.v.cut, res: S.v.res, lrate: S.v.lrate });
   };
   Bridge.on.params = (v) => { for (const id in v) setParam(id, v[id], false); if ("arp" in v) updPads(); };
-  Bridge.on.preset = (i) => { if (i !== S.preset) { if (S.secret) { lamnaHemlig(); buildMenu(); } onPreset(i); } };
+  Bridge.on.preset = (i) => { if (i !== S.preset) { if (S.secret && !hemLjud(S.secret, i)) { lamnaHemlig(); buildMenu(); buildPanels(); } onPreset(i); } };
   Bridge.on.info = (m) => { if (m.midi) { S.midi = m.midi; buildFoot(); } };
   Bridge.on.meters = (m) => {
     S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.pl = m.pl ?? m.pk; S.m.pr = m.pr ?? m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;

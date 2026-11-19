@@ -13,17 +13,18 @@
 
 namespace blonda::bris {
 
-template <class Dsp, class T>
+// NV = antal röster (BRIS, BRIS MPE och ONE har 6; ORGEL har 8). DSP-klassen har Param n0.., g0.., t0.. för varje röst.
+template <class Dsp, class T, int NV = 6>
 class BrisMotor : public Motor {
 public:
-    static constexpr int kVoices = 6;
+    static constexpr int kVoices = NV;
 
     BrisMotor() {
         for (int i = 0; i < T::kNumParams; ++i) {
             ptr_[i] = dsp_.param(T::params()[i].id);
             val_[i] = T::params()[i].def;
         }
-        char nm[8];
+        char nm[12];
         for (int i = 0; i < kVoices; ++i) {
             std::snprintf(nm, sizeof nm, "n%d", i); n_[i] = dsp_.param(nm);
             std::snprintf(nm, sizeof nm, "g%d", i); g_[i] = dsp_.param(nm);
@@ -152,7 +153,7 @@ protected:
         if (stack_.empty()) return;
         int n = stack_.back();
         if (mode_ == 2) { trig(0, n, monoVel_, retrig); return; }
-        for (int i = 0; i < kVoices; ++i) trig(i, n + (i >= 3 ? uni_ : 0), monoVel_, retrig);
+        for (int i = 0; i < kVoices; ++i) trig(i, n + (i >= kVoices / 2 ? uni_ : 0), monoVel_, retrig);
     }
     void removeFromStack(int n) { stack_.erase(std::remove(stack_.begin(), stack_.end(), n), stack_.end()); }
 

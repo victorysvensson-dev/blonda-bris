@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 #include "blonda/effekt.h"
@@ -21,6 +22,9 @@
 #include "brismpe/brismpe.h"
 #endif
 #include "mood/mood_ljud.h"
+#include "orgel/orgel.h"
+#include "sloja/sloja.h"
+#include "stav/stav.h"
 #include "rum/rum_ljud.h"
 #include "sliten/sliten_ljud.h"
 #include "vibe/vibe_ljud.h"
@@ -39,8 +43,21 @@ using Synth = bris::Bris;
 #endif
 
 // ------------------------------------------------------------------ parametrar
-// BRIS-parametrarna (utom UI_ONLY "hyll") i blonda-motors ordning, sedan kExtra.
-constexpr int kMaxParams = 96;
+// De hemliga patcharnas motorer (motor 1..kNumMotorer, i kMotorer:s ordning): parametrar och fabriksljud.
+struct MotorTabell { const ParamInfo* params; int numParams; const PresetInfo* presets; const PresetValue* values; };
+inline const MotorTabell& motorTabell(int m) {
+    static const MotorTabell t[kNumMotorer + 1] = {
+        {nullptr, 0, nullptr, nullptr},
+        {orgel::kParams, orgel::kNumParams, orgel::kPresets, orgel::kPresetValues},
+        {sloja::kParams, sloja::kNumParams, sloja::kPresets, sloja::kPresetValues},
+        {stav::kParams, stav::kNumParams, stav::kPresets, stav::kPresetValues},
+    };
+    return t[std::max(0, std::min(kNumMotorer, m))];
+}
+constexpr int kMaxMotorParams = 48;
+
+// BRIS-parametrarna (utom UI_ONLY "hyll") i blonda-motors ordning, sedan kExtra (där motorernas rattar ligger sist).
+constexpr int kMaxParams = 192;
 struct CoreParams {
     static constexpr int kNumBris = syn::kNumParams;
     int count = 0;
@@ -48,6 +65,11 @@ struct CoreParams {
     int brisIdx[kMaxParams]{};
     int moodIdx[kMaxParams]{};   // MOOD-ratt (index i effekten) för parametrarna "mo...", annars -1
     int tapeIdx[kMaxParams]{};   // SLITEN-ratt (bandet, index i effekten) för parametrarna "ta...", annars -1
+    int motIdx[kMaxParams]{};    // motorn (1..kNumMotorer) för motorernas egna rattar (prefix), annars 0
+    int motPar[kMaxParams]{};    // rattens index i motorn
+    int delad[kMaxParams][kNumMotorer + 1]{};   // BRIS-parametrar som motorerna delar (samma id): index i motor m, annars -1
+    int motCore[kNumMotorer + 1][kMaxMotorParams]{};   // motorns ratt j -> parametern här (egen eller delad med BRIS)
+    int motor = -1;              // parametern "motor" (0 = BRIS)
     CoreParams() {
         for (int i = 0; i < syn::kNumParams; ++i) {
             if (std::strcmp(syn::kParams[i].id, "hyll") == 0) continue;
@@ -56,6 +78,13 @@ struct CoreParams {
         for (int i = 0; i < kNumExtra; ++i) {
             info[count] = ParamInfo{kExtra[i].id, kExtra[i].name, kExtra[i].min, kExtra[i].max, kExtra[i].def, kExtra[i].integer, false};
             brisIdx[count] = -1; moodIdx[count] = -1; tapeIdx[count] = -1;
+            for (int m = 1; m <= kNumMotorer; ++m) {
+                const char* pre = kMotorer[m - 1].prefix; const size_t pl = std::strlen(pre);
+                if (std::strncmp(kExtra[i].id, pre, pl) != 0) continue;
+                const MotorTabell& t = motorTabell(m);
+                for (int j = 0; j < t.numParams; ++j)
+                    if (std::strcmp(t.params[j].id, kExtra[i].id + pl) == 0) { motIdx[count] = m; motPar[count] = j; }
+            }
             if (kExtra[i].id[0] == 'm' && kExtra[i].id[1] == 'o')
                 for (int j = 0; j < mood::kNumParams; ++j)
                     if (std::strcmp(mood::kParams[j].id, kExtra[i].id + 2) == 0) moodIdx[count] = j;
@@ -64,6 +93,24 @@ struct CoreParams {
                     if (std::strcmp(sliten::kParams[j].id, kExtra[i].id + 2) == 0) tapeIdx[count] = j;
             ++count;
         }
+        motor = find("motor");
+        for (int i = 0; i < count; ++i) for (int m = 0; m <= kNumMotorer; ++m) delad[i][m] = -1;
+        for (int m = 1; m <= kNumMotorer; ++m) {
+            const MotorTabell& t = motorTabell(m);
+            for (int j = 0; j < t.numParams && j < kMaxMotorParams; ++j) {
+                motCore[m][j] = -1;
+                for (int i = 0; i < count; ++i) {
+                    if (motIdx[i] == m && motPar[i] == j) motCore[m][j] = i;
+                    if (brisIdx[i] >= 0 && std::strcmp(info[i].id, t.params[j].id) == 0 && !egen(m, t.params[j].id)) { motCore[m][j] = i; delad[i][m] = j; }
+                }
+            }
+        }
+    }
+    // har motorn m en egen ratt (med prefix) för id?
+    bool egen(int m, const char* id) const {
+        char buf[32]; std::snprintf(buf, sizeof buf, "%s%s", kMotorer[m - 1].prefix, id);
+        for (int i = 0; i < count; ++i) if (std::strcmp(info[i].id, buf) == 0) return true;
+        return false;
     }
     int find(const char* id) const {
         for (int i = 0; i < count; ++i) if (std::strcmp(info[i].id, id) == 0) return i;
@@ -129,10 +176,18 @@ public:
     void prepare(double sr) {
         sr_ = sr;
         synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr); tape_.prepare(sr); band_.prepare(sr); sfx_.prepare(sr);
+        og_.prepare(sr); sj_.prepare(sr); sv_.prepare(sr); forra_ = -1;
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { allNotesOff(); synth_.reset(); rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); band_.reset(); sfx_.reset(); }
+    void reset() { allNotesOff(); synth_.reset(); og_.reset(); sj_.reset(); sv_.reset(); forra_ = -1;
+                   rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); band_.reset(); sfx_.reset(); }
+
+    // ---------------------------------------------------------------- motorerna
+    // 0 = BRIS, 1.. = de hemliga patcharnas motorer (kMotorer). Bara den valda får toner; den förra klingar ut.
+    int motor() const { return mot_; }
+    Motor& motorRef(int m) { return m == 1 ? (Motor&)og_ : m == 2 ? (Motor&)sj_ : m == 3 ? (Motor&)sv_ : (Motor&)synth_; }
+    Motor& syn() { return motorRef(mot_); }
 
     // ---------------------------------------------------------------- bandspelaren och apparatens ljud
     // Knapparna i KASSETTEN (Bandspelare::Kommando: 0 STOP, 1 PLAY, 2 REC, 3 REW, 4 FF, 5 PAUS). Bandet går bara
@@ -188,6 +243,7 @@ public:
     // bara påverkar den tonen.
     void synthOn(int n, int v) {
         if (n < 0 || n > 127) return;
+        if (mot_ > 0) { syn().noteOn(n, v); return; }   // motorerna har inget uttryck per ton
         if (uiCh_[n] > 0) synth_.noteOffCh(uiCh_[n], n);
         int ch = -1;
         for (int k = 0; k < 15 && ch < 0; ++k) { const int c = 1 + (uiNext_ + k) % 15; if (uiUsed_[c] == 0) ch = c; }
@@ -198,6 +254,7 @@ public:
         synth_.noteOnCh(ch, n, v);
     }
     void synthOff(int n) {
+        if (mot_ > 0) { if (n >= 0 && n <= 127) syn().noteOff(n); return; }
         if (n < 0 || n > 127 || uiCh_[n] <= 0) return;
         synth_.noteOffCh(uiCh_[n], n); --uiUsed_[uiCh_[n]]; uiCh_[n] = 0;
     }
@@ -207,12 +264,12 @@ public:
         if (uiCh_[o] > 0) synth_.channelSlide(uiCh_[o], v);
     }
 #else
-    void synthOn(int n, int v) { synth_.noteOn(n, v); }
-    void synthOff(int n) { synth_.noteOff(n); }
+    void synthOn(int n, int v) { syn().noteOn(n, v); }
+    void synthOff(int n) { syn().noteOff(n); }
     void uiSlide(int, double) {}   // bara BRIS MPE har slide per ton
 #endif
     void allNotesOff() {
-        synth_.allNotesOff(); clearSeqNotes(); clearExpr();
+        synth_.allNotesOff(); og_.allNotesOff(); sj_.allNotesOff(); sv_.allNotesOff(); clearSeqNotes(); clearExpr();
         for (int n = 0; n < 128; ++n) { keyOut_[n] = -1; keyDirect_[n] = false; pad_[n] = false; voiceRef_[n] = 0; }
         nPad_ = 0; arpNote_ = -1; arpPos_ = 0.0; arpOff_ = 0.0; arpIdx_ = -1; arpDir_ = 1;
         for (auto& k : meters_.keys) k = 0;
@@ -231,7 +288,7 @@ public:
         // BRIS MPE tolkar MPE själv, per ton (brismpe.h)
         if (ty == 0x90 && d2 > 0) ++meters_.noteCount;
         (void)ch;
-        synth_.midi(s, d1, d2);
+        syn().midi(s, d1, d2);
         return;
 #endif
         if (ty == 0x90 && d2 > 0) {
@@ -260,7 +317,7 @@ public:
         } else if (ty == 0xB0 && (d1 == 120 || d1 == 123)) {
             allNotesOff();
         }
-        synth_.midi(s, d1, d2);
+        syn().midi(s, d1, d2);
     }
 
     // ---------------------------------------------------------------- parametrar
@@ -275,7 +332,12 @@ public:
         if (p.integer) v = std::round(v);
         const bool arpVar = arpOn();
         val_[i] = v;
-        if (cp.brisIdx[i] >= 0) synth_.setParam(cp.brisIdx[i], v);
+        if (cp.brisIdx[i] >= 0) {
+            synth_.setParam(cp.brisIdx[i], v);
+            for (int m = 1; m <= kNumMotorer; ++m) if (cp.delad[i][m] >= 0) motorRef(m).setParam(cp.delad[i][m], v);
+        }
+        else if (cp.motIdx[i] > 0) motorRef(cp.motIdx[i]).setParam(cp.motPar[i], v);
+        else if (i == cp.motor) bytMotor((int)v);
         else if (cp.moodIdx[i] >= 0) mood_.setParam(cp.moodIdx[i], v);
         else if (cp.tapeIdx[i] >= 0) tape_.setParam(cp.tapeIdx[i], v);
         else applyExtra();
@@ -314,16 +376,29 @@ public:
         thread_local Synth scratch;         // en egen per tråd: anropas från meddelande-/gränssnittstråden
 #endif
         const CoreParams& cp = coreParams();
-        for (int i = 0; i < cp.count; ++i) {
-            out[i] = current[i];
-            if (cp.brisIdx[i] >= 0) scratch.setParam(cp.brisIdx[i], current[i]);
+        for (int i = 0; i < cp.count; ++i) out[i] = current[i];
+        // en motors fabriksljud (de hemliga patcharna): motorn väljs och får ljudets värden (som Max-pluggen: det som
+        // ljudet inte nämner får standardvärdet, utom volym och böjomfång). Allt annat (BRIS, effekterna) är orört.
+        for (int m = 1; m <= kNumMotorer; ++m) {
+            const MotorInfo& mi = kMotorer[m - 1];
+            if (index < mi.firstPreset || index >= mi.firstPreset + mi.numPresets) continue;
+            const MotorTabell& t = motorTabell(m);
+            const PresetInfo& pr = t.presets[index - mi.firstPreset];
+            double v[kMaxMotorParams];
+            for (int j = 0; j < t.numParams; ++j) v[j] = (t.params[j].keepOnPreset && cp.motCore[m][j] >= 0) ? current[cp.motCore[m][j]] : t.params[j].def;
+            for (int k = 0; k < pr.count; ++k) { const PresetValue& pv = t.values[pr.first + k]; if (!t.params[pv.param].keepOnPreset) v[pv.param] = pv.value; }
+            for (int j = 0; j < t.numParams; ++j) if (cp.motCore[m][j] >= 0) out[cp.motCore[m][j]] = v[j];
+            out[cp.motor] = m;
+            return;
         }
+        for (int i = 0; i < cp.count; ++i) if (cp.brisIdx[i] >= 0) scratch.setParam(cp.brisIdx[i], current[i]);
         if (index < 0 || index >= kNumFactory) return;
         scratch.loadPreset(index);
         for (int i = 0; i < cp.count; ++i)
             if (cp.brisIdx[i] >= 0) out[i] = scratch.getParam(cp.brisIdx[i]);
         const PlantInfo& pl = kPlants[kPresetPlant[index]];
         out[cp.find("rvb")] = pl.rvb; out[cp.find("rsize")] = pl.rsize; out[cp.find("drive")] = pl.drive;
+        out[cp.motor] = 0;   // ett BRIS-ljud: tillbaka till BRIS
     }
     // Byt ljud direkt i ljudtråden (webben). Använder presetValues – bara där det inte finns en separat ljudtråd
     // som kan störas, eller där anroparen äger kärnan helt.
@@ -372,8 +447,20 @@ public:
                 seqPos_ -= chunk;
             }
             if (arpOn()) chunk = arpRun(chunk);
-            synth_.process(L + done, R + done, chunk);
+            syn().process(L + done, R + done, chunk);
             done += chunk;
+        }
+        // motorn som just lämnades klingar ut (den får inga nya toner), tills den har varit tyst en stund
+        if (forra_ >= 0 && forra_ != mot_) {
+            Motor& f = motorRef(forra_);
+            float tL[256], tR[256]; float topp = 0.0f;
+            for (int k = 0; k < n; k += 256) {
+                const int c = std::min(256, n - k);
+                f.process(tL, tR, c);
+                for (int s = 0; s < c; ++s) { L[k + s] += tL[s]; R[k + s] += tR[s]; topp = std::max(topp, std::max(std::fabs(tL[s]), std::fabs(tR[s]))); }
+            }
+            forraTyst_ = topp < 1e-5f ? forraTyst_ + n : 0;
+            if (forraTyst_ > sr_ * 0.5) { f.reset(); forra_ = -1; }
         }
         if (driveOn_) vibe_.process(L, R, n);
         if (rvbOn_) rum_.process(L, R, n);
@@ -392,7 +479,10 @@ public:
             if (++scopeDec_ >= 2) { scopeDec_ = 0; meters_.scope[scopeW_] = 0.5f * (L[s] + R[s]); scopeW_ = (scopeW_ + 1) % kScopeLen; }
         }
         meters_.peakL = pl; meters_.peakR = pr;
-        meters_.env = (float)synth_.envelope(); meters_.lfo = (float)synth_.lfo(); meters_.voiceMask = synth_.voiceMask();
+        if (mot_ == 1) { meters_.env = (float)og_.envelope(); meters_.lfo = (float)og_.lfo(); meters_.voiceMask = og_.voiceMask(); }
+        else if (mot_ == 2) { meters_.env = (float)sj_.envelope(); meters_.lfo = (float)sj_.lfo(); meters_.voiceMask = sj_.voiceMask(); }
+        else if (mot_ == 3) { meters_.env = (float)sv_.envelope(); meters_.lfo = (float)sv_.lfo(); meters_.voiceMask = sv_.voiceMask(); }
+        else { meters_.env = (float)synth_.envelope(); meters_.lfo = (float)synth_.lfo(); meters_.voiceMask = synth_.voiceMask(); }
         meters_.step = playing_ ? seqStep_ : -1;
 #if BRIS_MPE
         meters_.glid = (float)synth_.slideNow();
@@ -514,20 +604,36 @@ private:
         double sl = 0, pr = 0;
         for (int c = 0; c < 16; ++c) if (chNotes_[c] > 0) { sl = std::max(sl, slide_[c]); if (c != 0) pr = std::max(pr, press_[c]); }
         midiSlide_ = sl;
-        if (mpe_ && std::fabs(pr - pressOut_) > 1e-9) { pressOut_ = pr; synth_.aftertouch(pr); }
+        if (mpe_ && std::fabs(pr - pressOut_) > 1e-9) { pressOut_ = pr; syn().aftertouch(pr); }
     }
     void clearExpr() {
         for (int c = 0; c < 16; ++c) { chNotes_[c] = 0; slide_[c] = 0; press_[c] = 0; }
-        midiSlide_ = 0; if (pressOut_ > 0.0) { pressOut_ = 0; synth_.aftertouch(0); }
+        midiSlide_ = 0; if (pressOut_ > 0.0) { pressOut_ = 0; syn().aftertouch(0); }
     }
     void applyBend(int ch) {
         const double semis = bend_[ch] * bendRange_[ch];
         const double br = std::max(1.0, iBendr_ >= 0 ? val_[iBendr_] : 2.0);
-        synth_.pitchBend(std::min(1.0, std::max(-1.0, semis / br)));
+        syn().pitchBend(std::min(1.0, std::max(-1.0, semis / br)));
     }
 
+    // Glidet på en motor: FILTER, PWM och WAH gör tonen ljusare (motorns "ton"), VIBRATO är modhjulet (motorns
+    // vibrato/tremulant), TREMOLO motorns tremolo/tremulant om den har en (annars modhjulet).
+    int glidMotorParam() {
+        const char* id = (glidMode_ == 3) ? "trem" : (glidMode_ == 2 ? nullptr : "ton");
+        return id ? syn().findParam(id) : -1;
+    }
     void applyGlid() {
         const CoreParams& cp = coreParams();
+        if (mot_ > 0) {
+            const int j = glidMotorParam();
+            if (j < 0) { syn().modWheel(std::min(1.0, glidSm_)); glidApplied_ = glidSm_; return; }
+            const int ci = cp.motCore[mot_][j];
+            const ParamInfo& p = syn().paramInfo(j);
+            const double bas = ci >= 0 ? val_[ci] : p.def;
+            syn().setParam(j, std::min(p.max, bas + glidSm_ * (p.max - p.min) * (glidMode_ == 3 ? 0.9 : 0.6)));
+            glidApplied_ = glidSm_;
+            return;
+        }
         const GlidInfo& g = kGlid[glidMode_ - 1];
         const int i = glidIdx_[glidMode_ - 1];
         if (i < 0) return;
@@ -542,6 +648,12 @@ private:
     void glidRestore() {
         if (glidMode_ <= 0) return;
         const CoreParams& cp = coreParams();
+        if (mot_ > 0) {
+            const int j = glidMotorParam();
+            if (j < 0) syn().modWheel(0);
+            else if (cp.motCore[mot_][j] >= 0) syn().setParam(j, val_[cp.motCore[mot_][j]]);
+            return;
+        }
         const int i = glidIdx_[glidMode_ - 1];
         if (i >= 0) synth_.setParam(cp.brisIdx[i], val_[i]);
         if (iRate_ >= 0) synth_.setParam(cp.brisIdx[iRate_], val_[iRate_]);
@@ -568,7 +680,7 @@ private:
         seqStep_ = (seqStep_ + 1) % kSeqSteps;
         // släpp toner som slutar här
         for (int k = 0; k < nActive_;) {
-            if (--active_[k].left <= 0) { synth_.noteOff(active_[k].note); active_[k] = active_[--nActive_]; }
+            if (--active_[k].left <= 0) { syn().noteOff(active_[k].note); active_[k] = active_[--nActive_]; }
             else ++k;
         }
         for (int i = 0; i < pattern_.count; ++i) {
@@ -576,17 +688,37 @@ private:
             if (sn.step != seqStep_ || sn.len == 0) continue;
             // samma ton spelas redan av frasen: starta om
             for (int k = 0; k < nActive_; ++k)
-                if (active_[k].note == sn.note) { synth_.noteOff(sn.note); active_[k] = active_[--nActive_]; break; }
-            synth_.noteOn(sn.note, std::max(1, (int)sn.vel)); ++meters_.noteCount;
+                if (active_[k].note == sn.note) { syn().noteOff(sn.note); active_[k] = active_[--nActive_]; break; }
+            syn().noteOn(sn.note, std::max(1, (int)sn.vel)); ++meters_.noteCount;
             if (nActive_ < kMaxSeqNotes) active_[nActive_++] = {sn.note, (int)sn.len};
         }
     }
     void clearSeqNotes() {
-        for (int k = 0; k < nActive_; ++k) synth_.noteOff(active_[k].note);
+        for (int k = 0; k < nActive_; ++k) syn().noteOff(active_[k].note);
         nActive_ = 0;
+    }
+    // Byt motor: tonerna som klingar i den gamla släpps och får klinga ut (den gamla räknas tills den är tyst),
+    // glidet flyttar med, och böj/tryck börjar om.
+    void bytMotor(int m) {
+        m = std::max(0, std::min(kNumMotorer, m));
+        if (m == mot_) return;
+        glidRestore();
+        Motor& gammal = syn();
+        gammal.allNotesOff(); gammal.pitchBend(0); gammal.aftertouch(0); gammal.modWheel(0);
+        if (forra_ >= 0 && forra_ != m) motorRef(forra_).reset();   // en tredje motor klingade fortfarande: tyst
+        forra_ = mot_; forraTyst_ = 0;
+        mot_ = m;
+        nActive_ = 0;
+        for (int n = 0; n < 128; ++n) voiceRef_[n] = 0;
+        glidApplied_ = 0.0;
     }
 
     Synth synth_;
+    orgel::Orgel og_;   // ORGELN
+    sloja::Sloja sj_;   // NORRSKEN
+    stav::Stav sv_;     // NATTÅGET
+    int mot_ = 0, forra_ = -1;  // motorn som spelar (0 = BRIS), och den som klingar ut efter ett byte (-1 = ingen)
+    double forraTyst_ = 0.0;
     GenEffect<rum::Dsp> rum_;
     GenEffect<vibe::Dsp> vibe_;
     GenEffect<mood::Dsp> mood_;
