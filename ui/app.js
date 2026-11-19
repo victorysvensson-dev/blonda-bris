@@ -38,7 +38,8 @@
   const HEM = D.hemliga || [];
   const hemOf = (id) => HEM.find((h) => h.id === id);
   const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" },
-    norrsken: { accent: "#6dffb0", bg: "#03080c" }, nattag: { accent: "#ffc46b", bg: "#07070b" }, orgel: { accent: "#e8c27a", bg: "#0d0a08" } };
+    norrsken: { accent: "#6dffb0", bg: "#03080c" }, nattag: { accent: "#ffc46b", bg: "#07070b" }, orgel: { accent: "#e8c27a", bg: "#0d0a08" },
+    analog: { accent: "#ffa848", bg: "#0b0806" } };
   // ljuspass-scenernas ljus per ton (linjär färg): KRISTALL lila/bärnsten, ORGELN levande ljus (djupare nertill)
   const ljusFarg = (n) => {
     if (S.secret === "orgel") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.5 + 0.25 * t, 0.2 + 0.25 * t]; }
@@ -49,6 +50,7 @@
     if (S.secret === "kassett") return [255, 168, 72];   // VU-mätarnas varma sken
     if (S.secret === "norrsken") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [Math.round(90 + 110 * t), Math.round(255 - 150 * t), Math.round(150 + 90 * t)]; }   // grönt nertill, lila upptill
     if (S.secret === "nattag") return [255, 196, 110];   // gatlyktornas natriumljus
+    if (S.secret === "analog") return [255, 168, 72];    // oscilloskopets bärnstensfosfor
     if (S.secret === "orgel") return [240, 196, 120];    // levande ljus mot tenn
     return krBarn(n) ? KR.barn : KR.lila;
   };
@@ -94,6 +96,21 @@
       filter: { name: "AMP", kt: "ENVELOPE", knobs: [["sjaa", "A"], ["sjad", "D"], ["sjasus", "S"], ["sjar", "R"]],
         rt: "VOICE", right: [["s", "sjsub", "SUB"], ["s", "sjdetune", "DETUNE"], ["s", "sjvela", "VELOCITY"], ["s", "sjporta", "GLIDE"]] },
     },
+    // ONE (BRIS möter Moog): alla fyra sidorna, som en riktig synt
+    one: {
+      play: [["s", "oncut", "CUTOFF"], ["s", "onres", "EMPHASIS"], ["s", "rvb", "REVERB"]],
+      osc: { name: "OSC", kt: "MIXER", pre: [["c", "ono1w", ["TRI", "SAW", "PULSE"]]],
+        knobs: [["ono1l", "OSC 1"], ["ono2l", "OSC 2"], ["ono3l", "OSC 3"], ["onnoi", "NOISE"]],
+        rt: "OSC 2 · 3", right: [["c", "ono2r", ["32'", "16'", "8'", "4'", "2'"]], ["s", "ono2f", "DETUNE 2"],
+          ["c", "ono3r", ["32'", "16'", "8'", "4'", "2'"]], ["s", "ono3f", "DETUNE 3"]] },
+      filter: { name: "FILTER", kt: "CONTOUR", knobs: [["onfa", "A"], ["onfd", "D"], ["onfs", "S"], ["onfr", "R"]],
+        rt: "LADDER", right: [["s", "oncut", "CUTOFF"], ["s", "onres", "EMPHASIS"], ["s", "oneg1", "CONTOUR"], ["s", "ondrv", "DRIVE"]] },
+      amp: { name: "AMP", kt: "LOUDNESS", knobs: [["onaa", "A"], ["onad", "D"], ["onasus", "S"], ["onar", "R"]],
+        rt: "AMP", right: [["s", "onvela", "VELOCITY"], ["s", "onvelf", "VEL > FILTER"], ["s", "onkbd", "KEY TRACK"], ["s", "vol", "VOLUME"]] },
+      mod: { name: "MOD", kt: "LFO", knobs: [["onlrate", "RATE"], ["onlfoosc", "VIB"], ["onlfopwm", "PWM"], ["onlfocut", "FILT"]],
+        rt: "VOICE", right: [["c", "onlwave", ["TRI", "UP", "DOWN", "SQR", "RND"]], ["c", "onlage", ["STEREO", "POLY", "MONO", "UNISON"]],
+          ["s", "onporta", "GLIDE"], ["s", "ondetune", "DETUNE"]] },
+    },
     stav: {
       play: [["s", "svton", "TONE"], ["s", "svtrem", "TREMOLO"], ["s", "rvb", "REVERB"]],
       osc: { name: "TINE", kt: "HAMMER", pre: [["c", "svtyp", ["TINE", "REED", "FM"]]],
@@ -108,7 +125,7 @@
   function sidor() {
     const m = motorNu(); if (!m) return PAGES;
     const ms = MOTOR_SIDOR[m];
-    return PAGES.filter((p) => p.id !== "amp" && p.id !== "mod").map((p) => {
+    return PAGES.filter((p) => (p.id !== "amp" && p.id !== "mod") || ms[p.id]).map((p) => {
       if (p.id === "play") return { ...p, rt: (MOT.find((x) => x.id === m) || {}).namn || p.rt, right: ms.play };   // rubriken = motorns namn
       if (ms[p.id]) return { id: p.id, wave: "scope", ...ms[p.id] };
       return p;
@@ -696,6 +713,13 @@
     himlaTryck.n = t - himlaTryck.t < 1200 ? himlaTryck.n + 1 : 1; himlaTryck.t = t;
     SCEN.sjon.puls();
     if (himlaTryck.n >= 5) { himlaTryck.n = 0; SCEN.sjon.dag(k === "mane"); }
+  }, true);
+
+  // NORRSKEN: ett tryck på sjön lockar fram späckhuggarna
+  document.addEventListener("pointerdown", (e) => {
+    if (S.secret !== "norrsken" || !SCEN.norrsken || !SCEN.norrsken.vatten) return;
+    if (e.target.closest && e.target.closest("button, .knob, .slider, input, #kb, .kb, .rbox, .browser")) return;
+    if (SCEN.norrsken.vatten(e.clientX, e.clientY)) SCEN.norrsken.spackhuggare();
   }, true);
 
   function lamnaHemlig() {
@@ -1320,6 +1344,7 @@
     if (h.id === "sjon" && typeof Sjon !== "undefined") SCEN.sjon = Sjon.create(document.body);
     if (h.id === "norrsken" && h.scen && typeof Norrsken !== "undefined") SCEN.norrsken = Norrsken.create(document.body, h.scen, "norrsken/");
     if (h.id === "nattag" && typeof Nattag !== "undefined") SCEN.nattag = Nattag.create(document.body);
+    if (h.id === "analog" && typeof Analog !== "undefined") SCEN.analog = Analog.create(document.body, () => S.m.scope);
     if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
   }

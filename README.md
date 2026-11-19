@@ -21,6 +21,22 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.18.0
+
+- **Ny hemlig patch: ANALOG** (SECRET 07, D-E-C-C-G – de fem tonerna). Hela motorn ONE (BRIS möter Moog: tre
+  oscillatorer, ladderfilter, drive) med alla dess 49 ljud – basar, leads, pads, pluck och effekter – som pilarna
+  bläddrar mellan. Flikarna OSC, FILTER, AMP och MOD visar ONE:s egna rattar. Scenen är ett gammalt oscilloskop
+  (ui/analog.js): ett bildrör med rutnät och en stråle i bärnstensfosfor som visar vågformen precis som den låter,
+  triggad så att den står still, med efterlysning, och tonen och frekvensen i hörnet.
+- **NORRSKEN:**
+  - Strecket över skärmen är borta. Fjällbilden lästes i en gren som bara en del av pixlarna gick in i, och då räknade
+    grafikkretsen (på Apples kretsar) fel upplösningsnivå i fjällremsans överkant. Nu läses bilden i varje pixel.
+  - Vattnet lever: krusningar, en långsam dyning och glitter där vågryggarna fångar norrskenet.
+  - Späckhuggare: en flock på tre simmar förbi då och då och kommer upp och andas (ryggen rullar fram, fenan reser
+    sig, blåsten syns), med ringar på vattnet och en spegelbild. Ett tryck på sjön lockar fram dem.
+  - Mindre utbränt när man spelar mycket: slöjans uppflammande mättas, och det ljusaste får ett mjukt tak (färgen
+    behålls i stället för att slå i vitt/cyan).
+
 ## 1.17.0
 
 - **Egna ljudmotorer i de tre nya hemliga patcharna** (ur blonda-motor 0.7.0), var och en med några ljud som man
@@ -305,7 +321,7 @@ Releases → **senaste**.
 ## Uppdatera BRIS-ljudet
 
 Ljudet ändras bara i `blonda-motor`. Kopiera sedan `include/blonda/{motor,effekt,gen_runtime}.h` och
-`motorer/{bris,brismpe,rum,vibe,sliten,mood,orgel,sloja,stav}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
+`motorer/{bris,brismpe,rum,vibe,sliten,mood,orgel,sloja,stav,one}` (utan .genexpr och _presets.js) hit till `External/blonda-motor/`, skriv commit i `External/blonda-motor/VERSION`
 och kör testerna.
 
 © BLONDA. Byggt med JUCE 8.

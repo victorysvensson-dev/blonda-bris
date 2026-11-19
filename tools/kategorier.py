@@ -45,7 +45,7 @@ EXTRA.append(("tarec", "TAPE Rec Level", 0.0, 1.0, 0.6))
 # (0 = BRIS), sedan alla motorernas rattar med ett prefix per motor, utom de som delas med BRIS (DELADE: effekterna
 # efter rösterna och volymen; BRIS värde gäller för alla motorer). Motorernas fabriksljud får index efter BRIS
 # (kNumFactory + motorns första + ljudets index).
-MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv")]
+MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv"), ("one", "ONE", "on")]
 DELADE = {"chorus", "dtime", "dfb", "dmix", "bendr", "vol"}
 MOTOR_DATA = {m: json.load(open(os.path.join(ROT, f"External/blonda-motor/motorer/{m}/{m}.json"), encoding="utf-8")) for m, _, _ in MOTORER}
 EXTRA.append(("motor", "Engine", 0.0, float(len(MOTORER)), 0.0, True))
@@ -104,6 +104,9 @@ HEMLIGA = [
     dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel", motor="orgel",
          satt={"vol": 0.8, "rvb": 0.7, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.45,
                "motone": 0.45}),
+    # ANALOG "one": motorn ONE (BRIS möter Moog) med alla dess ljud, i ett litet rum. D-E-C-C-G (de fem tonerna).
+    dict(id="analog", namn="ANALOG", ljudnamn="one", melodi=[2, 4, 0, 0, 7], scen=None, motor="one",
+         satt={"vol": 0.7, "rvb": 0.18, "rsize": 0.45}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar

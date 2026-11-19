@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 99;
+constexpr int kNumExtra = 141;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -76,7 +76,7 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
     {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
     {"tarec", "TAPE Rec Level", 0.0, 1.0, 0.6, false},
-    {"motor", "Engine", 0.0, 3.0, 0.0, true},
+    {"motor", "Engine", 0.0, 4.0, 0.0, true},
     {"ogb16", "ORGEL Bourdon 16'", 0, 1, 0.4, false},
     {"ogp8", "ORGEL Principal 8'", 0, 1, 0.8, false},
     {"ogf8", "ORGEL Flute 8'", 0, 1, 0, false},
@@ -133,16 +133,59 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"svporta", "STAV Portamento", 0, 1, 0, false},
     {"svdetune", "STAV Detune", 0, 1, 0.15, false},
     {"svmwosc", "STAV Wheel > Vibrato", 0, 1, 0.5, false},
+    {"ono1w", "ONE Osc 1 Wave", 0, 2, 1, true},
+    {"ono1r", "ONE Osc 1 Range", -2, 2, 0, true},
+    {"ono1l", "ONE Osc 1 Level", 0, 1, 0.8, false},
+    {"ono2w", "ONE Osc 2 Wave", 0, 2, 1, true},
+    {"ono2r", "ONE Osc 2 Range", -2, 2, 0, true},
+    {"ono2s", "ONE Osc 2 Semi", -7, 7, 0, true},
+    {"ono2f", "ONE Osc 2 Fine", -1, 1, 0.2, false},
+    {"ono2l", "ONE Osc 2 Level", 0, 1, 0, false},
+    {"ono3w", "ONE Osc 3 Wave", 0, 2, 1, true},
+    {"ono3r", "ONE Osc 3 Range", -2, 2, -1, true},
+    {"ono3s", "ONE Osc 3 Semi", -7, 7, 0, true},
+    {"ono3f", "ONE Osc 3 Fine", -1, 1, -0.2, false},
+    {"ono3l", "ONE Osc 3 Level", 0, 1, 0, false},
+    {"onnoi", "ONE Noise", 0, 1, 0, false},
+    {"ondrv", "ONE Drive", 0, 1, 0.2, false},
+    {"onpw", "ONE Pulse Width", 0, 1, 0.5, false},
+    {"onlfopwm", "ONE LFO PWM", 0, 1, 0, false},
+    {"oncut", "ONE Cutoff", 0, 1, 0.6, false},
+    {"onres", "ONE Resonance", 0, 1, 0.1, false},
+    {"oneg1", "ONE EG1 Mod", 0, 1, 0.35, false},
+    {"onkbd", "ONE Filter Key Track", 0, 1, 0.5, false},
+    {"onfa", "ONE EG1 Attack", 0, 1, 0.05, false},
+    {"onfd", "ONE EG1 Decay", 0, 1, 0.45, false},
+    {"onfs", "ONE EG1 Sustain", 0, 1, 0.3, false},
+    {"onfr", "ONE EG1 Release", 0, 1, 0.4, false},
+    {"onaa", "ONE EG2 Attack", 0, 1, 0.02, false},
+    {"onad", "ONE EG2 Decay", 0, 1, 0.45, false},
+    {"onasus", "ONE EG2 Sustain", 0, 1, 0.8, false},
+    {"onar", "ONE EG2 Release", 0, 1, 0.4, false},
+    {"onlwave", "ONE LFO Wave", 0, 4, 0, true},
+    {"onlrate", "ONE LFO Rate", 0, 1, 0.45, false},
+    {"onlfoosc", "ONE Osc LFO Mod", 0, 1, 0, false},
+    {"onlfocut", "ONE Filter LFO Mod", 0, 1, 0, false},
+    {"onlfoamp", "ONE Amp LFO Mod", 0, 1, 0, false},
+    {"onmwosc", "ONE Wheel > LFO", 0, 1, 0.6, false},
+    {"onmwcut", "ONE Wheel > Cutoff", 0, 1, 0, false},
+    {"onlage", "ONE Voice Mode", 0, 3, 0, true},
+    {"onporta", "ONE Portamento", 0, 1, 0, false},
+    {"ondetune", "ONE Detune", 0, 1, 0.1, false},
+    {"onuniint", "ONE Unison Interval", -12, 12, 0, true},
+    {"onvelf", "ONE Velocity > EG1", 0, 1, 0.3, false},
+    {"onvela", "ONE Velocity > Amp", 0, 1, 0.5, false},
 };
 
 // de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS
 struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };
-constexpr int kNumMotorer = 3;
-constexpr int kNumAllPresets = 110;
+constexpr int kNumMotorer = 4;
+constexpr int kNumAllPresets = 160;
 inline constexpr MotorInfo kMotorer[kNumMotorer] = {
     {"orgel", "ORGEL", "og", 90, 7},
     {"sloja", "SLÖJA", "sj", 97, 7},
     {"stav", "STAV", "sv", 104, 6},
+    {"one", "ONE", "on", 110, 50},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)
