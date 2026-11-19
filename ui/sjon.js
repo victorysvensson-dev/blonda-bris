@@ -37,11 +37,12 @@ const Sjon = (() => {
     vec3 skogen(vec3 c, float x, float upp, float r, float skarpa) {
       if (upp < 0.0 || upp > 0.075) return c;
       float aa = 0.05 / skarpa;
-      vec3 horis = mix(vec3(0.020, 0.040, 0.075), vec3(0.40, 0.53, 0.66), uDag) + vec3(0.95, 0.42, 0.18) * uGry * 0.5;
-      vec3 bak = mix(vec3(0.012, 0.02, 0.032), mix(vec3(0.10, 0.16, 0.16), horis, 0.5), uDag);
-      vec3 mitt = mix(vec3(0.006, 0.011, 0.018), vec3(0.045, 0.085, 0.06), uDag);
-      vec3 fram = mix(vec3(0.003, 0.006, 0.010), vec3(0.018, 0.04, 0.026), uDag);
-      vec3 sol = vec3(0.25, 0.2, 0.08) * uDag + vec3(0.25, 0.1, 0.03) * uGry;   // solen på trädtopparna
+      // på dagen: en ljus disig blågrön ås längst bort, mellanskogen och strandskogen i solbelyst grönt
+      vec3 horis = mix(vec3(0.020, 0.040, 0.075), vec3(0.62, 0.77, 0.90), uDag) + vec3(0.95, 0.42, 0.18) * uGry * 0.5;
+      vec3 bak = mix(vec3(0.012, 0.02, 0.032), vec3(0.34, 0.50, 0.47), uDag);
+      vec3 mitt = mix(vec3(0.006, 0.011, 0.018), vec3(0.13, 0.31, 0.14), uDag);
+      vec3 fram = mix(vec3(0.003, 0.006, 0.010), vec3(0.06, 0.18, 0.07), uDag);
+      vec3 sol = vec3(0.33, 0.36, 0.10) * uDag + vec3(0.25, 0.1, 0.03) * uGry;   // solen på trädtopparna
       vec3 glod = vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4 * (1.0 - uDag);   // månskenet nära månen
       vec2 g1 = gran(x + 3.7, upp, 0.0055, 0.03, 11.0, 0.0, aa);
       c = mix(c, bak + sol * 0.3 * g1.y + glod, g1.x);
@@ -59,7 +60,7 @@ const Sjon = (() => {
     vec3 himmel(vec2 s, float skarpa) {
       float upp = uHy - s.y;
       vec3 natt = mix(vec3(0.020, 0.040, 0.075), vec3(0.004, 0.008, 0.020), smoothstep(0.0, 0.45, upp));
-      vec3 dag = mix(vec3(0.40, 0.53, 0.66), vec3(0.075, 0.19, 0.40), smoothstep(0.0, 0.5, upp));
+      vec3 dag = mix(vec3(0.62, 0.77, 0.90), vec3(0.17, 0.41, 0.78), smoothstep(0.0, 0.5, upp));   // klarblå sommarhimmel
       vec3 c = mix(natt, dag, uDag);
       // gryningen: varmt vid horisonten, starkast runt solen
       vec2 ds = vec2((s.x - uSol.x) * uAsp, s.y - uSol.y); float rs = length(ds);
@@ -132,8 +133,8 @@ const Sjon = (() => {
       rf.y = max(rf.y, 0.0005);
       vec2 sr = vec2(0.5 + rf.x / rf.z / (uAsp * FOV), uHy - rf.y / rf.z / FOV);
       float fres = 0.02 + 0.98 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
-      vec3 vatten = mix(vec3(0.004, 0.010, 0.020), vec3(0.02, 0.055, 0.075), uDag);
-      vec3 c = vatten + himmel(sr, 0.6) * mix(0.35, 1.0, fres) + sken;
+      vec3 vatten = mix(vec3(0.004, 0.010, 0.020), vec3(0.05, 0.12, 0.15), uDag);
+      vec3 c = vatten + himmel(sr, 0.6) * mix(mix(0.35, 0.5, uDag), 1.0, fres) + sken;
       c *= 1.0 - 0.35 * smoothstep(0.55, 1.0, s.y);   // mörkare närmast tangentbordet
       gl_FragColor = vec4(c, 1.0);
     }`;
@@ -232,6 +233,7 @@ const Sjon = (() => {
         puls = Math.max(0, puls - dt * 2.5);
         if (t > sfNasta) { if (p < 0.3) stjarnfall(Math.random() < 0.4); sfNasta = t + 25 + Math.random() * 35; }   // ungefär en gång i minuten
         if (t > lugn) { if (lugn > 0) droppe(0.2 + Math.random() * 0.6, 7 + Math.random() * 5, 0.35, [0.4, 0.6, 0.9]); lugn = t + 3 + Math.random() * 5; }
+        document.documentElement.classList.toggle("sjon-dag", lage().dag > 0.5);   // mörkare textskugga mot dagens ljusa himmel
         rita();
       },
       // tester: ritar nu och mäter medelljuset (0..255) i ett band runt horisonten och i vattnet

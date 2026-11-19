@@ -21,6 +21,12 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.20.2
+
+- **SJÖN på dagen ser ut som dag:** klarblå sommarhimmel, en ljus disig ås längst bort, skogen i solbelyst grönt
+  (topparna lyser i solen), ljusare vatten som speglar himlen. Etiketterna och linjerna blir ljusa med mer skugga
+  på dagen, så att texten syns mot den ljusa himlen.
+
 ## 1.20.1
 
 - NORRSKEN är lättare att rita: späckhuggarna räknas bara medan de syns (en egen variant av bilden), udden bara där
