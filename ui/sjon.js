@@ -20,6 +20,7 @@ const Sjon = (() => {
     uniform vec4 uD[${MAX}];             // droppe: världens x, z, starttid, styrka
     uniform vec3 uC[${MAX}];             // droppens färg (ett svagt sken i ringarna)
     uniform sampler2D uLn, uLd;          // landskapet (berg och skog) räknat en gång: natt och dag (färg, täckning)
+    uniform float uLand;                 // 0 = landskapet är inte klart än, 1 = klart (tonar in)
     uniform vec4 uMoln[2];               // molnen: mitt x, y (skärmen, x i bildförhållandets enheter), bredd, frö
     uniform vec4 uFg[6];                 // fåglarna: x, y (som molnen), storlek, vingslagets fas (storlek 0 = ingen)
     const float LH = ${LH};              // landskapets band över horisonten (andel av skärmens höjd)
@@ -95,11 +96,11 @@ const Sjon = (() => {
         c = mix(c, mix(vec3(0.004, 0.006, 0.01), vec3(0.08, 0.1, 0.12), uDag), max(vinge, kroppen) * 0.9);
       }
       // landskapet (berg och skog) skymmer allt bakom sig: ur bilden som räknades en gång (natt och dag blandas)
-      if (upp >= 0.0 && upp < LH) {
+      if (upp >= 0.0 && upp < LH && uLand > 0.0) {
         vec2 tc = vec2(s.x, upp / LH);
         vec4 L = uDag < 0.001 ? texture2D(uLn, tc) : uDag > 0.999 ? texture2D(uLd, tc) : mix(texture2D(uLn, tc), texture2D(uLd, tc), uDag);
         vec3 glod = vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4 * (1.0 - uDag);   // månskenet nära månen
-        c = mix(c, L.rgb + glod + vec3(0.25, 0.1, 0.03) * uGry * 0.25, L.a);
+        c = mix(c, L.rgb + glod + vec3(0.25, 0.1, 0.03) * uGry * 0.25, L.a * uLand);
       }
       // dis vid vattnet i gryningen och på dagen
       if (upp >= 0.0) {
@@ -309,12 +310,21 @@ const Sjon = (() => {
       l = berg(sx, x, upp, horis); LAGG(l)
       float k0 = 0.012 + 0.02 * noise(vec2(x * 1.6, 8.0)) + 0.005 * noise(vec2(x * 30.0, 2.0));     // åsen
       l = vec4(mix(bak, horis, 0.55) * (0.9 + 0.2 * noise(vec2(x * 220.0, upp * 300.0))), smoothstep(k0 + 0.001, k0 - 0.001, upp)); LAGG(l)
-      l = rad(x + 3.7, upp, 0.0045, 0.03, 11.0, 0.35, 1.4, 0.1, 0.15, 0.05, 0.1, bak, sol * 0.3, 0.4, horis); LAGG(l)
-      l = rad(x + 2.1, upp, 0.0065, 0.045, 13.0, 0.3, 1.2, 0.15, 0.2, 0.1, 0.12, bak, sol * 0.4, 0.2, horis); LAGG(l)
-      l = rad(x + 1.3, upp, 0.011, 0.06, 7.0, 0.25, 0.8, 0.3, 0.22, 0.14, 0.18, mitt, sol * 0.5, 0.0, horis); LAGG(l)
+      // skogens rader, längst bort först (i en slinga, så att rad() bara finns en gång i programmet): förskjutning,
+      // trädens avstånd och höjd, frö, krontäckning, kullar, luckor, andel tall/björk/lövträd, färg, ljus, dis
       float a = 0.004 + 0.016 * pow(noise(vec2(x * 2.2, 1.7)), 2.0) + 0.004 * noise(vec2(x * 9.0, 3.1));   // strandens mark (udde och vik)
-      l = vec4(fram * (0.85 + 0.3 * noise(vec2(x * 400.0, 3.0))), smoothstep(a + 0.0012, a - 0.0012, upp)); LAGG(l)
-      l = rad(x, upp - a * 0.6, 0.02, 0.085, 3.0, 0.08, 0.25, 0.42, 0.25, 0.2, 0.12, fram, sol * 0.6, 0.0, horis); LAGG(l)
+      for (int k = 0; k < 4; k++) {
+        float ox = 3.7, w = 0.0045, hm = 0.03, fro = 11.0, tk = 0.35, kf = 1.4, glst = 0.1, pT = 0.15, pB = 0.05, pL = 0.1, ds = 0.4, sl = 0.3, ny = 0.0;
+        vec3 bas = bak;
+        if (k == 1) { ox = 2.1; w = 0.0065; hm = 0.045; fro = 13.0; tk = 0.3; kf = 1.2; glst = 0.15; pT = 0.2; pB = 0.1; pL = 0.12; ds = 0.2; sl = 0.4; }
+        if (k == 2) { ox = 1.3; w = 0.011; hm = 0.06; fro = 7.0; tk = 0.25; kf = 0.8; glst = 0.3; pT = 0.22; pB = 0.14; pL = 0.18; ds = 0.0; sl = 0.5; bas = mitt; }
+        if (k == 3) {
+          // stranden framför den främsta raden
+          l = vec4(fram * (0.85 + 0.3 * noise(vec2(x * 400.0, 3.0))), smoothstep(a + 0.0012, a - 0.0012, upp)); LAGG(l)
+          ox = 0.0; w = 0.02; hm = 0.085; fro = 3.0; tk = 0.08; kf = 0.25; glst = 0.42; pT = 0.25; pB = 0.2; pL = 0.12; ds = 0.0; sl = 0.6; bas = fram; ny = a * 0.6;
+        }
+        l = rad(x + ox, upp - ny, w, hm, fro, tk, kf, glst, pT, pB, pL, bas, sol * sl, ds, horis); LAGG(l)
+      }
       gl_FragColor = vec4(A > 0.001 ? C / A : vec3(0.0), A);
     }`;
 
@@ -323,7 +333,9 @@ const Sjon = (() => {
     parent.prepend(cv);   // först i body: appen ritas ovanpå
     const gl = cv.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
     let prog = null, u = {}, buf = null, aktiv = false, t0 = performance.now(), nasta = 0, lugn = 0;
-    let progL = null; const uL = {}, land = []; let landSig = "";   // landskapet (natt, dag) och storleken det räknades för
+    // landskapet: programmet, de färdiga bilderna (natt, dag) och bilderna som håller på att räknas (vid ny storlek)
+    let progL = null, progLKlar = false, parallell = null, land = null, bygg = null, landSig = "", landT0 = -1; const uL = {};
+    const REMSOR = 6;   // bilderna räknas i remsor, en per bildruta, så att ingen bildruta blir lång
     // molnen (två små, driver sakta åt höger och kommer tillbaka från vänster) och fåglarna (en flock då och då)
     const moln = [{ x: 0.3, y: 0.12, b: 0.07, s: 3.1, v: 0.004 }, { x: 1.1, y: 0.2, b: 0.045, s: 7.7, v: 0.0028 }];
     const MOLN = new Float32Array(8), FG = new Float32Array(24);
@@ -338,18 +350,11 @@ const Sjon = (() => {
         const sh = (typ, src) => { const s = gl.createShader(typ); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
         prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uLn", "uLd", "uMoln", "uFg"]) u[k] = gl.getUniformLocation(prog, k);
+        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uLn", "uLd", "uLand", "uMoln", "uFg"]) u[k] = gl.getUniformLocation(prog, k);
         // landskapet: ett eget program som ritar i två bilder (natt, dag) när storleken ändras
+        // (kompileras i bakgrunden där det går, så att sjön öppnas utan att allt stannar; se ritaLand)
+        parallell = gl.getExtension("KHR_parallel_shader_compile");
         progL = gl.createProgram(); gl.attachShader(progL, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(progL, sh(gl.FRAGMENT_SHADER, FS_L)); gl.linkProgram(progL);
-        if (!gl.getProgramParameter(progL, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(progL));
-        for (const k of ["uRes", "uAsp", "uDag", "uSida"]) uL[k] = gl.getUniformLocation(progL, k);
-        uL.aP = gl.getAttribLocation(progL, "aP");
-        for (let i = 0; i < 2; i++) {
-          const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-          const f = gl.createFramebuffer(); land.push({ t, f });
-        }
         u.aP = gl.getAttribLocation(prog, "aP");
         buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
       } catch (e) { console.warn("sjön:", e.message); prog = null; }
@@ -373,21 +378,47 @@ const Sjon = (() => {
       pos = (pos + 1) % MAX; n = Math.min(MAX, n + 1);
     }
     // landskapet i två bilder (natt: ljuset från månen till vänster, dag: från solen till höger), i ungefär dubbla
-    // ytans upplösning (det är skarpt, vattnet mjukt); räknas bara om när storleken eller formen ändras
+    // ytans upplösning (det är skarpt, vattnet mjukt). Räknas bara när storleken eller formen ändras, och då i remsor
+    // (en per bildruta, den bild som syns först) i nya bilder; de gamla visas tills de nya är klara.
+    function nyBild(tw, th) {
+      const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      return { t, f };
+    }
+    const frigor = (bilder) => bilder.forEach((b) => { gl.deleteFramebuffer(b.f); gl.deleteTexture(b.t); });
+    let ramar = 0;
     function ritaLand(w, h, L) {
+      if (!progL || ++ramar < 3) return;   // inte i samma bildruta som ytan ritas första gången (båda programmen förbereds då)
+      if (!progLKlar) {
+        if (parallell && !gl.getProgramParameter(progL, parallell.COMPLETION_STATUS_KHR)) return;   // kompileras fortfarande
+        if (!gl.getProgramParameter(progL, gl.LINK_STATUS)) { console.warn("sjön (landskapet):", gl.getProgramInfoLog(progL)); progL = null; return; }
+        for (const k of ["uRes", "uAsp", "uDag", "uSida"]) uL[k] = gl.getUniformLocation(progL, k);
+        uL.aP = gl.getAttribLocation(progL, "aP"); progLKlar = true;
+      }
       const tw = Math.min(2048, Math.round(w * 1.6)), th = Math.max(8, Math.round(h * LH * 1.6)), sig = tw + "x" + th + ":" + L.asp.toFixed(3);
-      if (sig === landSig) return;
-      landSig = sig;
+      if (sig === landSig) { if (bygg) { frigor(bygg.bilder); bygg = null; } return; }
+      if (!bygg || bygg.sig !== sig) {
+        if (bygg) frigor(bygg.bilder);
+        bygg = { sig, tw, th, asp: L.asp, bilder: [nyBild(tw, th), nyBild(tw, th)], steg: 0, forst: L.dag > 0.5 ? 1 : 0 };
+      }
+      const i = bygg.steg < REMSOR ? bygg.forst : 1 - bygg.forst, r = bygg.steg % REMSOR;
+      const y0 = Math.floor(bygg.th * r / REMSOR), y1 = Math.floor(bygg.th * (r + 1) / REMSOR);
       gl.useProgram(progL);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(uL.aP); gl.vertexAttribPointer(uL.aP, 2, gl.FLOAT, false, 0, 0);
-      land.forEach((b, i) => {
-        gl.bindTexture(gl.TEXTURE_2D, b.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, b.f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, b.t, 0);
-        gl.viewport(0, 0, tw, th);
-        gl.uniform2f(uL.uRes, tw, th); gl.uniform1f(uL.uAsp, L.asp); gl.uniform1f(uL.uDag, i); gl.uniform1f(uL.uSida, i ? 1 : -1);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      });
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, bygg.bilder[i].f);
+      gl.viewport(0, 0, bygg.tw, bygg.th); gl.enable(gl.SCISSOR_TEST); gl.scissor(0, y0, bygg.tw, y1 - y0);
+      gl.uniform2f(uL.uRes, bygg.tw, bygg.th); gl.uniform1f(uL.uAsp, bygg.asp); gl.uniform1f(uL.uDag, i); gl.uniform1f(uL.uSida, i ? 1 : -1);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.disable(gl.SCISSOR_TEST); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      if (++bygg.steg >= 2 * REMSOR) {   // klart: byt till de nya bilderna
+        if (land) frigor(land); else landT0 = nu();
+        land = bygg.bilder; landSig = sig; bygg = null;
+      }
     }
     function rita() {
       const dpr = Math.min(2, window.devicePixelRatio || 1) * 0.5;
@@ -406,8 +437,13 @@ const Sjon = (() => {
       gl.uniform3f(u.uSol, L.sx, L.sy, L.sr); gl.uniform1f(u.uDag, L.dag); gl.uniform1f(u.uGry, L.gry); gl.uniform1f(u.uPuls, puls);
       gl.uniform4f(u.uSf, sf.x, sf.y, sf.v, nu() - sf.t0); gl.uniform3f(u.uSfL, sf.liv, sf.fart, sf.k);
       gl.uniform4fv(u.uMoln, MOLN); gl.uniform4fv(u.uFg, FG);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, land[0].t); gl.uniform1i(u.uLn, 0);
-      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, land[1].t); gl.uniform1i(u.uLd, 1);
+      // landskapet tonar in kort första gången det är klart (innan dess syns bara himlen bakom)
+      gl.uniform1f(u.uLand, land ? Math.min(1, (nu() - landT0) / 0.35) : 0);
+      if (land) {
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, land[0].t); gl.uniform1i(u.uLn, 0);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, land[1].t); gl.uniform1i(u.uLd, 1);
+        gl.activeTexture(gl.TEXTURE0);
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(u.aP); gl.vertexAttribPointer(u.aP, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }

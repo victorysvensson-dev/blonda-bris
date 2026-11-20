@@ -27,8 +27,8 @@ På iPad och iPhone får allt plats utan att man skrollar, stående som liggande
   blåa av diset), en ås och flera rader skog som följer kullar och vikar. Träden är olika: granar, tallar (rödbrun
   stam, oregelbunden krona högt upp), björkar (vit stam med svarta fläckar, luftig krona) och lövträd. Små moln
   driver förbi (och syns i vattnet), en flock fåglar flyger förbi då och då på dagen, och himlen runt solen lyser
-  varmt gul. Landskapet räknas en gång (när fönstret ändrar storlek) i stället för i varje bildruta, så sjön går
-  också snabbare än förut på långsamma datorer.
+  varmt gul. Landskapet räknas en gång (när fönstret ändrar storlek, i remsor över några bildrutor) i stället för i
+  varje bildruta, så sjön går snabbare än förut och öppnas utan att appen stannar upp, också på långsamma datorer.
 
 ## 1.22.1
 
