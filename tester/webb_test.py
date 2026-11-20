@@ -460,7 +460,7 @@ with sync_playwright() as p:
             pg.click("#menuBtn"); pg.wait_for_timeout(300); pg.click("#menu .kodrad"); pg.wait_for_timeout(300)
             pg.wait_for_function("__bris.scen('knappsatsen').klar()", timeout=10000); pg.wait_for_timeout(300)
             kl = pg.evaluate("({ l: __bris.scen('knappsatsen').lage(), cv: getComputedStyle(document.querySelector('#knappsatsen')).display, kr: getComputedStyle(document.querySelector('#koren')).display })")
-            krav(kl["cv"] == "block" and kl["kr"] == "none" and kl["l"]["lampa"] and kl["l"]["lcd"][0] == "ENTER CODE", f"KNAPPSATSEN: ENTER CODE visar knappsatsen i kodläget ({kl})")
+            krav(kl["cv"] == "block" and kl["kr"] == "none" and not kl["l"]["lampa"] and kl["l"]["lcd"][0] == "ENTER CODE", f"KNAPPSATSEN: ENTER CODE visar knappsatsen i kodläget, den gröna lampan släckt ({kl})")
             def kp(namn):
                 x, y = pg.evaluate(f"__bris.scen('knappsatsen').punkt('{namn}')"); pg.mouse.move(x, y); pg.mouse.down(); pg.wait_for_timeout(60); pg.mouse.up(); pg.wait_for_timeout(120)
             for n in ("1", "2", "3", "4"): kp(n)
@@ -473,12 +473,12 @@ with sync_playwright() as p:
             kr = pg.evaluate("""({ s: __bris.S.secret, p: __bris.S.preset, m: __bris.S.v.motor, kits: __bris.S.kits, l: __bris.scen('knappsatsen').lage(), tempo: __bris.S.tempo,
                 skylt: document.querySelector('#hemskylt').textContent, nm: document.querySelector('.browser .nm').textContent })""")
             set0 = D["hemliga"][[h["id"] for h in D["hemliga"]].index("knappsatsen")]["trumset"][0]
-            krav(kr["s"] == "knappsatsen" and kr["p"] == set0["ljud"] and kr["m"] == 6 and kr["kits"] == ["1984"] and not kr["l"]["lampa"] and "SECRET 09" in kr["skylt"]
+            krav(kr["s"] == "knappsatsen" and kr["p"] == set0["ljud"] and kr["m"] == 6 and kr["kits"] == ["1984"] and not kr["l"]["lampa"] and kr["l"]["blink"] and "SECRET 09" in kr["skylt"]
                  and "KLASSISK" in kr["nm"] and kr["tempo"] == set0["bpm"], f"KNAPPSATSEN: 1984 + ENTER låser upp trummaskinen ({kr})")
             nc0 = pg.evaluate("__bris.S.m.nc"); kp("enter"); pg.wait_for_timeout(1600)
             ks = pg.evaluate("({ nc: __bris.S.m.nc, st: __bris.S.m.step, pk: __bris.S.m.pk, l: __bris.scen('knappsatsen').lage() })")
             pg.screenshot(path=f"{UT}/knappsatsen.png")
-            krav(ks["nc"] - nc0 >= 6 and ks["st"] >= 0 and ks["pk"] > 0.05 and "#" in ks["l"]["lcd"][1], f"KNAPPSATSEN: ENTER spelar mönstret ({ks})")
+            krav(ks["nc"] - nc0 >= 6 and ks["st"] >= 0 and ks["pk"] > 0.05 and "#" in ks["l"]["lcd"][1] and ks["l"]["lampa"], f"KNAPPSATSEN: ENTER spelar mönstret, den gröna lampan lyser ({ks})")
             # REC (+): spelar in, den röda REC-lampan lyser; + igen slutar spela in och lampan slocknar
             kp("plus"); pg.wait_for_timeout(200)
             r1 = pg.evaluate("({ rec: __bris.kp.KP.rec, l: __bris.scen('knappsatsen').lage() })")
@@ -492,7 +492,7 @@ with sync_playwright() as p:
             for _ in range(4): pg.wait_for_timeout(60); pk = max(pk, pg.evaluate("__bris.S.m.pk || 0"))
             krav(pk > 0.05, f"KNAPPSATSEN: tangenten 1 slår an bastrumman (topp {pk:.3f})")
             kp("numlock")
-            krav(pg.evaluate("__bris.scen('knappsatsen').lage().lampa"), "KNAPPSATSEN: NUM LOCK tänder lampan (kodläget)")
+            krav(not pg.evaluate("__bris.scen('knappsatsen').lage().lampa") and pg.evaluate("__bris.kp.KP.lage") == "kod", "KNAPPSATSEN: NUM LOCK går till kodläget (den gröna lampan släckt)")
             for n in ("1", "9", "9", "3", "enter"): kp(n)
             pg.wait_for_timeout(300)
             k2 = pg.evaluate("({ p: __bris.S.preset, kits: __bris.S.kits, tempo: __bris.S.tempo })")

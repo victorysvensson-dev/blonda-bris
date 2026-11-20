@@ -11,7 +11,7 @@ trasiga kanter (genomskinligt brus), så kronorna blir luftiga. Diset läggs på
 Två bilder: dag (solen framför till höger, ljus himmel) och natt (månen framför till vänster, svagt blått ljus).
 Mått: 1 enhet = 1 m. x åt höger, y in i bilden, z upp.
 
-PYTHONPATH=<bpy> python3.13 tools/sjon_land.py --ut <mapp> [--bredd 3520 --prov 48 --bara dag|natt --trad]
+PYTHONPATH=<bpy> python3.13 tools/sjon_land.py --ut <mapp> [--bredd 5280 --prov 64 --bara dag|natt --trad]
 Utdata: <mapp>/dag.png, natt.png (RGBA). tools/sjon_bilder.py gör om dem till ui/sjon/.
 """
 import argparse, math, os, random, sys
@@ -331,7 +331,10 @@ def fjall(namn, y0, y1, nx, ny, hmax, skala, seed, toppar, kant=0.25):
             for (vink, bredd, styrka) in toppar:
                 xt = y * math.tan(math.radians(vink))
                 mask += styrka * math.exp(-((x - xt) / (y * bredd)) ** 2)
-            p = Vector((x * skala + seed, y * skala * 1.5 + seed * 0.7, seed * 0.3))
+            # (förvrängt brus: åsarna slingrar som riktiga fjäll i stället för att följa rutnätet)
+            wx = 700 * mn.noise(Vector((x * 0.00025, y * 0.00025, seed)), noise_basis="PERLIN_ORIGINAL")
+            wy = 700 * mn.noise(Vector((x * 0.00025 + 5.2, y * 0.00025, seed)), noise_basis="PERLIN_ORIGINAL")
+            p = Vector(((x + wx) * skala + seed, (y + wy) * skala * 1.5 + seed * 0.7, seed * 0.3))
             rm = mn.ridged_multi_fractal(p, 0.9, 2.15, 8, 1.0, 2.2, noise_basis="PERLIN_ORIGINAL")
             h = hmax * env * min(1.3, mask) * max(0.0, rm) / 1.4
             vs.append((x, y, h))
@@ -345,31 +348,47 @@ def fjall(namn, y0, y1, nx, ny, hmax, skala, seed, toppar, kant=0.25):
     return o
 
 def fjallmat(namn, sno, berg, grans_z, grans_n=0.62):
-    """Snö där det är högt och flackt nog (normalens z), med brus i gränsen; mörkt berg i branterna; dis."""
+    """Snö där det är högt och flackt nog (normalens z), med en ojämn gräns (brus i två skalor); berget i branterna
+    varierar mellan grått och brunt, med skikt och en grov yta; dis efter avståndet."""
     m = bpy.data.materials.new(namn); m.use_nodes = True; nt = m.node_tree; N = nt.nodes; L = nt.links.new
-    b = N["Principled BSDF"]; b.inputs["Roughness"].default_value = 0.8
+    b = N["Principled BSDF"]; b.inputs["Roughness"].default_value = 0.85
     geo = N.new("ShaderNodeNewGeometry"); sn = N.new("ShaderNodeSeparateXYZ"); L(geo.outputs["Normal"], sn.inputs[0])
     sp = N.new("ShaderNodeSeparateXYZ"); L(geo.outputs["Position"], sp.inputs[0])
-    nz = N.new("ShaderNodeTexNoise"); nz.inputs["Scale"].default_value = 0.004; nz.inputs["Detail"].default_value = 8
-    nz.inputs["Roughness"].default_value = 0.62; L(geo.outputs["Position"], nz.inputs["Vector"])
-    # höjdfaktor: över snögränsen (med brus)
-    hz = N.new("ShaderNodeMapRange"); hz.inputs["From Min"].default_value = grans_z; hz.inputs["From Max"].default_value = grans_z * 1.35
+    def brus(skala_, detalj=6, grov=0.6):
+        n_ = N.new("ShaderNodeTexNoise"); n_.inputs["Scale"].default_value = skala_; n_.inputs["Detail"].default_value = detalj
+        n_.inputs["Roughness"].default_value = grov; L(geo.outputs["Position"], n_.inputs["Vector"]); return n_
+    def matte(op, a_, b_=None, c_=None):
+        q = N.new("ShaderNodeMath"); q.operation = op
+        for i_, v_ in enumerate((a_, b_, c_)):
+            if v_ is None: continue
+            if isinstance(v_, (int, float)): q.inputs[i_].default_value = v_
+            else: L(v_, q.inputs[i_])
+        return q.outputs[0]
+    stor, fin = brus(0.0016, 6), brus(0.03, 4)
+    # snöfaktor: flackhet + höjd över snögränsen + ojämnhet (stor och fin)
+    hz = N.new("ShaderNodeMapRange"); hz.inputs["From Min"].default_value = grans_z; hz.inputs["From Max"].default_value = grans_z * 1.4
     L(sp.outputs["Z"], hz.inputs["Value"])
-    nn = N.new("ShaderNodeMath"); nn.operation = "MULTIPLY_ADD"; nn.inputs[1].default_value = 0.5; nn.inputs[2].default_value = -0.25
-    L(nz.outputs["Fac"], nn.inputs[0])
-    s1 = N.new("ShaderNodeMath"); s1.operation = "ADD"; L(sn.outputs["Z"], s1.inputs[0]); L(nn.outputs[0], s1.inputs[1])
-    s2 = N.new("ShaderNodeMath"); s2.operation = "MULTIPLY_ADD"; s2.inputs[2].default_value = 0.0
-    L(hz.outputs["Result"], s2.inputs[0]); s2.inputs[1].default_value = 0.35; L(s1.outputs[0], s2.inputs[2])
-    mr = N.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = grans_n; mr.inputs["From Max"].default_value = grans_n + 0.06
-    L(s2.outputs[0], mr.inputs["Value"])
-    mx = N.new("ShaderNodeMixRGB"); mx.inputs["Color1"].default_value = (*berg, 1); mx.inputs["Color2"].default_value = (*sno, 1)
-    L(mr.outputs["Result"], mx.inputs["Fac"])
-    vz = N.new("ShaderNodeTexNoise"); vz.inputs["Scale"].default_value = 0.02; L(geo.outputs["Position"], vz.inputs["Vector"])
-    vm = N.new("ShaderNodeMixRGB"); vm.blend_type = "MULTIPLY"; vm.inputs["Fac"].default_value = 0.3
-    L(mx.outputs["Color"], vm.inputs["Color1"]); L(vz.outputs["Color"], vm.inputs["Color2"])
-    L(vm.outputs["Color"], b.inputs["Base Color"])
-    bu = N.new("ShaderNodeBump"); bu.inputs["Strength"].default_value = 0.3; bu.inputs["Distance"].default_value = 20
-    L(nz.outputs["Fac"], bu.inputs["Height"]); L(bu.outputs["Normal"], b.inputs["Normal"])
+    s_ = matte("ADD", sn.outputs["Z"], matte("MULTIPLY", hz.outputs["Result"], 0.3))
+    s_ = matte("ADD", s_, matte("MULTIPLY_ADD", stor.outputs["Fac"], 0.34, -0.17))
+    s_ = matte("ADD", s_, matte("MULTIPLY_ADD", fin.outputs["Fac"], 0.12, -0.06))
+    mr = N.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = grans_n; mr.inputs["From Max"].default_value = grans_n + 0.03
+    L(s_, mr.inputs["Value"])
+    # berget: grått till brunt i stora fläckar, skikt (vågräta band) och fin struktur
+    bf = brus(0.0007, 3)
+    br = N.new("ShaderNodeMixRGB"); br.inputs["Color1"].default_value = (*berg, 1)
+    br.inputs["Color2"].default_value = (berg[0] * 1.5, berg[1] * 1.25, berg[2] * 1.0, 1); L(bf.outputs["Fac"], br.inputs["Fac"])
+    sk = N.new("ShaderNodeTexWave"); sk.wave_type = "BANDS"; sk.bands_direction = "Z"; sk.inputs["Scale"].default_value = 0.012
+    sk.inputs["Distortion"].default_value = 6; sk.inputs["Detail"].default_value = 3; L(geo.outputs["Position"], sk.inputs["Vector"])
+    skm = N.new("ShaderNodeMixRGB"); skm.blend_type = "MULTIPLY"; skm.inputs["Fac"].default_value = 0.25
+    L(br.outputs["Color"], skm.inputs["Color1"]); L(sk.outputs["Color"], skm.inputs["Color2"])
+    snof = N.new("ShaderNodeMixRGB"); snof.inputs["Color1"].default_value = (sno[0] * 0.86, sno[1] * 0.9, sno[2] * 0.96, 1)
+    snof.inputs["Color2"].default_value = (*sno, 1); L(fin.outputs["Fac"], snof.inputs["Fac"])
+    mx = N.new("ShaderNodeMixRGB"); L(skm.outputs["Color"], mx.inputs["Color1"]); L(snof.outputs["Color"], mx.inputs["Color2"])
+    L(mr.outputs["Result"], mx.inputs["Fac"]); L(mx.outputs["Color"], b.inputs["Base Color"])
+    # ytan: grov i berget (fina åsar), mjukare i snön
+    gr = brus(0.08, 8, 0.7)
+    bu = N.new("ShaderNodeBump"); bu.inputs["Strength"].default_value = 0.45; bu.inputs["Distance"].default_value = 6
+    L(gr.outputs["Fac"], bu.inputs["Height"]); L(bu.outputs["Normal"], b.inputs["Normal"])
     dmx, em, dv = med_dis(m, b.outputs["BSDF"]); L(dmx.outputs[0], N["Material Output"].inputs["Surface"])
     DIS.append((em, dv))
     return m
@@ -388,7 +407,7 @@ else:
     def hojd_as(x, y, v): return 40 + 260 * max(0.0, 0.55 + fbm(x / 2500, 1.3, 4)) * math.sin(math.pi * v) + 8 * fbm(x / 120, y / 120, 3)
     asen = terrang("as", 5500, 9000, 400, 40, hojd_as, M_AS)
     skog(asen, 0.0035 * a.tathet, 9)   # glesa träd på åsen (syns som en luddig kant)
-    M_FJ = fjallmat("fjall", (0.9, 0.93, 0.97), (0.06, 0.07, 0.085), 650.0, 0.86)
+    M_FJ = fjallmat("fjall", (0.9, 0.93, 0.97), (0.06, 0.07, 0.085), 600.0, 0.8)
     fj = fjall("fjall", 18000, 27000, 1400, 220, 950.0, 0.00042, 3.7, [(-10.5, 0.13, 1.1), (11.5, 0.09, 0.8), (1.0, 0.25, 0.25)])
     fj.data.materials.append(M_FJ)
 

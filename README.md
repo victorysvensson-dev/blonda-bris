@@ -21,6 +21,15 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.4
+
+- **SJÖN:** ingen rand i himlen längre (överkanten på landskapet: bilden läses nu med en bestämd skärpenivå i stället
+  för en som räknas ur grannpunkterna). Fjällen har slingrande åsar, mer berg i branterna (grått till brunt, med skikt)
+  och snö på det flacka; allt renderas skarpare (större bild, fler prov). Fåglarna är borttagna.
+- **KNAPPSATSEN:** en nedtryckt tangent byter också ut kanten runt sig, så inget av tangenten uppe ligger kvar. Den
+  gröna lampan blinkar när koden är rätt och lyser när PLAY går (släckt annars). Bilden blir aldrig större än sin yta,
+  så skuggningen runt den klipps inte av.
+
 ## 1.22.3
 
 - **SJÖN:** fjällen och skogen är renderade i Blender (tools/sjon_land.py) med riktigt ljus och dis, för dagen och

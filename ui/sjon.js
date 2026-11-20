@@ -3,14 +3,17 @@
 // varandra och bryter månens spegling. Himlen (måne, stjärnor, trädlinje) och dess spegling räknas med samma
 // funktion, så speglingen stämmer med krusningarna. Arpen blir regn. Ytan ritas i halv upplösning (vatten är mjukt).
 // Bakom sjön: fjäll och blandskog (gran, tall, björk, lövträd), renderade i Blender (tools/sjon_land.py) för dagen och
-// natten i en bild (ui/sjon/land.webp). Små moln driver förbi och på dagen flyger fåglar förbi då och då.
+// natten i en bild (ui/sjon/land.webp). Små moln driver förbi.
 // Då och då faller en stjärna (och syns i vattnet). Fem tryck på månen gör dag: månen går ner bakom skogen, himlen
 // ljusnar i en gryning och solen stiger. Fem tryck på solen gör natt igen (samma väg tillbaka).
 "use strict";
 const Sjon = (() => {
   const MAX = 24, LH = 0.24, LASP = (11 * 0.24).toFixed(4);   // landskapsbilden: 11 gånger så bred som hög (tools/sjon_land.py)
   const VS = `attribute vec2 aP; varying vec2 vUv; void main() { vUv = vec2(aP.x, 1.0 - aP.y); gl_Position = vec4(aP * 2.0 - 1.0, 0.0, 1.0); }`;
-  const FS = `precision highp float;
+  const FS = `#ifdef GL_EXT_shader_texture_lod
+    #extension GL_EXT_shader_texture_lod : enable
+    #endif
+    precision highp float;
     varying vec2 vUv;                    // 0..1, y nedåt
     uniform vec2 uRes; uniform float uT, uHy, uN, uAsp, uMx, uMy, uMr;
     uniform vec3 uSol;                   // solen: x, y (skärmen), radie
@@ -21,9 +24,19 @@ const Sjon = (() => {
     uniform vec3 uC[${MAX}];             // droppens färg (ett svagt sken i ringarna)
     uniform sampler2D uL;                // landskapet (fjäll och skog, renderat i Blender): dag överst, natt spegelvänd under
     uniform float uLand;                 // 0 = bilden har inte laddats än, 1 = laddad (tonar in)
+    uniform float uLod;                  // bildens förminskningsnivå (räknas i JS ur ytans storlek)
+    // Bilden läses i grenar (himmel/vatten, inom bandet) där grannpunkterna kan ta olika väg; derivatorna, som annars
+    // väljer nivån, är då odefinierade och ger en rand vid bandets kant. Nivån sätts därför direkt (uLod). Utan
+    // tillägget har bilden ingen förminskningskedja (JS) och läses rakt.
+    vec4 landBild(vec2 t) {
+    #ifdef GL_EXT_shader_texture_lod
+      return texture2DLodEXT(uL, t, uLod);
+    #else
+      return texture2D(uL, t);
+    #endif
+    }
     const float LASP = ${LASP};          // bildens bredd i skärmens enheter (bandets höjd LH = 1 skärmhöjd × LH)
     uniform vec4 uMoln[2];               // molnen: mitt x, y (skärmen, x i bildförhållandets enheter), bredd, frö
-    uniform vec4 uFg[6];                 // fåglarna: x, y (som molnen), storlek, vingslagets fas (storlek 0 = ingen)
     const float LH = ${LH};              // landskapets band över horisonten (andel av skärmens höjd)
     const float FOV = 1.25;              // brännvidd: hur fort sjön flyr mot horisonten
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -84,33 +97,12 @@ const Sjon = (() => {
         vec3 grym = mix(vec3(0.55, 0.32, 0.4), vec3(1.0, 0.62, 0.38), ljus);
         c = mix(c, mix(mix(nattm, dagm, uDag), grym, uGry * 0.6), tack * 0.92);
       }
-      // fåglarna: måsar långt bort, sedda framifrån/underifrån som ett mjukt M. Inre vingen går upp till handleden,
-      // yttre vingen ut till en spetsig vingspets; vinkeln (F.w, -1 ner .. 1 upp) slår eller ligger stilla (glid).
-      for (int i = 0; i < 6; i++) {
-        vec4 F = uFg[i]; if (F.z <= 0.0 || skarpa < 1.0) continue;   // (för små för att synas i speglingen)
-        vec2 q = (px - F.xy) / F.z;
-        if (abs(q.x) > 1.15 || abs(q.y) > 0.9) continue;
-        float v = F.w, ax = abs(q.x);
-        float led = -0.34 * v - 0.04;                                  // handleden (uppåt är minus)
-        float spets = led + 0.16 + 0.12 * v;                           // vingspetsen hänger efter handleden
-        float t = clamp((ax - 0.4) / 0.6, 0.0, 1.0);
-        float linje = ax < 0.4 ? led * smoothstep(0.0, 0.4, ax) : mix(led, spets, t * t * (3.0 - 2.0 * t));
-        float tj = mix(0.085, 0.05, smoothstep(0.0, 0.4, ax)) * (1.0 - smoothstep(0.55, 1.0, ax) * 0.85);   // smalnar mot spetsen
-        float aa = 0.05 / skarpa;
-        float vinge = step(ax, 1.0) * smoothstep(tj + aa, tj - aa * 0.3, abs(q.y - linje + tj * 0.3));
-        float kropp = smoothstep(0.1 + aa, 0.1 - aa, length((q - vec2(0.0, 0.02)) * vec2(1.6, 1.0)));
-        vec3 fagel = mix(vec3(0.004, 0.006, 0.01), mix(vec3(0.16, 0.18, 0.2), vec3(0.3, 0.26, 0.24), uGry), uDag);
-        c = mix(c, fagel, max(vinge, kropp) * 0.92);
-      }
       // landskapet (berg och skog) skymmer allt bakom sig: ur bilden som räknades en gång (natt och dag blandas)
       if (upp >= 0.0 && upp < LH && uLand > 0.0) {
         // bildens mitt i skärmens mitt; på en smal skärm syns mitten av panoramat
         float tx = 0.5 + (s.x - 0.5) * uAsp / LASP, h = upp / LH;
-        // (i speglingen gör krusningarna att koordinaterna hoppar mellan grannpunkter: utan bias skulle det väljas en
-        // mycket förminskad nivå, där himlen späder ut täckningen och skogen inte speglas; skarpa < 1 = speglingen)
-        float bias = skarpa < 1.0 ? -3.0 : 0.0;
-        vec4 L = uDag < 0.001 ? texture2D(uL, vec2(tx, 0.5 + 0.5 * h), bias) : uDag > 0.999 ? texture2D(uL, vec2(tx, 0.5 - 0.5 * h), bias)
-               : mix(texture2D(uL, vec2(tx, 0.5 + 0.5 * h), bias), texture2D(uL, vec2(tx, 0.5 - 0.5 * h), bias), uDag);
+        vec4 L = uDag < 0.001 ? landBild(vec2(tx, 0.5 + 0.5 * h)) : uDag > 0.999 ? landBild(vec2(tx, 0.5 - 0.5 * h))
+               : mix(landBild(vec2(tx, 0.5 + 0.5 * h)), landBild(vec2(tx, 0.5 - 0.5 * h)), uDag);
         vec3 glod = vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4 * (1.0 - uDag);   // månskenet nära månen
         c = mix(c, L.rgb + glod + vec3(0.25, 0.1, 0.03) * uGry * 0.25, L.a * uLand);
       }
@@ -170,11 +162,10 @@ const Sjon = (() => {
     parent.prepend(cv);   // först i body: appen ritas ovanpå
     const gl = cv.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
     let prog = null, u = {}, buf = null, aktiv = false, t0 = performance.now(), nasta = 0, lugn = 0;
-    let landTex = null, landT0 = -1;   // landskapsbilden och när den laddades (den tonar in)
-    // molnen (två små, driver sakta åt höger och kommer tillbaka från vänster) och fåglarna (en flock då och då)
+    let landTex = null, landT0 = -1, lodExt = null;   // landskapsbilden och när den laddades (den tonar in)
+    // molnen: två små, driver sakta åt höger och kommer tillbaka från vänster
     const moln = [{ x: 0.3, y: 0.12, b: 0.07, s: 3.1, v: 0.004 }, { x: 1.1, y: 0.2, b: 0.045, s: 7.7, v: 0.0028 }];
-    const MOLN = new Float32Array(8), FG = new Float32Array(24);
-    let flock = null, flockNasta = 25 + Math.random() * 30;
+    const MOLN = new Float32Array(8);
     // dag och natt: p går 0 (natt) -> 1 (dag) på DYGN sekunder när man har gjort dag (och tillbaka för natt)
     const DYGN = 14;
     let p = 0, mal = 0, tFor = 0, puls = 0, p0 = 0, tStart = 0;   // p räknas ur klockan (inte bildrutorna), så att det tar lika lång tid överallt
@@ -183,9 +174,10 @@ const Sjon = (() => {
     if (gl) {
       try {
         const sh = (typ, src) => { const s = gl.createShader(typ); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+        lodExt = gl.getExtension("EXT_shader_texture_lod");   // (före kompileringen: då finns GL_EXT_shader_texture_lod i shadern)
         prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uL", "uLand", "uMoln", "uFg"]) u[k] = gl.getUniformLocation(prog, k);
+        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uL", "uLand", "uMoln", "uLod"]) u[k] = gl.getUniformLocation(prog, k);
         // landskapet: ett eget program som ritar i två bilder (natt, dag) när storleken ändras
         // landskapet: bilden laddas när sjön skapas (tools/sjon_bilder.py), med mipmaps (den förminskas mycket)
         landTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, landTex);
@@ -197,7 +189,7 @@ const Sjon = (() => {
           gl.bindTexture(gl.TEXTURE_2D, landTex);
           gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
-          gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          if (lodExt) { gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); }
           landT0 = nu();
         };
         im.onerror = () => console.warn("sjön: kunde inte ladda landskapet");
@@ -231,17 +223,17 @@ const Sjon = (() => {
       if (!gl || !prog) return;
       const L = lage();
       moln.forEach((m, i) => MOLN.set([m.x * L.asp, m.y, m.b, m.s], i * 4));
-      FG.fill(0);
-      if (flock) flock.f.forEach((f, i) => FG.set([f.x * L.asp, f.y, f.st, f.vinkel], i * 4));
       gl.viewport(0, 0, w, h); gl.useProgram(prog);
       gl.uniform2f(u.uRes, w, h); gl.uniform1f(u.uT, nu()); gl.uniform1f(u.uHy, L.hy); gl.uniform1f(u.uAsp, L.asp);
       gl.uniform1f(u.uMx, L.mx); gl.uniform1f(u.uMy, L.my); gl.uniform1f(u.uMr, L.mr);
       gl.uniform1f(u.uN, n); gl.uniform4fv(u.uD, D); gl.uniform3fv(u.uC, C);
       gl.uniform3f(u.uSol, L.sx, L.sy, L.sr); gl.uniform1f(u.uDag, L.dag); gl.uniform1f(u.uGry, L.gry); gl.uniform1f(u.uPuls, puls);
       gl.uniform4f(u.uSf, sf.x, sf.y, sf.v, nu() - sf.t0); gl.uniform3f(u.uSfL, sf.liv, sf.fart, sf.k);
-      gl.uniform4fv(u.uMoln, MOLN); gl.uniform4fv(u.uFg, FG);
+      gl.uniform4fv(u.uMoln, MOLN);
       // landskapet tonar in kort första gången det är klart (innan dess syns bara himlen bakom)
       gl.uniform1f(u.uLand, landT0 >= 0 ? Math.min(1, (nu() - landT0) / 0.35) : 0);
+      // nivån: hur många bildpunkter i bilden som faller på en bildpunkt på ytan (2048 × 512 per halva, se LASP och LH)
+      gl.uniform1f(u.uLod, Math.max(0, Math.log2(Math.max(2048 / (LASP * h), 512 / (LH * h)))));
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, landTex); gl.uniform1i(u.uL, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(u.aP); gl.vertexAttribPointer(u.aP, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -270,7 +262,6 @@ const Sjon = (() => {
       dag(pa, direkt) { mal = pa ? 1 : 0; p0 = direkt ? mal : p; p = p0; tStart = nu(); },
       arDag() { return mal === 1; },
       stjarnfall,
-      faglar() { flockNasta = 0; flock = null; },   // tester: en flock nu
       // var månen/solen är på skärmen (bildpunkter), för tester
       plats() { const L = lage(), k = p < 0.5 ? [L.mx, L.my] : [L.sx, L.sy]; return [k[0] * innerWidth, k[1] * innerHeight]; },
       lage() { const L = lage(); return { p, mal, dag: L.dag, my: L.my, sy: L.sy, hy: L.hy, sf: nu() - sf.t0 < sf.liv }; },
@@ -287,26 +278,9 @@ const Sjon = (() => {
         if (p !== mal) p = mal > p0 ? Math.min(mal, p0 + (t - tStart) / DYGN) : Math.max(mal, p0 - (t - tStart) / DYGN);
         puls = Math.max(0, puls - dt * 2.5);
         if (t > sfNasta) { if (p < 0.3) stjarnfall(Math.random() < 0.4); sfNasta = t + 25 + Math.random() * 35; }   // ungefär en gång i minuten
-        // molnen driver; en flock fåglar flyger förbi då och då (en till sex, i ett löst V, vingarna slår var för sig)
+        // molnen driver
         const L0 = lage();
         for (const m of moln) { m.x += m.v * dt; if (m.x > 1.25) { m.x = -0.25; m.y = 0.08 + Math.random() * (L0.hy * 0.45); m.s = Math.random() * 50; } }
-        if (!flock && t > flockNasta && (L0.dag > 0.3 || L0.gry > 0.2 || flockNasta === 0)) {   // fåglar flyger på dagen och i gryningen
-          const hoger = Math.random() < 0.5, n_ = 1 + Math.floor(Math.random() * 6), y0 = 0.07 + Math.random() * (L0.hy * 0.55), st = 0.012 + Math.random() * 0.006;
-          flock = { dir: hoger ? 1 : -1, f: Array.from({ length: n_ }, (_, i) => ({ x: (hoger ? -0.05 : 1.05) - (hoger ? 1 : -1) * (Math.ceil(i / 2) * 0.035),
-            y: y0 + Math.ceil(i / 2) * 0.012 * (i % 2 ? 1 : -1) * 0.8 + Math.ceil(i / 2) * 0.01, st: st * (0.85 + Math.random() * 0.3), fas: Math.random() * 6.28, takt: 7 + Math.random() * 3, vinkel: 0, glid: Math.random() * 3 - 1.5 })) };
-        }
-        if (flock) {
-          let kvar = false;
-          for (const f of flock.f) {
-            // vingslag en stund, sedan glid (vingarna lite uppåt, stilla) och så vidare, var fågel i sin egen takt
-            f.x += flock.dir * 0.045 * dt; f.y += Math.sin(t * 0.7 + f.takt) * 0.002 * dt;
-            f.glid -= dt; if (f.glid < -2.2) f.glid = 1.5 + Math.random() * 3;
-            if (f.glid > 0) f.vinkel += (0.22 - f.vinkel) * Math.min(1, dt * 5);
-            else { f.fas += f.takt * dt; f.vinkel = Math.sin(f.fas) * 0.9; }
-            if (f.x > -0.1 && f.x < 1.1) kvar = true;
-          }
-          if (!kvar) { flock = null; flockNasta = t + 40 + Math.random() * 60; }
-        }
         if (t > lugn) { if (lugn > 0) droppe(0.2 + Math.random() * 0.6, 7 + Math.random() * 5, 0.35, [0.4, 0.6, 0.9]); lugn = t + 3 + Math.random() * 5; }
         document.documentElement.classList.toggle("sjon-dag", lage().dag > 0.5);   // mörkare textskugga mot dagens ljusa himmel
         rita();

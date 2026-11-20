@@ -1398,7 +1398,7 @@
   function kpMeddelande(r1, r2, ms) { KP.meddelande = { rader: [r1, r2], till: performance.now() + ms }; kpVisa(); }
   function kpVisa() {
     const sc = SCEN.knappsatsen; if (!sc) return;
-    sc.lampa(KP.lage === "kod"); sc.rec(KP.rec && KP.lage !== "kod");
+    sc.lampa(KP.spelar && KP.lage !== "kod"); sc.rec(KP.rec && KP.lage !== "kod");
     if (KP.meddelande && KP.meddelande.till > performance.now()) { sc.lcd(...KP.meddelande.rader); return; }
     if (KP.lage === "kod") { sc.lcd("ENTER CODE", (KP.kod + "____").slice(0, 4).split("").join(" ")); return; }
     const t = kpNu(), lista = kpSet();
@@ -1434,6 +1434,7 @@
     if (S.secret !== "knappsatsen") { const ny = !S.hemliga.includes("knappsatsen"); KP.oppen = false; valjHemlig("knappsatsen"); visaHemlig("knappsatsen", ny); }
     KP.lage = "spel";
     kpValjSet(t);
+    SCEN.knappsatsen && SCEN.knappsatsen.blinka();   // den gröna lampan blinkar: rätt kod
     kpMeddelande(nytt ? "UNLOCKED" : "CODE OK", `KIT ${kpSet().indexOf(t) + 1}/${kpSet().length} ${t.namn.toUpperCase()}`.slice(0, 16), 2200);
     saveUi();
   }
