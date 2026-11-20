@@ -479,6 +479,12 @@ with sync_playwright() as p:
             ks = pg.evaluate("({ nc: __bris.S.m.nc, st: __bris.S.m.step, pk: __bris.S.m.pk, l: __bris.scen('knappsatsen').lage() })")
             pg.screenshot(path=f"{UT}/knappsatsen.png")
             krav(ks["nc"] - nc0 >= 6 and ks["st"] >= 0 and ks["pk"] > 0.05 and "#" in ks["l"]["lcd"][1], f"KNAPPSATSEN: ENTER spelar mönstret ({ks})")
+            # REC (+): spelar in, den röda REC-lampan lyser; + igen slutar spela in och lampan slocknar
+            kp("plus"); pg.wait_for_timeout(200)
+            r1 = pg.evaluate("({ rec: __bris.kp.KP.rec, l: __bris.scen('knappsatsen').lage() })")
+            kp("plus"); pg.wait_for_timeout(200)
+            r2 = pg.evaluate("__bris.scen('knappsatsen').lage().rec")
+            krav(r1["rec"] and r1["l"]["rec"] and r1["l"]["lcd"][0].startswith("REC") and not r2, f"KNAPPSATSEN: REC tänder den röda lampan, REC igen släcker den ({r1}, {r2})")
             kp("enter"); pg.wait_for_timeout(500); nc1 = pg.evaluate("__bris.S.m.nc"); pg.wait_for_timeout(800)
             krav(pg.evaluate("__bris.S.m.nc") == nc1, "KNAPPSATSEN: ENTER igen stoppar")
             # tangenterna är trumljud: KICK (1) låter; NUM LOCK tillbaka till kodläget (lampan), en ny kod byter trumset

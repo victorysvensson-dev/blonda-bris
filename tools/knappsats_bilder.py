@@ -4,7 +4,7 @@
   knappsats_nere.webp   bara tangenterna nedtryckta (resten genomskinligt): appen klipper ut en tangent i taget
   knappsats_index.png   vilken tangent varje bildpunkt hör till (1..17, 0 = ingen), uppe och nere ihop: där ritas
                         den nedtryckta tangenten, och där träffar man den
-  knappsats.json        storlek, filnamn, tangenternas namn och rutor, LCD-fönstrets hörn och lampan
+  knappsats.json        storlek, filnamn, tangenternas namn och rutor, LCD-fönstrets hörn och lamporna (NUM, REC)
 
 python3 tools/knappsats_bilder.py <mapp med uppe.png, nere0.png ..., index_uppe.png, index_nere.png, knappsats.json>
 """
@@ -51,7 +51,7 @@ for k, namn in enumerate(info["tangenter"]):
     if not len(xs): sys.exit(f"tangenten {namn} syns inte i bilden")
     rutor[namn] = [int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)]
 meta = {"w": info["w"], "h": info["h"], "bilder": {"uppe": "knappsats.webp", "nere": "knappsats_nere.webp", "index": "knappsats_index.png"},
-        "tangenter": info["tangenter"], "rutor": rutor, "lcd": info["lcd"], "lampa": info["lampa"], "lampa_r": info["lampa_r"]}
+        "tangenter": info["tangenter"], "rutor": rutor, "lcd": info["lcd"], "lampa": info["lampa"], "rec": info["rec"], "lampa_r": info["lampa_r"]}
 json.dump(meta, open(os.path.join(ut, "knappsats.json"), "w"), indent=1)
 kb = sum(os.path.getsize(os.path.join(ut, f)) for f in meta["bilder"].values()) // 1024
 print(f"{N} tangenter, {info['w']}x{info['h']}, {kb} KB")

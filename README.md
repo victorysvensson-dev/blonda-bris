@@ -21,6 +21,17 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.3
+
+- **SJÖN:** fjällen och skogen är renderade i Blender (tools/sjon_land.py) med riktigt ljus och dis, för dagen och
+  natten: en strand med blandskog (granar, tallar, björkar, lövträd) som stiger uppför kullar och åsar, och bakom
+  den höga, taggiga fjäll med snö på topparna och mörkt berg i branterna. På natten lyser månen på snön och
+  skogen är en mörk silhuett. Skogen och fjällen speglas i sjön. Fåglarna är måsar långt bort: vingarna i ett mjukt
+  M som slår en stund och sedan glider.
+- **KNAPPSATSEN:** fotograferad i perspektiv (bakkanten lite mindre, som när den ligger på bordet), med mjukt rundade
+  kanter. NUM-lampan lyser grönt i kodläget och en ny röd REC-lampa lyser när man spelar in. LCD-texten följer
+  fönstrets perspektiv.
+
 ## 1.22.2
 
 - **SJÖN:** landskapet på andra sidan sjön är rikare: fjäll i bakgrunden (snö på topparna, fåror nedför sidorna,

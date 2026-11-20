@@ -1,7 +1,7 @@
 // BLONDA BRIS – KNAPPSATSEN: en retro sifferknappsats (renderad i Blender, tools/knappsats.py) som trummaskin.
 // Bilden har alla tangenter uppe; en nedtryckt tangent klipps ur bilden där alla är nere, med tangentens egen mask
 // (indexbilden), så att den sjunker ner med rätt skugga. Appen ritar också texten i LCD-fönstret (mörka segment på
-// grågrönt, som en gammal räknare) och NUM-lampan. Vad tangenterna gör bestämmer app.js; här ritas och träffas de.
+// grågrönt, som en gammal räknare), NUM-lampan (grön) och REC-lampan (röd). Vad tangenterna gör bestämmer app.js; här ritas och träffas de.
 "use strict";
 const Knappsats = (() => {
   function create(stage, meta, bas, id = "knappsatsen") {
@@ -13,7 +13,8 @@ const Knappsats = (() => {
     let idx = null;                 // tangentens nummer (1..N) i varje bildpunkt
     const sprite = new Array(N + 1).fill(null);   // varje tangent nedtryckt, klippt med sin mask
     const nere = new Map();         // tangent -> när den släpps (performance.now(), Infinity = hålls)
-    let lcd = ["", ""], lampa = false, skak = 0;
+    let lcd = ["", ""], lampa = false, rec = false, skak = 0;
+    const lcdBild = document.createElement("canvas"); lcdBild.width = 400; lcdBild.height = 100;   // LCD-texten innan den läggs i fönstret
 
     function ladda() {
       if (bild.uppe) return;
@@ -39,8 +40,8 @@ const Knappsats = (() => {
     // bildens ruta på skärmen: så stor som scenen tillåter, centrerad (bilden tonar ut i kanten, in i bakgrunden)
     function ruta() {
       const s = stage.getBoundingClientRect(), c = cv.getBoundingClientRect();
-      const ar = meta.w / meta.h, w = Math.min(s.width * 1.3, s.height * 1.28 * ar), h = w / ar;
-      return { x: s.left - c.left + s.width / 2 - w / 2, y: s.top - c.top + s.height / 2 - h / 2 + s.height * 0.02, w, h, sk: w / meta.w };
+      const ar = meta.w / meta.h, w = Math.min(s.width * 1.3, s.height * 1.2 * ar), h = w / ar;
+      return { x: s.left - c.left + s.width / 2 - w / 2, y: s.top - c.top + s.height / 2 - h / 2 - s.height * 0.01, w, h, sk: w / meta.w };
     }
 
     function rita() {
@@ -60,25 +61,37 @@ const Knappsats = (() => {
         const [rx, ry, rw, rh] = meta.rutor[meta.tangenter[k - 1]];
         g.drawImage(s, R.x + rx * R.sk, R.y + ry * R.sk, rw * R.sk, rh * R.sk);
       }
-      // LCD: hörnen bak vänster (a), bak höger (b), fram vänster (d) ger en parallellogram (ortografisk kamera)
-      const [a, b, , d] = meta.lcd, P = (p) => [R.x + p[0] * R.sk, R.y + p[1] * R.sk];
-      const A = P(a), B = P(b), D = P(d), LW = 400, LH = 100;
-      g.save();
-      g.transform((B[0] - A[0]) / LW, (B[1] - A[1]) / LW, (D[0] - A[0]) / LH, (D[1] - A[1]) / LH, A[0], A[1]);
-      g.textBaseline = "middle"; g.font = "400 36px 'BLONDA Mono', monospace";
+      // LCD: texten ritas rakt i en egen bild och läggs sedan i fönstret, vars hörn (bak vänster a, bak höger b,
+      // fram höger c, fram vänster d) bildar en trapets (perspektiv: bakkanten är kortare). Bilden läggs i tunna
+      // vågräta remsor, var och en mellan fönstrets vänstra och högra kant på sin höjd.
+      const [a, b, c2, d] = meta.lcd, P = (p) => [R.x + p[0] * R.sk, R.y + p[1] * R.sk];
+      const A = P(a), B = P(b), C = P(c2), D = P(d), LW = lcdBild.width, LH = lcdBild.height;
+      const lg = lcdBild.getContext("2d"); lg.clearRect(0, 0, LW, LH);
+      lg.textBaseline = "middle"; lg.font = "400 36px 'BLONDA Mono', monospace";
       const radY = [32, 74];
       for (let i = 0; i < 2; i++) {
-        g.fillStyle = "rgba(20,26,16,0.045)"; g.fillText("8".repeat(16), 20, radY[i]);   // de släckta segmenten
-        g.fillStyle = "rgba(18,24,14,0.86)"; g.fillText((lcd[i] || "").slice(0, 16), 20, radY[i]);
+        lg.fillStyle = "rgba(20,26,16,0.045)"; lg.fillText("8".repeat(16), 20, radY[i]);   // de släckta segmenten
+        lg.fillStyle = "rgba(18,24,14,0.86)"; lg.fillText((lcd[i] || "").slice(0, 16), 20, radY[i]);
       }
-      g.restore();
-      // NUM-lampan: röd glöd när den lyser
-      if (lampa) {
-        const [lx, ly] = P(meta.lampa), r = meta.lampa_r * R.sk;
+      const REM = 25, mix = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      for (let k = 0; k < REM; k++) {
+        const t0 = k / REM, t1 = (k + 1) / REM;
+        const V0 = mix(A, D, t0), H0 = mix(B, C, t0), V1 = mix(A, D, t1);
+        g.save();
+        // remsans överkant går från V0 till H0, nedåt mot V1 (en liten överlappning döljer skarvarna)
+        g.transform((H0[0] - V0[0]) / LW, (H0[1] - V0[1]) / LW, (V1[0] - V0[0]) / (LH / REM), (V1[1] - V0[1]) / (LH / REM), V0[0], V0[1]);
+        g.drawImage(lcdBild, 0, t0 * LH, LW, LH / REM + 0.6, 0, 0, LW, LH / REM + 0.6);
+        g.restore();
+      }
+      // lamporna: NUM lyser grönt (kodläget), REC rött (inspelning)
+      const glod = (pt, f) => {
+        const [lx, ly] = P(pt), r = meta.lampa_r * R.sk;
         const gr = g.createRadialGradient(lx, ly, 0, lx, ly, r * 3.2);
-        gr.addColorStop(0, "rgba(255,120,90,0.95)"); gr.addColorStop(0.3, "rgba(255,60,30,0.55)"); gr.addColorStop(1, "rgba(255,40,20,0)");
+        gr.addColorStop(0, `rgba(${f[0]},0.95)`); gr.addColorStop(0.3, `rgba(${f[1]},0.55)`); gr.addColorStop(1, `rgba(${f[1]},0)`);
         g.fillStyle = gr; g.beginPath(); g.arc(lx, ly, r * 3.2, 0, Math.PI * 2); g.fill();
-      }
+      };
+      if (lampa) glod(meta.lampa, ["170,255,150", "60,220,70"]);
+      if (rec && meta.rec) glod(meta.rec, ["255,120,90", "255,50,25"]);
       g.restore();
       // tonar ut mot kanterna, in i bakgrunden (en ellips som når noll vid bildens kant: ingen kant syns)
       g.globalCompositeOperation = "destination-in";
@@ -116,6 +129,7 @@ const Knappsats = (() => {
       slapp(namn) { const k = nr(namn); if (nere.has(k)) { nere.delete(k); ny = true; } },
       lcd(rad1, rad2 = "") { if (rad1 !== lcd[0] || rad2 !== lcd[1]) { lcd = [rad1, rad2]; ny = true; } },
       lampa(pa) { if (!!pa !== lampa) { lampa = !!pa; ny = true; } },
+      rec(pa) { if (!!pa !== rec) { rec = !!pa; ny = true; } },
       skaka() { skak = performance.now() + 420; },
       klar() { return laddade === 3 && !!idx; },
       // tester: var en tangent ligger på skärmen, och vad som visas
@@ -124,7 +138,7 @@ const Knappsats = (() => {
         // mitt på tangentens ovansida (rutan omfattar också tangentens sida nertill)
         return [c.left + R.x + (rx + rw / 2) * R.sk, c.top + R.y + (ry + rh * 0.4) * R.sk];
       },
-      lage() { return { lcd: lcd.slice(), lampa, nere: [...nere.keys()].map((k) => meta.tangenter[k - 1]) }; },
+      lage() { return { lcd: lcd.slice(), lampa, rec, nere: [...nere.keys()].map((k) => meta.tangenter[k - 1]) }; },
       meta,
     };
   }

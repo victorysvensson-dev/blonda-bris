@@ -2,8 +2,8 @@
 
 Sjutton tangenter i fyra kolumner (som en vanlig sifferknappsats): beige siffror, grå räknetangenter, en orange ENTER.
 Varje tangent har sin siffra och, i orange, vad den gör i trummaskinen (KICK, SNARE ... PLAY, REC). Lådan är beige
-plast, kilformad, med ett litet grågrönt LCD-fönster och en NUM-lampa ovanför tangenterna och en sladd bakåt.
-Knappsatsen ligger på ett mörkt bord och kameran tittar snett uppifrån (ortografiskt, TILT grader).
+plast, kilformad, med ett litet grågrönt LCD-fönster, en grön NUM-lampa och en röd REC-lampa ovanför tangenterna och en sladd bakåt.
+Knappsatsen ligger på ett mörkt bord och kameran tittar snett uppifrån (perspektiv, TILT grader): bakkanten blir lite mindre.
 
 Appen (ui/knappsats.js) ritar det som rör sig: nedtryckta tangenter (ur passet där alla är nere, klippta med varje
 tangents mask), texten i LCD-fönstret och NUM-lampan. Utdata (tools/knappsats_bilder.py gör om dem till ui/knappsats/):
@@ -104,7 +104,8 @@ FUNK = {"beige": mat("funk_o", (0.85, 0.27, 0.02), 0.5)[0], "gra": mat("funk_o2"
         "mork": mat("funk_o3", (1.0, 0.56, 0.18), 0.5)[0], "orange": mat("funk_m", (0.25, 0.10, 0.03), 0.5)[0]}
 LCDM, _ = mat("lcd", (0.36, 0.40, 0.31), 0.6, 0.3, coat=0.8)
 RAM, _ = mat("ram", (0.035, 0.035, 0.035), 0.5)                  # ramen runt LCD-glaset   # grågrönt LCD bakom ett blankt glas (lacken)
-LAMPA, LAMPB = mat("lampa", (0.25, 0.04, 0.02), 0.15, 0.5, coat=0.6)
+LAMPA, LAMPB = mat("lampa", (0.25, 0.04, 0.02), 0.15, 0.5, coat=0.6)      # REC: röd
+LAMPG, _ = mat("lampa_g", (0.05, 0.16, 0.06), 0.15, 0.5, coat=0.6)        # NUM: grön
 LOGO, _ = mat("logo", (0.30, 0.27, 0.22), 0.5)
 SLADD, _ = mat("sladd", (0.62, 0.58, 0.50), 0.5)
 BORD, BORDB = mat("bord", (0.016, 0.016, 0.018), 0.55, 0.3)
@@ -154,8 +155,8 @@ def ladan():
     bm.faces.new((v[0], v[3], v[2], v[1])); bm.faces.new((v[4], v[5], v[6], v[7]))
     for i in range(4):
         j = (i + 1) % 4; bm.faces.new((v[i], v[j], v[j + 4], v[i + 4]))
-    o = nyttobj("lada", bm, LADA)
-    bv = o.modifiers.new("fas", "BEVEL"); bv.width = 0.45; bv.segments = 8; bv.limit_method = "ANGLE"
+    o = nyttobj("lada", bm, LADA, True)   # mjuk skuggning: fasen blir en jämn rundning (inte ränder)
+    bv = o.modifiers.new("fas", "BEVEL"); bv.width = 0.6; bv.segments = 12; bv.limit_method = "ANGLE"; bv.harden_normals = True
     # brunnen tangenterna sitter i
     bm = bmesh.new(); m_ = 0.18
     w = [bm.verts.new((x, y, z)) for z in (PLATTA, LOCK + 1.0) for (x, y) in
@@ -231,13 +232,18 @@ def lcd():
     bm.faces.new(g)
     s_ = nyttobj("lcd", bm, LCDM); i_planet(s_)
 lcd()
-LAMP = (X0 + GW - 0.75, YB + 1.05)
-bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.17, location=(LAMP[0], LAMP[1], LOCK + 0.02))
-lp = bpy.context.object; lp.scale = (1, 1, 0.55); lagg(lp, LAMPA, True); i_planet(lp)
-text("lampa_text", "NUM", LAMP[0], LAMP[1] - 0.3, LOCK + 0.02, 0.17, LOGO, GROT, just="CENTER"); i_planet(bpy.data.objects["lampa_text"])
+LAMP = (X0 + GW - 1.75, YB + 1.05)      # NUM-lampan (grön)
+LAMPR = (X0 + GW - 0.75, YB + 1.05)     # REC-lampan (röd)
+for (lx, ly), m_, namn in ((LAMP, LAMPG, "NUM"), (LAMPR, LAMPA, "REC")):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.17, location=(lx, ly, LOCK + 0.02))
+    lp = bpy.context.object; lp.scale = (1, 1, 0.55); lagg(lp, m_, True); i_planet(lp)
+    # en svart infattning runt lampan
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.045, location=(lx, ly, LOCK + 0.01))
+    lagg(bpy.context.object, RAM, True); i_planet(bpy.context.object)
+    text("lampa_text_" + namn, namn, lx, ly - 0.3, LOCK + 0.02, 0.17, LOGO, GROT, just="CENTER"); i_planet(bpy.data.objects["lampa_text_" + namn])
 text("logo", "BLONDA", X0 + GW - 0.15, YB + 2.55, LOCK + 0.02, 0.36, LOGO, GROT, just="RIGHT"); i_planet(bpy.data.objects["logo"])
 text("modell", "KP-84  PULS", X0 + 0.25, YB + 2.55, LOCK + 0.02, 0.2, LOGO, MONO); i_planet(bpy.data.objects["modell"])
-for o in ("lampa_text", "logo", "modell"):
+for o in ("lampa_text_NUM", "lampa_text_REC", "logo", "modell"):
     bpy.data.objects[o].location.z = LOCK + 0.004
 
 # sladden: ut baktill, en mjuk båge bort över bordet
@@ -262,10 +268,14 @@ nt.links.new(tc.outputs["Object"], nz.inputs["Vector"]); nt.links.new(nz.outputs
 
 # ------------------------------------------------------------------ kamera och ljus
 MITT = Vector((0, Y0 + (GD + MBAK) / 2 + 0.3, 1.0))
-cam = bpy.data.cameras.new("kamera"); cam.type = "ORTHO"; cam.ortho_scale = 17.5
+# perspektiv (som ett foto med ett lite längre objektiv): det som ligger längre bort, bakkanten, blir lite mindre
+BILDBREDD = 17.5               # så mycket syns i bredd vid knappsatsens mitt
+cam = bpy.data.cameras.new("kamera"); cam.type = "PERSP"; cam.sensor_fit = "HORIZONTAL"; cam.sensor_width = 36; cam.lens = 85
+AVST = BILDBREDD / 2 * cam.lens / (cam.sensor_width / 2)
 co = bpy.data.objects.new("kamera", cam); sc.collection.objects.link(co); sc.camera = co
 rikt = Vector((0, math.cos(math.radians(TILT)), -math.sin(math.radians(TILT))))
-co.location = MITT - rikt * 60; co.rotation_euler = rikt.to_track_quat("-Z", "Y").to_euler()
+co.location = MITT - rikt * AVST; co.rotation_euler = rikt.to_track_quat("-Z", "Y").to_euler()
+cam.clip_end = 400
 
 vg = bpy.data.worlds.new("varld"); sc.world = vg; vg.use_nodes = True
 vg.node_tree.nodes["Background"].inputs["Color"].default_value = (0.004, 0.004, 0.005, 1)
@@ -359,7 +369,8 @@ info = {
     "tangenter": [t[0] for t in TANGENTER], "grupp": [GRUPP[t[0]] for t in TANGENTER],
     "lcd": [i_bild(LCD[0], LCD[1] + LCD[3], lcd_z(LCD[1] + LCD[3])), i_bild(LCD[0] + LCD[2], LCD[1] + LCD[3], lcd_z(LCD[1] + LCD[3])),
             i_bild(LCD[0] + LCD[2], LCD[1], lcd_z(LCD[1])), i_bild(LCD[0], LCD[1], lcd_z(LCD[1]))],   # hörnen: bak vänster, bak höger, fram höger, fram vänster
-    "lampa": i_bild(LAMP[0], LAMP[1], LOCK + 0.11), "lampa_r": round(0.17 / cam.ortho_scale * r.resolution_x, 2),
+    "lampa": i_bild(LAMP[0], LAMP[1], LOCK + 0.11), "rec": i_bild(LAMPR[0], LAMPR[1], LOCK + 0.11),
+    "lampa_r": round(i_bild(LAMP[0] + 0.17, LAMP[1], LOCK + 0.11)[0] - i_bild(LAMP[0], LAMP[1], LOCK + 0.11)[0], 2),
 }
 json.dump(info, open(os.path.join(UT, "knappsats.json"), "w"), indent=1)
 print("KLAR", os.path.join(UT, "knappsats.json"), flush=True)
