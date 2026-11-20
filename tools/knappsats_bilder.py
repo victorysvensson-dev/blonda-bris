@@ -6,7 +6,7 @@
                         den nedtryckta tangenten, och där träffar man den
   knappsats.json        storlek, filnamn, tangenternas namn och rutor, LCD-fönstrets hörn och lampan
 
-python3 tools/knappsats_bilder.py <mapp med uppe.png, nere.png, index_uppe.png, index_nere.png, knappsats.json>
+python3 tools/knappsats_bilder.py <mapp med uppe.png, nere0.png ..., index_uppe.png, index_nere.png, knappsats.json>
 """
 import json, os, sys
 import numpy as np
@@ -34,7 +34,12 @@ N = len(info["tangenter"])
 if idx.max() > N: sys.exit(f"index {idx.max()} men bara {N} tangenter")
 
 uppe = Image.open(os.path.join(d, "uppe.png")).convert("RGB")
-nere = np.asarray(Image.open(os.path.join(d, "nere.png")).convert("RGB"))
+# den nedtryckta tangenten ur passet där dess grupp är nere (grannarna uppe)
+pass_ = {}
+nere = np.zeros((info["h"], info["w"], 3), np.uint8)
+for k, g in enumerate(info["grupp"]):
+    if g not in pass_: pass_[g] = np.asarray(Image.open(os.path.join(d, f"nere{g}.png")).convert("RGB"))
+    m = idx == k + 1; nere[m] = pass_[g][m]
 uppe.save(os.path.join(ut, "knappsats.webp"), quality=90, method=6)
 alfa = np.where(idx > 0, 255, 0).astype(np.uint8)
 Image.fromarray(np.dstack([nere, alfa]), "RGBA").save(os.path.join(ut, "knappsats_nere.webp"), quality=90, method=6)

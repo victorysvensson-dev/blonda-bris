@@ -21,6 +21,17 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.1
+
+- **SJÖN:** skogen på andra sidan sjön är tätare och har djup: en disig ås längst bort, flera rader skog som följer
+  låga kullar, smala granar med ojämna, hängande grenar och en smal topp, lövträd här och där, och ljus från solen
+  (dagen) eller månen (natten) på trädens ena sida.
+- **NORRSKEN:** slöjorna har en ljus nederkant, är ljusast där draperiet viker sig, har fina strålar som är olika
+  långa och går mot lila och rött högst upp. Späckhuggarna simmar var och en på sitt sätt (fart, båge, rytm och
+  stjärtslag, nytt för varje flock).
+- **KNAPPSATSEN:** LCD-fönstret ligger försänkt i lådan, i en mörk ram och lite lutat (som tangenterna har det djup).
+  En nedtryckt tangent visar grannarna som de är (uppe): inget konstigt ligger kvar runt tangenten man håller in.
+
 ## 1.22.0
 
 - **KNAPPSATSEN (SECRET 09):** en retro sifferknappsats i beige, grått och orange (renderad i Blender,

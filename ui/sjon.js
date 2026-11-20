@@ -21,39 +21,81 @@ const Sjon = (() => {
     float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
       return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-    // trädlinjen på andra sidan sjön: granar i tre rader (längst bort disigast), varje gran med grenvåningar,
-    // ovanpå en låg ås. Ger täckning (0..1) och hur högt upp i granen punkten är (toppen fångar solen).
-    vec2 gran(float x, float upp, float w, float hmax, float seed, float glest, float aa) {
+    // trädlinjen på andra sidan sjön: en disig ås längst bort och fyra rader skog framför (längst bort disigast).
+    // Granarna har grenvåningar med ojämna, hängande grenspetsar och en smal topp; i mittraderna står lövträd
+    // (rundade kronor) här och där. Ger täckning (x), hur högt upp i trädet punkten är (y) och vilken sida (z, -1..1).
+    vec3 gran(float x, float upp, float w, float hmax, float seed, float glest, float aa) {
       float c = floor(x / w), f = fract(x / w), r = hash(vec2(c, seed));
-      if (hash(vec2(c, seed + 9.0)) < glest) return vec2(0.0);           // en lucka i raden
-      float th = hmax * (0.45 + 0.55 * r), y = upp / th;
-      if (y > 1.0 || y < 0.0) return vec2(0.0);
-      float u = abs(f - 0.5 - (hash(vec2(c, seed + 3.0)) - 0.5) * 0.35) * 2.0;
-      float vaning = fract(y * (4.0 + 3.0 * r) + r);                    // grenvåningarna: bredast nertill i varje våning
-      float halv = (1.0 - y) * (0.55 + 0.45 * (1.0 - vaning)) + 0.03;
-      return vec2(smoothstep(halv + aa, halv - aa, u), y);
+      if (hash(vec2(c, seed + 9.0)) < glest) return vec3(0.0);           // en lucka i raden
+      float th = hmax * (0.5 + 0.5 * r) * (hash(vec2(c, seed + 5.0)) < 0.06 ? 1.35 : 1.0), y = upp / th;   // ibland en jätte
+      if (y > 1.0 || y < 0.0) return vec3(0.0);
+      float mx = 0.5 + (hash(vec2(c, seed + 3.0)) - 0.5) * 0.35 + (y * y) * (r - 0.5) * 0.12;   // lite lutning upptill
+      float sd = (f - mx) * 2.0, u = abs(sd);
+      float nv = 5.0 + 4.0 * r, vaning = fract(y * nv + r);                // grenvåningar, tätare i höga granar
+      float spets = pow(1.0 - vaning, 1.6);                                  // grenarna hänger: bredast längst ner i våningen
+      float ojamn = 0.7 + 0.45 * noise(vec2(c * 7.3 + floor(y * nv) * 3.1, seed + sd * 6.0)) + 0.25 * noise(vec2(c * 3.1 + y * 60.0, seed + sd * 18.0));   // grenspetsarna ojämna
+      float halv = (1.0 - y) * (0.22 + 0.55 * spets * ojamn) * (0.85 + 0.3 * r) + 0.02;   // smala, nordiska granar
+      halv = mix(halv, 0.035, smoothstep(0.86, 1.0, y));                     // den smala toppen
+      return vec3(smoothstep(halv + aa, halv - aa, u), y, sd / max(halv, 0.05));
+    }
+    vec3 lov(float x, float upp, float w, float hmax, float seed, float tat, float aa) {   // lövträd bland granarna
+      float c = floor(x / w), f = fract(x / w);
+      if (hash(vec2(c, seed + 2.0)) > tat) return vec3(0.0);
+      float r = hash(vec2(c, seed)), th = hmax * (0.55 + 0.4 * r), y = upp / th;
+      if (y > 1.0 || y < 0.0) return vec3(0.0);
+      vec2 p = vec2((f - 0.5) * w / th * 2.2, y - 0.58);
+      float k = length(p * vec2(1.0, 1.25)) - 0.42 - 0.07 * noise(vec2(atan(p.y, p.x) * 3.0 + r * 9.0, c));   // kronan, ojämn kant
+      float stam = step(y, 0.3) * smoothstep(0.03 + aa, 0.03 - aa, abs(f - 0.5) * w / th);
+      return vec3(max(smoothstep(aa * 2.0, -aa * 2.0, k), stam), y, clamp(p.x / 0.42, -1.0, 1.0));
     }
     float as(float x) { return 0.006 + 0.01 * noise(vec2(x * 2.2, 1.7)) + 0.004 * noise(vec2(x * 9.0, 3.1)); }
+    float kam(float x) { return 0.016 + 0.014 * noise(vec2(x * 1.3, 8.0)) + 0.004 * noise(vec2(x * 30.0, 2.0)); }   // åsen längst bort
+    // ett träd i en rad: färgen med ljus (solen från sitt håll på dagen, månen på natten), barrens struktur och toppen
+    vec3 trad(vec3 bas, vec3 t, float x, float upp, vec3 sol, float sida, vec3 glod) {
+      float barr = 0.82 + 0.36 * noise(vec2(x * 900.0, upp * 1400.0));
+      float ljus = 0.8 + 0.45 * clamp(t.z * sida, -1.0, 1.0);               // solsidan ljusare, skuggsidan mörkare
+      return bas * barr * ljus + sol * t.y * t.y * (0.5 + 0.5 * clamp(t.z * sida, 0.0, 1.0)) + glod * (0.5 + 0.5 * t.y);
+    }
+    // en rad skog: en tät, ojämn krontäckning nertill (skogen är sammanhängande, inga hål ner till marken) och granar
+    // i två förskjutna led ovanpå, så att topparna står tätt och olika höga. x = täckning, y = höjd i trädet, z = sida
+    vec3 rad(float x, float upp, float w, float hmax, float seed, float aa, float tk, float kf, float skarpa) {
+      float kulle = noise(vec2(x * 0.9 + seed, seed * 0.37)); upp -= hmax * kf * kulle * kulle;   // raden följer låga kullar
+      if (upp < -0.002) return vec3(1.0, 0.0, 0.0);                       // under kullens kant: helt täckt
+      float tak = hmax * tk * (0.75 + 0.45 * noise(vec2(x / w * 0.7, seed)) + 0.2 * noise(vec2(x / w * 3.0, seed + 4.0)));
+      float kant = 0.0012 / skarpa;
+      vec3 t = vec3(smoothstep(tak + kant, tak - kant, upp), upp / hmax * 0.8, (noise(vec2(x / w * 2.0, seed + 7.0)) - 0.5) * 1.4);
+      vec3 g = gran(x, upp, w, hmax, seed, 0.12, aa);
+      if (g.x > t.x) t = g;
+      g = gran(x + w * 0.5, upp, w * 1.1, hmax * 0.85, seed + 31.0, 0.25, aa);
+      if (g.x > t.x) t = g;
+      return t;
+    }
     vec3 skogen(vec3 c, float x, float upp, float r, float skarpa) {
-      if (upp < 0.0 || upp > 0.075) return c;
+      if (upp < 0.0 || upp > 0.15) return c;
       float aa = 0.05 / skarpa;
       // på dagen: en ljus disig blågrön ås längst bort, mellanskogen och strandskogen i solbelyst grönt
       vec3 horis = mix(vec3(0.020, 0.040, 0.075), vec3(0.62, 0.77, 0.90), uDag) + vec3(0.95, 0.42, 0.18) * uGry * 0.5;
       vec3 bak = mix(vec3(0.012, 0.02, 0.032), vec3(0.34, 0.50, 0.47), uDag);
       vec3 mitt = mix(vec3(0.006, 0.011, 0.018), vec3(0.13, 0.31, 0.14), uDag);
       vec3 fram = mix(vec3(0.003, 0.006, 0.010), vec3(0.06, 0.18, 0.07), uDag);
+      vec3 lovf = mix(vec3(0.007, 0.012, 0.016), vec3(0.20, 0.36, 0.12), uDag);   // lövträden: ljusare, gulare grönt
       vec3 sol = vec3(0.33, 0.36, 0.10) * uDag + vec3(0.25, 0.1, 0.03) * uGry;   // solen på trädtopparna
       vec3 glod = vec3(0.02, 0.03, 0.05) * exp(-r * 6.0) * 0.4 * (1.0 - uDag);   // månskenet nära månen
-      vec2 g1 = gran(x + 3.7, upp, 0.0055, 0.03, 11.0, 0.0, aa);
-      c = mix(c, bak + sol * 0.3 * g1.y + glod, g1.x);
-      vec2 g2 = gran(x + 1.3, upp, 0.009, 0.042, 7.0, 0.04, aa);
-      c = mix(c, mitt + sol * 0.5 * g2.y * g2.y + glod * 0.6, g2.x);
+      float sida = uDag > 0.01 ? sign(uSol.x - 0.5 + 0.001) : sign(uMx - 0.5 + 0.001);   // ljuset kommer från solen/månen
+      // åsen längst bort, i dis, med en fin skogskant
+      float k0 = kam(x + 9.1);
+      c = mix(c, mix(bak, horis, 0.55) * (0.9 + 0.2 * noise(vec2(x * 220.0, upp * 300.0))), smoothstep(k0 + 0.002 / skarpa, k0 - 0.002 / skarpa, upp));
+      vec3 t;
+      t = rad(x + 3.7, upp, 0.005, 0.034, 11.0, aa, 0.32, 0.8, skarpa);         c = mix(c, mix(trad(bak, t, x, upp, sol * 0.3, sida, glod), horis, 0.38), t.x);
+      t = rad(x + 2.1, upp, 0.0075, 0.048, 13.0, aa, 0.3, 0.7, skarpa);        c = mix(c, mix(trad(bak, t, x, upp, sol * 0.4, sida, glod), horis, 0.18), t.x);
+      t = lov(x + 2.6, upp, 0.013, 0.045, 17.0, 0.35, aa);   c = mix(c, trad(mix(bak, lovf, 0.5), t, x, upp, sol * 0.4, sida, glod * 0.8), t.x);
+      t = rad(x + 1.3, upp, 0.011, 0.066, 7.0, aa, 0.28, 0.5, skarpa);          c = mix(c, trad(mitt, t, x, upp, sol * 0.5, sida, glod * 0.6), t.x);
+      t = lov(x + 0.4, upp, 0.02, 0.06, 21.0, 0.3, aa);      c = mix(c, trad(mix(mitt, lovf, 0.7), t, x, upp, sol * 0.55, sida, glod * 0.5), t.x);
       float a = as(x);
-      c = mix(c, fram, smoothstep(a + 0.0015 / skarpa, a - 0.0015 / skarpa, upp));
-      vec2 g3 = gran(x, upp, 0.016, 0.06, 3.0, 0.3, aa);
-      c = mix(c, fram + sol * 0.6 * g3.y * g3.y, g3.x);
-      // dis vid vattnet i gryningen och på dagen
-      c = mix(c, horis * 0.9, exp(-upp * 110.0) * (0.25 * uDag + 0.2 * uGry));
+      c = mix(c, fram * (0.85 + 0.3 * noise(vec2(x * 400.0, 3.0))), smoothstep(a + 0.0015 / skarpa, a - 0.0015 / skarpa, upp));
+      t = rad(x, upp - a * 0.6, 0.018, 0.1, 3.0, aa, 0.12, 0.15, skarpa);       c = mix(c, trad(fram, t, x, upp, sol * 0.6, sida, glod * 0.4), t.x);   // strandskogen
+      // dis mellan raderna (natt och dag) och vid vattnet i gryningen och på dagen
+      c = mix(c, horis * 0.9, exp(-upp * 90.0) * (0.06 + 0.25 * uDag + 0.2 * uGry));
       return c;
     }
     // himlen i skärmens koordinater (x 0..1, y nedåt; horisonten vid uHy)

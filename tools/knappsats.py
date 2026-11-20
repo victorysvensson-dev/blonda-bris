@@ -8,7 +8,7 @@ Knappsatsen ligger på ett mörkt bord och kameran tittar snett uppifrån (ortog
 Appen (ui/knappsats.js) ritar det som rör sig: nedtryckta tangenter (ur passet där alla är nere, klippta med varje
 tangents mask), texten i LCD-fönstret och NUM-lampan. Utdata (tools/knappsats_bilder.py gör om dem till ui/knappsats/):
   uppe.png    alla tangenter uppe
-  nere.png    alla tangenter nedtryckta
+  nere0.png ... en grupp tangenter nedtryckt i taget (inga grannar i samma grupp)
   index_uppe.png / index_nere.png   tangenternas nummer * 12 i varje bildpunkt (0 = ingen tangent)
   knappsats.json  bildens storlek, LCD-fönstrets och lampans läge (bildpunkter), tangenternas namn
 Mått: 1 enhet = 1 cm. x åt höger, y bakåt (bort från kameran), z upp.
@@ -102,7 +102,8 @@ TRYCK = {"beige": mat("tryck_m", (0.12, 0.10, 0.08), 0.5)[0], "gra": mat("tryck_
          "mork": mat("tryck_l2", (0.82, 0.78, 0.68), 0.5)[0], "orange": mat("tryck_o", (0.16, 0.07, 0.03), 0.5)[0]}
 FUNK = {"beige": mat("funk_o", (0.85, 0.27, 0.02), 0.5)[0], "gra": mat("funk_o2", (1.0, 0.56, 0.18), 0.5)[0],
         "mork": mat("funk_o3", (1.0, 0.56, 0.18), 0.5)[0], "orange": mat("funk_m", (0.25, 0.10, 0.03), 0.5)[0]}
-LCDM, _ = mat("lcd", (0.36, 0.40, 0.31), 0.6, 0.3, coat=0.8)   # grågrönt LCD bakom ett blankt glas (lacken)
+LCDM, _ = mat("lcd", (0.36, 0.40, 0.31), 0.6, 0.3, coat=0.8)
+RAM, _ = mat("ram", (0.035, 0.035, 0.035), 0.5)                  # ramen runt LCD-glaset   # grågrönt LCD bakom ett blankt glas (lacken)
 LAMPA, LAMPB = mat("lampa", (0.25, 0.04, 0.02), 0.15, 0.5, coat=0.6)
 LOGO, _ = mat("logo", (0.30, 0.27, 0.22), 0.5)
 SLADD, _ = mat("sladd", (0.62, 0.58, 0.50), 0.5)
@@ -135,6 +136,10 @@ def text(namn, s, x, y, z, storlek, m, typsnitt=MONO, just="LEFT", rad=1.0, idx=
     return o
 
 # ------------------------------------------------------------------ lådan
+YB = Y0 + GD + MFRAM                 # tangentfältets bakkant (i planet)
+LCD = (X0 + 0.25, YB + 0.75, 4.15, 1.25)   # vänster, framkant, bredd, djup
+LCD_DJUP, LCD_LUT = 0.13, 7.0   # fönstret ligger så här djupt i lådan och lutar så här mycket mer än ovansidan (mot den som tittar)
+LCD_M = 0.22                    # ramen runt glaset (insidan av hålet)
 PV = PIV.matrix_world
 def ladan():
     x0, x1 = X0 - MX, X0 + GW + MX
@@ -160,7 +165,15 @@ def ladan():
         j = (i + 1) % 4; bm.faces.new((w[i], w[j], w[j + 4], w[i + 4]))
     sk = nyttobj("brunn", bm, LADA); i_planet(sk); sk.hide_render = True; sk.display_type = "WIRE"
     bo = o.modifiers.new("brunn", "BOOLEAN"); bo.operation = "DIFFERENCE"; bo.object = sk; bo.solver = "EXACT"
-    # fasen först (lådans ytterkanter), hålet sedan: brunnens kant blir skarp och tangenterna står i en tydlig brunn
+    # LCD-fönstrets hål (glaset ligger försänkt i det, se lcd())
+    bm = bmesh.new(); x_, y_, w_, d_ = LCD; mm = LCD_M + 0.02
+    q = [bm.verts.new((xx, yy, zz)) for zz in (LOCK - 0.6, LOCK + 1.0) for (xx, yy) in ((x_ - mm, y_ - mm), (x_ + w_ + mm, y_ - mm), (x_ + w_ + mm, y_ + d_ + mm), (x_ - mm, y_ + d_ + mm))]
+    bm.faces.new((q[0], q[3], q[2], q[1])); bm.faces.new((q[4], q[5], q[6], q[7]))
+    for i in range(4):
+        j = (i + 1) % 4; bm.faces.new((q[i], q[j], q[j + 4], q[i + 4]))
+    lh = nyttobj("lcd_hal", bm, LADA); i_planet(lh); lh.hide_render = True; lh.display_type = "WIRE"
+    bo2 = o.modifiers.new("lcd", "BOOLEAN"); bo2.operation = "DIFFERENCE"; bo2.object = lh; bo2.solver = "EXACT"
+    # fasen först (lådans ytterkanter), hålen sedan: brunnens kant blir skarp och tangenterna står i en tydlig brunn
     # plattan i brunnens botten
     bpy.ops.mesh.primitive_cube_add(size=1, location=(0, Y0 + GD / 2 + MFRAM, PLATTA - 0.05)); pl = bpy.context.object
     pl.scale = (GW + 0.4, GD + 0.4, 0.1); lagg(pl, PLATTAN); i_planet(pl)
@@ -199,15 +212,24 @@ for i, t in enumerate(TANGENTER):
     tangent(i, *t)
 
 # ------------------------------------------------------------------ ovanför tangenterna: LCD, lampa, märke
-YB = Y0 + GD + MFRAM                 # tangentfältets bakkant (i planet)
-LCD = (X0 + 0.25, YB + 0.75, 4.15, 1.25)   # vänster, framkant, bredd, djup
+def lcd_z(yy):                  # glasets höjd vid djupet yy (planets koordinater): bakkanten högre än framkanten
+    x, y, w, d = LCD
+    return LOCK - LCD_DJUP + math.tan(math.radians(LCD_LUT)) * (yy - y)
 def lcd():
     x, y, w, d = LCD
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(x + w / 2, y + d / 2, LOCK - 0.02)); f = bpy.context.object
-    f.scale = (w + 0.3, d + 0.3, 0.1); lagg(f, PLATTAN); i_planet(f)
-    bv = f.modifiers.new("fas", "BEVEL"); bv.width = 0.08; bv.segments = 3
-    bpy.ops.mesh.primitive_plane_add(size=1, location=(x + w / 2, y + d / 2, LOCK + 0.035)); s = bpy.context.object
-    s.scale = (w, d, 1); lagg(s, LCDM); i_planet(s)
+    # hålet i lådan (skärs ut i ladan(): se LCD_HAL), en mörk ram i botten och glaset ovanpå, lutat
+    bm = bmesh.new()
+    z0, z1 = lcd_z(y) - 0.06, lcd_z(y + d) - 0.06
+    v = [bm.verts.new(q) for q in ((x - LCD_M, y - LCD_M, z0 - 0.2), (x + w + LCD_M, y - LCD_M, z0 - 0.2), (x + w + LCD_M, y + d + LCD_M, z1 - 0.2), (x - LCD_M, y + d + LCD_M, z1 - 0.2),
+                                   (x - LCD_M, y - LCD_M, z0), (x + w + LCD_M, y - LCD_M, z0), (x + w + LCD_M, y + d + LCD_M, z1), (x - LCD_M, y + d + LCD_M, z1))]
+    bm.faces.new((v[0], v[3], v[2], v[1])); bm.faces.new((v[4], v[5], v[6], v[7]))
+    for i in range(4):
+        j = (i + 1) % 4; bm.faces.new((v[i], v[j], v[j + 4], v[i + 4]))
+    f = nyttobj("lcd_ram", bm, RAM); i_planet(f)
+    bm = bmesh.new()
+    g = [bm.verts.new(q) for q in ((x, y, lcd_z(y)), (x + w, y, lcd_z(y)), (x + w, y + d, lcd_z(y + d)), (x, y + d, lcd_z(y + d)))]
+    bm.faces.new(g)
+    s_ = nyttobj("lcd", bm, LCDM); i_planet(s_)
 lcd()
 LAMP = (X0 + GW - 0.75, YB + 1.05)
 bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.17, location=(LAMP[0], LAMP[1], LOCK + 0.02))
@@ -267,10 +289,22 @@ except Exception: pass
 cy.max_bounces = 8; cy.transmission_bounces = 4
 sc.view_settings.view_transform = "AgX"; sc.view_settings.look = "AgX - Base Contrast"
 
-def nertryckt(on):
+def nertryckt(on, vilka=None):   # vilka = tangenterna som ska vara nere (None = alla)
     for namn, delar in NYCKLAR.items():
+        ner = on and (vilka is None or namn in vilka)
         for o in delar:
-            o.location.z = o.get("z0", o.location.z) if not on else o["z0"] - NERE
+            o.location.z = o["z0"] - NERE if ner else o["z0"]
+
+# Grupper av tangenter som inte står bredvid varandra (inte heller snett): i ett nere-pass är bara en grupp nere, så
+# det som syns där en nedtryckt tangent var (dess grannars sidor) är grannarna uppe, som i appen.
+def _grupper():
+    rutor = {t[0]: {(t[3] + i, t[4] + j) for i in range(t[5]) for j in range(t[6])} for t in TANGENTER}
+    gr = {}
+    for namn, r in rutor.items():
+        upptagna = {gr[n2] for n2, r2 in rutor.items() if n2 in gr and any(abs(a[0] - b[0]) <= 1 and abs(a[1] - b[1]) <= 1 for a in r for b in r2)}
+        gr[namn] = next(g for g in range(8) if g not in upptagna)
+    return gr
+GRUPP = _grupper()
 for delar in NYCKLAR.values():
     for o in delar: o["z0"] = o.location.z
 
@@ -281,8 +315,8 @@ def till_bild(p):
 def i_bild(x, y, z):   # punkt i lådans plan (samma koordinater som delarna som sitter i planet) -> bildpunkt
     return till_bild(PV @ Vector((x, y, z)))
 
-def rendera(namn, nere):
-    nertryckt(nere)
+def rendera(namn, nere, vilka=None):
+    nertryckt(nere, vilka)
     r.image_settings.file_format = "PNG"; r.image_settings.color_mode = "RGB"; r.image_settings.color_depth = "8"
     r.filepath = os.path.join(UT, namn + ".png"); cy.samples = a.prov
     bpy.ops.render.render(write_still=True); print("KLAR", r.filepath, flush=True)
@@ -313,16 +347,18 @@ def index(namn, nere):
 if a.forhand:
     rendera("forhand", False); sys.exit(0)
 
+NGR = max(GRUPP.values()) + 1
 if not a.bara_index:
     rendera("uppe", False)
-    rendera("nere", True)
+    for g_ in range(NGR):
+        rendera(f"nere{g_}", True, {n for n, g2 in GRUPP.items() if g2 == g_})
 index("index_uppe", False)
 index("index_nere", True)
 info = {
     "w": r.resolution_x, "h": r.resolution_y,
-    "tangenter": [t[0] for t in TANGENTER],
-    "lcd": [i_bild(LCD[0], LCD[1] + LCD[3], LOCK + 0.05), i_bild(LCD[0] + LCD[2], LCD[1] + LCD[3], LOCK + 0.05),
-            i_bild(LCD[0] + LCD[2], LCD[1], LOCK + 0.05), i_bild(LCD[0], LCD[1], LOCK + 0.05)],   # hörnen: bak vänster, bak höger, fram höger, fram vänster
+    "tangenter": [t[0] for t in TANGENTER], "grupp": [GRUPP[t[0]] for t in TANGENTER],
+    "lcd": [i_bild(LCD[0], LCD[1] + LCD[3], lcd_z(LCD[1] + LCD[3])), i_bild(LCD[0] + LCD[2], LCD[1] + LCD[3], lcd_z(LCD[1] + LCD[3])),
+            i_bild(LCD[0] + LCD[2], LCD[1], lcd_z(LCD[1])), i_bild(LCD[0], LCD[1], lcd_z(LCD[1]))],   # hörnen: bak vänster, bak höger, fram höger, fram vänster
     "lampa": i_bild(LAMP[0], LAMP[1], LOCK + 0.11), "lampa_r": round(0.17 / cam.ortho_scale * r.resolution_x, 2),
 }
 json.dump(info, open(os.path.join(UT, "knappsats.json"), "w"), indent=1)

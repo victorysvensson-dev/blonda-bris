@@ -68,7 +68,7 @@ const Knappsats = (() => {
       g.textBaseline = "middle"; g.font = "400 36px 'BLONDA Mono', monospace";
       const radY = [32, 74];
       for (let i = 0; i < 2; i++) {
-        g.fillStyle = "rgba(20,26,16,0.07)"; g.fillText("8".repeat(16), 20, radY[i]);   // de släckta segmenten
+        g.fillStyle = "rgba(20,26,16,0.045)"; g.fillText("8".repeat(16), 20, radY[i]);   // de släckta segmenten
         g.fillStyle = "rgba(18,24,14,0.86)"; g.fillText((lcd[i] || "").slice(0, 16), 20, radY[i]);
       }
       g.restore();

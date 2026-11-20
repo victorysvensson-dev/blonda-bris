@@ -49,16 +49,26 @@ const Norrsken = (() => {
       for (int i = 0; i < 3; i++) {
         float fi = float(i);
         // slöjornas nederkanter slingrar sig var för sig och korsar varandra (inga parallella band)
-        float yb = uHy - 0.24 - 0.06 * fi + (0.07 + 0.02 * fi) * sin(x * (0.7 + 0.45 * fi) + t * (0.04 + 0.015 * fi) + fi * 2.7)
+        float fa = (0.07 + 0.02 * fi), fk = 0.7 + 0.45 * fi, fas = x * fk + t * (0.04 + 0.015 * fi) + fi * 2.7;
+        float yb = uHy - 0.24 - 0.06 * fi + fa * sin(fas)
                    + 0.05 * (noise(vec2(x * (1.2 + 0.5 * fi) + t * 0.03, fi * 5.0)) - 0.5) + vg;
         float d = yb - s.y;                                         // över slöjans nederkant: > 0
-        float upp = d > 0.0 ? exp(-d * (4.5 + 2.0 * fi)) : exp(d * 45.0);
-        float stralar = 0.45 + 0.55 * pow(noise(vec2(x * 38.0 + t * 0.25 + fi * 13.0, fi * 3.0 + t * 0.05)), 2.0);
+        // där draperiet viker sig (nederkanten lutar brant) ser vi slöjan från kanten: där är den ljusast
+        float veckad = 1.0 + 1.6 * smoothstep(0.02, 0.09, abs(fa * fk * cos(fas)));
+        float upp = d > 0.0 ? exp(-d * (4.5 + 2.0 * fi)) : exp(d * 40.0);
+        float kant = (d > 0.0 ? exp(-d * 26.0) : exp(d * 40.0)) * 0.55;   // den ljusa nederkanten (som i verkligheten; mjuk nog för den låga upplösningen)
+        // strålarna: grova och fina, och de är olika långa (tonar ut i olika höjd)
+        float sg = noise(vec2(x * 38.0 + t * 0.25 + fi * 13.0, fi * 3.0 + t * 0.05));
+        float sf = noise(vec2(x * 110.0 - t * 0.4 + fi * 7.0, fi * 9.0 + t * 0.12));
+        float langd = 0.08 + 0.22 * noise(vec2(x * 9.0 + fi * 4.0, t * 0.06));
+        float stralar = (0.35 + 0.65 * sg * sg) * (0.7 + 0.5 * sf) * (0.55 + 0.45 * smoothstep(langd, 0.0, d));
         float veck = 0.35 + 0.65 * smoothstep(0.15, 0.85, noise(vec2(x * 1.4 - t * 0.07 + fi * 7.0, 2.0 + fi)));
         // som förut för en ton i taget, men många toner samtidigt mättas (taket är ungefär 80 % av det gamla maxet)
-        float b = upp * stralar * veck * (0.85 - 0.22 * fi) * (1.0 + 5.0 * (1.0 - exp(-pu.w * 0.45)));
-        vec3 gron = vec3(0.12, 0.95, 0.48), lila = vec3(0.55, 0.22, 0.85);
-        vec3 f = mix(gron, lila, smoothstep(0.02, 0.2, d)) + pu.rgb / max(pu.w, 0.001) * min(pu.w, 1.0) * 0.35 * exp(-max(d, 0.0) * 6.0);
+        float b = (upp + kant) * stralar * veck * veckad * 0.72 * (0.85 - 0.22 * fi) * (1.0 + 5.0 * (1.0 - exp(-pu.w * 0.45)));
+        vec3 gron = vec3(0.12, 0.95, 0.48), lila = vec3(0.55, 0.22, 0.85), rod = vec3(0.7, 0.12, 0.3);
+        vec3 f = mix(gron, lila, smoothstep(0.02, 0.2, d)); f = mix(f, rod, smoothstep(0.22, 0.4, d) * 0.6);   // grönt nertill, lila och rött högst upp
+        f = mix(f, vec3(0.55, 1.0, 0.7), kant * 0.35)                                                         // nederkanten nästan vitgrön
+          + pu.rgb / max(pu.w, 0.001) * min(pu.w, 1.0) * 0.35 * exp(-max(d, 0.0) * 6.0);
         c += f * b * 0.55;
       }
       return c;
@@ -179,17 +189,18 @@ const Norrsken = (() => {
     }
     // punkten (u, v) i bågens mått -> kroppens mått (bx, by), när nosen är vid uh. Kroppen följer bågen: punkten
     // projiceras på ryggraden (två steg räcker, bågen är svag), och avståndet längs bågen från nosen ger bx.
-    vec2 tillkropp(float u, float v, float uh, float tid) {
+    // K, HT = bågens krökning och topp, tf = stjärtslagens takt (varje späckhuggare har sina egna)
+    vec2 tillkropp(float u, float v, float uh, float tid, float K, float HT, float tf) {
       float us = u, n = 0.0;
       for (int it = 0; it < 2; it++) {
-        float pp = -2.0 * SP_K * us, c = inversesqrt(1.0 + pp * pp), sn = pp * c;
-        n = (u - us) * (-sn) + (v - (SP_HT - SP_K * us * us)) * c;
+        float pp = -2.0 * K * us, c = inversesqrt(1.0 + pp * pp), sn = pp * c;
+        n = (u - us) * (-sn) + (v - (HT - K * us * us)) * c;
         us = u + n * sn;
       }
-      float pm = -SP_K * (uh + us), bx = 0.5 - (uh - us) * sqrt(1.0 + pm * pm);
+      float pm = -K * (uh + us), bx = 0.5 - (uh - us) * sqrt(1.0 + pm * pm);
       // stjärtslaget: en våg bakåt längs kroppen, större mot stjärten
       float sv = 0.5 - bx;
-      n -= 0.014 * sin(6.2832 * (bx * 1.1 + tid * 1.5)) * sv * sv * 2.0;
+      n -= 0.014 * sin(6.2832 * (bx * 1.1 + tid * tf)) * sv * sv * 2.0;
       return vec2(bx, n);
     }
     vec4 spack(float x, float d) {
@@ -197,37 +208,44 @@ const Norrsken = (() => {
       float t = uT - uSp.x;
       if (t < 0.0 || t > 24.0) return r;
       float dir = uSp.y;
-      float ub = -sqrt((SP_HT + 0.093) / SP_K);          // där andningshålet bryter ytan
-      float tb = (ub + 0.17 - SP_U0) / SP_FART;           // när det händer (andningshålet är 0,17 bakom nosen)
       for (int i = 0; i < 3; i++) {
         float fi = float(i), hane = step(fi, 0.5);
+        // var och en simmar på sitt sätt (nytt för varje flock): fart, hur hög och kort bågen är, när den andas
+        // (och hur länge till nästa andetag) och stjärtslagens takt
+        float h1 = fract(sin(fi * 12.9898 + uSp.x * 0.731) * 43758.5453), h2 = fract(sin(fi * 78.233 + uSp.x * 1.37) * 43758.5453);
+        float h3 = fract(sin(fi * 39.425 + uSp.x * 0.513) * 43758.5453);
+        float FA = SP_FART * (0.86 + 0.28 * h1), KK = SP_K * (0.78 + 0.5 * h2), HT = SP_HT + (h3 - 0.45) * 0.03;
+        float TF = 1.5 * (0.75 + 0.5 * h3);
+        float TID = (sqrt(max(HT + 0.093, 0.0) / KK) + 1.05 - SP_U0) / FA + 0.25;   // tills stjärten är under ytan igen
+        float ub = -sqrt((HT + 0.093) / KK);              // där andningshålet bryter ytan
+        float tb = (ub + 0.17 - SP_U0) / FA;              // när det händer (andningshålet är 0,17 bakom nosen)
         float d0 = uSp.z * (1.0 + (fi - 1.0) * 0.07);                  // lite olika långt bort
         float L = d0 * 1.4 * mix(0.82, 1.0, hane);
         float hf = mix(0.12, 0.19, hane), krok = 1.0 - hane;
-        float vick = hane * 0.018 * sin(uT * 2.3 + fi);
+        float vick = hane * 0.018 * sin(uT * (2.0 + 0.8 * fract(sin(fi * 5.1 + uSp.x) * 9871.3)) + fi);
         float aa = 0.0028 / L;
         for (int k = 0; k < 2; k++) {
-          float start = fi * 1.4 + float(k) * 5.6, ts = t - start;   // tid sedan andetaget började
+          float start = fi * 1.4 + (h1 - 0.5) * 0.9 + float(k) * (4.8 + 1.8 * h2), ts = t - start;   // tid sedan andetaget började
           if (ts < 0.0 || ts > 14.0) continue;
-          float X0 = uSp.w + dir * L * (SP_FART * start - fi * 1.6 - SP_U0);   // bågens topp
-          float u = (x - X0) * dir / L, v = (d0 - d) / L, uh = SP_U0 + SP_FART * ts;
-          if (ts <= SP_TID && abs(u - uh + 0.5) < 0.95 && abs(v) < 0.45) {
+          float X0 = uSp.w + dir * L * (FA * start - fi * 1.6 - SP_U0);   // bågens topp
+          float u = (x - X0) * dir / L, v = (d0 - d) / L, uh = SP_U0 + FA * ts;
+          if (ts <= TID && abs(u - uh + 0.5) < 0.95 && abs(v) < 0.45) {
             // ovanför ytan: kroppen; under: dess spegelbild (samma punkt speglad i ytan)
-            vec2 b = tillkropp(u, abs(v), uh, uT);
+            vec2 b = tillkropp(u, abs(v), uh, uT, KK, HT, TF);
             vec2 kb = kropp(b.x, b.y, hf, krok, vick, aa);
             if (v > 0.0) { r.x = max(r.x, kb.x); glans = max(glans, kb.y); }
             else r.y = max(r.y, kb.x * 0.45 * smoothstep(-0.3, 0.0, v));
             // skum där kroppen skär genom ytan
-            vec2 b0 = tillkropp(u, 0.004, uh, uT);
+            vec2 b0 = tillkropp(u, 0.004, uh, uT, KK, HT, TF);
             float yta = kropp(b0.x, b0.y, hf, krok, vick, aa).x;
             skum = max(skum, yta * exp(-pow(v / 0.022, 2.0)) * (0.55 + 0.45 * noise(vec2(u * 50.0, uT * 4.0))));
           }
           // kölvattnet: ett V bakom nosen (vi ser sjön snett, så det blir platt), medan kroppen är nära ytan
           float xr = u - uh, w = (d - d0) / L * 3.6;
-          if (xr < 0.0 && xr > -3.0 && ts < SP_TID + 2.0) {
+          if (xr < 0.0 && xr > -3.0 && ts < TID + 2.0) {
             float lin = abs(w) + xr * 0.34;
             r.w += 0.004 * exp(-lin * lin / 0.004) * sin(xr * 22.0 + ts * 9.0) * exp(xr * 0.7)
-                   * smoothstep(-0.2, 0.3, uh + 0.6) * smoothstep(SP_TID + 2.0, SP_TID, ts);
+                   * smoothstep(-0.2, 0.3, uh + 0.6) * smoothstep(TID + 2.0, TID, ts);
           }
           // blåsten: när andningshålet når ytan står en dimma som stiger och sprids där den blåstes
           float ba = ts - tb;
