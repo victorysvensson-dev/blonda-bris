@@ -21,6 +21,12 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.6
+
+- **SJÖN:** ingen tunn linje mellan skogen och vattnet längre. Ytan med himmel och vatten har halv upplösning, så
+  raden vid horisonten kunde bli himmel fast skogen slutar vid horisonten; där syntes himlens sken, och solen och
+  månen när de gick upp och ner. Den nedersta remsan av skogen ritas nu också i ytan, under skogen i full upplösning.
+
 ## 1.22.5
 
 - **SJÖN:** skarp. Ytan med himmel och vatten räknas i halv upplösning (för att gå fort), och det gjorde fjällen och

@@ -100,8 +100,10 @@ const Sjon = (() => {
       }
       // landskapet (berg och skog) skymmer allt bakom sig: ur bilden som räknades en gång (natt och dag blandas)
       // (i speglingen; ovanför horisonten bara tills den stora bilden har laddats: sedan ligger landskapet i full
-      // upplösning i en egen duk ovanpå, se ritaLand)
-      if ((skarpa < 1.0 || uLandHimmel > 0.5) && upp >= 0.0 && upp < LH && uLand > 0.0) {
+      // upplösning i en egen duk ovanpå, se ritaLand. Den nedersta remsan, där skogen alltid är tät, ritas ändå här:
+      // ytan har halv upplösning, så raden vid horisonten kan bli himmel fast duken slutar vid horisonten, och då
+      // syntes himlen, solen och månen i en tunn linje mellan skogen och vattnet)
+      if ((skarpa < 1.0 || uLandHimmel > 0.5 || upp < 0.012) && upp >= 0.0 && upp < LH && uLand > 0.0) {
         // bildens mitt i skärmens mitt; på en smal skärm syns mitten av panoramat
         float tx = 0.5 + (s.x - 0.5) * uAsp / LASP, h = upp / LH;
         vec4 L = uDag < 0.001 ? landBild(vec2(tx, 0.5 + 0.5 * h)) : uDag > 0.999 ? landBild(vec2(tx, 0.5 - 0.5 * h))
