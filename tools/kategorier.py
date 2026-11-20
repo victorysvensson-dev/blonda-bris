@@ -55,6 +55,9 @@ for _m, _namn, _pre in MOTORER:
             EXTRA.append((_pre + _p["id"], _namn + " " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"]))
 EXTRA = [e if len(e) == 6 else e + (False,) for e in EXTRA]
 
+# Nivåerna (vol i satt) är avstämda så att de hemliga patcharna låter lika starkt som BRIS-ljuden (ca -20 dB för ett
+# ackord, uppmätt 1.21.2).
+
 # Glid på tangenterna (och MPE-slide, CC74): vad fingret som glider uppåt modulerar. Ordningen = läge 1, 2, ...
 # (läge 0 = av). param = parametern som får glidet ovanpå sig, djup = andel av parameterns omfång vid fullt glid,
 # takt = LFO:n höjs till minst ca 6 Hz medan man glider. Ändra bara genom att lägga till i slutet.
@@ -77,13 +80,13 @@ HEMLIGA = [
     dict(id="kristall", namn="KRISTALL", ljudnamn="prisma", melodi=None, scen="kristall",
          satt={"vform": 1, "pw": 0.16, "lfopwm": 0.12, "lrate": 0.3, "cut": 0.68, "res": 0.38, "eg1": 0.22, "kbd": 0.9,
                "fa": 0, "fd": 0.42, "fs": 0.3, "fr": 0.6, "aa": 0, "ad": 0.62, "asus": 0.45, "ar": 0.62, "detune": 0.2,
-               "chorus": 0.65, "dmix": 0.24, "dtime": 0.42, "dfb": 0.38, "velf": 0.4, "vela": 0.5, "vol": 0.6,
+               "chorus": 0.65, "dmix": 0.24, "dtime": 0.42, "dfb": 0.38, "velf": 0.4, "vela": 0.5, "vol": 0.79,
                "rvb": 0.35, "rsize": 0.8, "mowet": 1, "mowmode": 0, "motime": 0.7, "mowmod": 0.85, "moblend": 0.3, "motone": 0.6}),
     # SJÖN "månvatten": ett mjukt, ihåligt anslag som klingar ut länge, med långt eko (som ringarna) och ett stort rum
     dict(id="sjon", namn="SJÖN", ljudnamn="månvatten", melodi=[11, 9, 2, 9], scen=None,   # B-A-D-A
          satt={"vform": 1, "pw": 0.3, "lfopwm": 0.2, "lrate": 0.22, "sub": 0.1, "cut": 0.52, "res": 0.25, "eg1": 0.35, "kbd": 0.8,
                "fa": 0, "fd": 0.5, "fs": 0.15, "fr": 0.7, "aa": 0.01, "ad": 0.78, "asus": 0.22, "ar": 0.85, "detune": 0.22,
-               "chorus": 0.7, "dmix": 0.4, "dtime": 0.62, "dfb": 0.55, "velf": 0.4, "vela": 0.5, "vol": 0.5,
+               "chorus": 0.7, "dmix": 0.4, "dtime": 0.62, "dfb": 0.55, "velf": 0.4, "vela": 0.5, "vol": 0.68,
                "rvb": 0.45, "rsize": 0.95, "mowet": 1, "mowmode": 0, "motime": 0.86, "mowmod": 0.75, "moblend": 0.42, "motone": 0.35}),
     # KASSETTEN "varm 106": ett varmt Juno 106-ljud mellan pad och keys (såg + sub, lågt filter, mycket chorus) genom bandet
     dict(id="kassett", namn="KASSETTEN", ljudnamn="varm 106", melodi=[2, 4, 0, 9, 2, 4], scen="kassett",   # D-E-C-A-D-E
@@ -98,19 +101,19 @@ HEMLIGA = [
     # NATTÅGET "nattåg": motorn STAV (elpiano med djup tremolo), ett litet rum och ett slitet band som svajar (som en
     # gammal inspelning som spelas på ett skakigt tåg). B-A-G-G-A-G-E.
     dict(id="nattag", namn="NATTÅGET", ljudnamn="nattåg", melodi=[11, 9, 7, 7, 9, 7, 4], scen=None, motor="stav",
-         satt={"vol": 0.92, "rvb": 0.25, "rsize": 0.55, "svtrem": 0.62, "tape": 1, "tamedia": 0, "taage": 0.4, "tawow": 0.6,
+         satt={"vol": 0.89, "rvb": 0.25, "rsize": 0.55, "svtrem": 0.62, "tape": 1, "tamedia": 0, "taage": 0.4, "tawow": 0.6,
                "taflut": 0.38, "tasat": 0.38, "tabrus": 0.18, "taavbr": 0.04, "taton": 0.47, "tawet": 1}),
     # ORGELN "katedral": motorn ORGEL (fullt verk) i ett enormt stenrum. B-A-C-H (B = B♭, H = B).
     dict(id="orgel", namn="ORGELN", ljudnamn="katedral", melodi=[10, 9, 0, 11], scen="orgel", motor="orgel",
-         satt={"vol": 0.8, "rvb": 0.7, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.45,
+         satt={"vol": 0.78, "rvb": 0.7, "rsize": 1.0, "mowet": 1, "mowmode": 0, "motime": 0.97, "mowmod": 0.3, "moblend": 0.45,
                "motone": 0.45}),
     # ANALOG "moogbas": motorn ONE (BRIS möter Moog) med alla dess ljud, i ett litet rum. Börjar på basen.
     # D-E-C-C-G (de fem tonerna).
     dict(id="analog", namn="ANALOG", ljudnamn="moogbas", melodi=[2, 4, 0, 0, 7], scen=None, motor="one",
-         satt={"vol": 0.7, "rvb": 0.18, "rsize": 0.45}),
+         satt={"vol": 0.78, "rvb": 0.18, "rsize": 0.45}),
     # KÖREN "kör": motorn KÖR (mänskliga röster, tre sångare per ton) i ett mjukt rum. A-G-E-G-A.
     dict(id="koren", namn="KÖREN", ljudnamn="kör", melodi=[9, 7, 4, 7, 9], scen="koren", motor="kor",
-         satt={"vol": 0.75, "rvb": 0.32, "rsize": 0.7}),
+         satt={"vol": 0.8, "rvb": 0.32, "rsize": 0.7}),
 ]
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar

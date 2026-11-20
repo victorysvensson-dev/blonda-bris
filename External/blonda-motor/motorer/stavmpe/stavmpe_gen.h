@@ -436,7 +436,7 @@ struct StavMpeDsp {
           m_v0_zs = m_v0_zs + (ep0 - m_v0_zs) * m_ek;
           m_vy = m_v0_ys;
           m_vibv = ((mw + at + m_v0_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v0_pn = m_v0_pn + (n0 + detune * detune * 0.25 * -1.0 - m_v0_pn) * m_cg;
@@ -482,7 +482,7 @@ struct StavMpeDsp {
           m_v1_zs = m_v1_zs + (ep1 - m_v1_zs) * m_ek;
           m_vy = m_v1_ys;
           m_vibv = ((mw + at + m_v1_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v1_pn = m_v1_pn + (n1 + detune * detune * 0.25 * 1.0 - m_v1_pn) * m_cg;
@@ -528,7 +528,7 @@ struct StavMpeDsp {
           m_v2_zs = m_v2_zs + (ep2 - m_v2_zs) * m_ek;
           m_vy = m_v2_ys;
           m_vibv = ((mw + at + m_v2_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v2_pn = m_v2_pn + (n2 + detune * detune * 0.25 * -0.6 - m_v2_pn) * m_cg;
@@ -574,7 +574,7 @@ struct StavMpeDsp {
           m_v3_zs = m_v3_zs + (ep3 - m_v3_zs) * m_ek;
           m_vy = m_v3_ys;
           m_vibv = ((mw + at + m_v3_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v3_pn = m_v3_pn + (n3 + detune * detune * 0.25 * 0.6 - m_v3_pn) * m_cg;
@@ -620,7 +620,7 @@ struct StavMpeDsp {
           m_v4_zs = m_v4_zs + (ep4 - m_v4_zs) * m_ek;
           m_vy = m_v4_ys;
           m_vibv = ((mw + at + m_v4_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v4_pn = m_v4_pn + (n4 + detune * detune * 0.25 * -0.2 - m_v4_pn) * m_cg;
@@ -666,7 +666,7 @@ struct StavMpeDsp {
           m_v5_zs = m_v5_zs + (ep5 - m_v5_zs) * m_ek;
           m_vy = m_v5_ys;
           m_vibv = ((mw + at + m_v5_zs) * mwosc * 0.25 + (m_sm == 2.0 ? m_vy * 0.6 : 0.0)) * std::sin(gen::kTwoPi * m_vph);
-          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 1.8 : 0.0) + (m_sm == 5.0 ? m_vy * 1.5 * (0.5 + 0.5 * m_lfo) : 0.0);
+          m_ixm = 1.0 + (m_sm == 1.0 ? m_vy * 3.0 : 0.0) + (m_sm == 5.0 ? m_vy * 2.5 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_bkv = gen::min(1.5, bark + (m_sm == 4.0 ? m_vy * 1.0 : 0.0));
           m_trv = 1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo);
           m_v5_pn = m_v5_pn + (n5 + detune * detune * 0.25 * 0.2 - m_v5_pn) * m_cg;

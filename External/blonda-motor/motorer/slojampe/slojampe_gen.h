@@ -414,7 +414,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v0_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v0_pn = m_v0_pn + (n0 + detune * detune * 0.5 * -1.0 - m_v0_pn) * m_cg;
           m_pn = m_v0_pn + m_bs + m_v0_bs + m_vibv + detune * 0.08 * (m_LS0 * 0.771578 + m_LC0 * 0.636135);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -458,7 +458,7 @@ struct SlojaMpeDsp {
           m_amp = m_v0_e2 * (1.0 - vela + vela * m_v0_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.0;
           m_pr = 1.0 - m_spread * 0.85;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;
@@ -478,7 +478,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v1_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v1_pn = m_v1_pn + (n1 + detune * detune * 0.5 * 1.0 - m_v1_pn) * m_cg;
           m_pn = m_v1_pn + m_bs + m_v1_bs + m_vibv + detune * 0.08 * (m_LS1 * -0.920163 + m_LC1 * 0.391536);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -522,7 +522,7 @@ struct SlojaMpeDsp {
           m_amp = m_v1_e2 * (1.0 - vela + vela * m_v1_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.85;
           m_pr = 1.0 - m_spread * 0.0;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;
@@ -542,7 +542,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v2_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v2_pn = m_v2_pn + (n2 + detune * detune * 0.5 * -0.6 - m_v2_pn) * m_cg;
           m_pn = m_v2_pn + m_bs + m_v2_bs + m_vibv + detune * 0.08 * (m_LS2 * 0.076642 + m_LC2 * -0.997059);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -586,7 +586,7 @@ struct SlojaMpeDsp {
           m_amp = m_v2_e2 * (1.0 - vela + vela * m_v2_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.0;
           m_pr = 1.0 - m_spread * 0.5;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;
@@ -606,7 +606,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v3_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v3_pn = m_v3_pn + (n3 + detune * detune * 0.5 * 0.6 - m_v3_pn) * m_cg;
           m_pn = m_v3_pn + m_bs + m_v3_bs + m_vibv + detune * 0.08 * (m_LS3 * 0.849513 + m_LC3 * 0.527568);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -650,7 +650,7 @@ struct SlojaMpeDsp {
           m_amp = m_v3_e2 * (1.0 - vela + vela * m_v3_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.5;
           m_pr = 1.0 - m_spread * 0.0;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;
@@ -670,7 +670,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v4_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v4_pn = m_v4_pn + (n4 + detune * detune * 0.5 * -0.2 - m_v4_pn) * m_cg;
           m_pn = m_v4_pn + m_bs + m_v4_bs + m_vibv + detune * 0.08 * (m_LS4 * -0.859736 + m_LC4 * 0.510739);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -714,7 +714,7 @@ struct SlojaMpeDsp {
           m_amp = m_v4_e2 * (1.0 - vela + vela * m_v4_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.0;
           m_pr = 1.0 - m_spread * 0.17;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;
@@ -734,7 +734,7 @@ struct SlojaMpeDsp {
           m_vibv = ((mw + at + m_v5_zs) * mwosc * 0.3 + (m_sm == 2.0 ? m_vy * 0.5 : 0.0)) * m_lfo;
           m_ljv = (m_sm == 1.0 ? m_vy * 6.0 : 0.0) + (m_sm == 5.0 ? m_vy * 4.0 * (0.5 + 0.5 * m_lfo) : 0.0);
           m_udv = m_sm == 4.0 ? m_vy * 0.8 : 0.0;
-          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.12);
+          m_trv = (1.0 - (m_sm == 3.0 ? m_vy * 0.8 : 0.0) * (0.5 + 0.5 * m_lfo)) / (1.0 + m_ljv * 0.22);
           m_v5_pn = m_v5_pn + (n5 + detune * detune * 0.5 * 0.2 - m_v5_pn) * m_cg;
           m_pn = m_v5_pn + m_bs + m_v5_bs + m_vibv + detune * 0.08 * (m_LS5 * -0.056995 + m_LC5 * -0.998374);
           m_fh = gen::clamp(440.0 * std::pow(2.0, (m_pn - 69.0) / 12.0), 4.0, m_sr * 0.45) * 0.5;
@@ -778,7 +778,7 @@ struct SlojaMpeDsp {
           m_amp = m_v5_e2 * (1.0 - vela + vela * m_v5_vel) * m_norm * m_ug * m_trv;
           m_pl = 1.0 - m_spread * 0.17;
           m_pr = 1.0 - m_spread * 0.0;
-          m_ou = m_ou * (1.0 + m_udv * 0.5);
+          m_ou = m_ou * (1.0 + m_udv * 0.15);
           m_ev = m_ev * (1.0 - m_udv);
           m_xL = m_xL + (m_ou * (1.0 + m_br) + m_ev * (1.0 - m_br)) * m_amp * m_pl;
           m_xR = m_xR + (m_ou * (1.0 - m_br) + m_ev * (1.0 + m_br)) * m_amp * m_pr;

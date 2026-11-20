@@ -214,8 +214,9 @@ int main() {
             Core d2; d2.prepare(sr); d2.loadPreset(kMotorer[m - 1].firstPreset + 1); d2.setParam(cp.find("rvb"), 0); d2.setGlid(1, 0);
             d2.noteOn(57, 100); d2.noteOn(64, 100);
             std::vector<float> L2(B), R2(B); double diff = 0, ref = 0;
-            for (int b = 0; b < 100; ++b) { c.process(L.data(), R.data(), B); d2.process(L2.data(), R2.data(), B);
-                for (int s2 = 0; s2 < B; ++s2) { diff += std::fabs(L[s2] - L2[s2]); ref += std::fabs(L2[s2]); } }
+            // mät när tonerna har kommit igång (SLÖJA och KÖR har lång ansats)
+            for (int b = 0; b < 200; ++b) { c.process(L.data(), R.data(), B); d2.process(L2.data(), R2.data(), B);
+                if (b >= 80) for (int s2 = 0; s2 < B; ++s2) { diff += std::fabs(L[s2] - L2[s2]); ref += std::fabs(L2[s2]); } }
             std::printf("%s MPE: slide ändrar ljudet %.0f %%\n", kMotorer[m - 1].id, 100 * diff / std::max(1e-9, ref));
             KRAV(diff > 0.05 * ref, "%s: slide hörs inte (%.3f)", kMotorer[m - 1].id, diff / std::max(1e-9, ref));
             c.allNotesOff();

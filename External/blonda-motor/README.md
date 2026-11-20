@@ -151,6 +151,10 @@ CI kör allt på Linux, macOS och Windows vid varje push.
 
 ## Version
 
+0.10.1 – MPE-varianterna: ORGEL MPE och SLÖJA MPE blir ljusare utan att bli starkare (FILTER, WAH), SLÖJA MPE:s PWM
+ändrar inte nivån, ORGEL MPE:s PWM (svävningen) svävar snabbare, STAV MPE:s FILTER och WAH är tydligare.
+Ordinarie motorer oförändrade (facit oförändrat).
+
 0.10.0 – KÖR MPE, ORGEL MPE och SLÖJA MPE: KÖR, ORGEL och SLÖJA med egen böj, slide och tryck per ton
 (generatorerna med `mpe=True`, gemensamma bitar i `bris.py`: `MPE_GEN`, `mpe_param`, `mpe_hist`, `mpe_uttryck`).
 Nu har alla motorer som BLONDA BRIS använder en MPE-variant. KÖR, ORGEL och SLÖJA låter exakt som förut (facit oförändrat).

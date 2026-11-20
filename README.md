@@ -21,6 +21,16 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.21.2
+
+- **Glidet i alla hemliga är uppmätt och jämnare** (blonda-motor 0.10.1): FILTER och WAH i ORGELN och NORRSKEN gör
+  tonen ljusare utan att den blir starkare, HOLLOW i NORRSKEN ändrar inte nivån, CELESTE i ORGELN svävar tydligare
+  och FILTER och WAH i NATTÅGET hörs mer.
+- **Lika stark nivå i alla hemliga patchar:** KRISTALL och SJÖN var ca 4 dB svagare och ANALOG 2 dB svagare än resten;
+  nu låter alla hemliga patchar ungefär lika starkt som BRIS-ljuden.
+- **KÖREN i månsken:** kyrkan har riktiga fönster som månljuset faller in genom, tunn dimma i luften, blyinfattade
+  rutor, och kåporna har fler veck och skrynklor i tyget.
+
 ## 1.21.1
 
 - **Glidet i de hemliga patcharna gör samma sak i BRIS som i BRIS MPE:** de hemliga motorerna är nu alltid
