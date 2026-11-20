@@ -21,6 +21,15 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.2
+
+- **SJÖN:** landskapet på andra sidan sjön är rikare: fjäll i bakgrunden (snö på topparna, fåror nedför sidorna,
+  blåa av diset), en ås och flera rader skog som följer kullar och vikar. Träden är olika: granar, tallar (rödbrun
+  stam, oregelbunden krona högt upp), björkar (vit stam med svarta fläckar, luftig krona) och lövträd. Små moln
+  driver förbi (och syns i vattnet), en flock fåglar flyger förbi då och då på dagen, och himlen runt solen lyser
+  varmt gul. Landskapet räknas en gång (när fönstret ändrar storlek) i stället för i varje bildruta, så sjön går
+  också snabbare än förut på långsamma datorer.
+
 ## 1.22.1
 
 - **SJÖN:** skogen på andra sidan sjön är tätare och har djup: en disig ås längst bort, flera rader skog som följer
