@@ -41,11 +41,12 @@ for _p in SLITEN["params"]:
     EXTRA.append(("ta" + _p["id"], "TAPE " + _p["name"], _p["min"], _p["max"], _p["default"], _p["integer"] or _p["id"] == "media"))
 # REC LEVEL: hur hårt bandet spelas in på (bandspelaren i KASSETTEN och TAPE under FX). 0.6 = 0 dB.
 EXTRA.append(("tarec", "TAPE Rec Level", 0.0, 1.0, 0.6))
-# MOTORER: de hemliga patcharnas egna ljudmotorer ur blonda-motor (ORGEL, SLÖJA, STAV). "motor" väljer vilken som låter
+# MOTORER: de hemliga patcharnas egna ljudmotorer ur blonda-motor (ORGEL, SLÖJA, STAV, ONE, KÖR, trummaskinen PULS). "motor" väljer vilken som låter
 # (0 = BRIS), sedan alla motorernas rattar med ett prefix per motor, utom de som delas med BRIS (DELADE: effekterna
 # efter rösterna och volymen; BRIS värde gäller för alla motorer). Motorernas fabriksljud får index efter BRIS
 # (kNumFactory + motorns första + ljudets index).
-MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv"), ("one", "ONE", "on"), ("kor", "KÖR", "kr")]
+MOTORER = [("orgel", "ORGEL", "og"), ("sloja", "SLÖJA", "sj"), ("stav", "STAV", "sv"), ("one", "ONE", "on"), ("kor", "KÖR", "kr"),
+           ("puls", "PULS", "pu")]
 DELADE = {"chorus", "dtime", "dfb", "dmix", "bendr", "vol"}
 MOTOR_DATA = {m: json.load(open(os.path.join(ROT, f"External/blonda-motor/motorer/{m}/{m}.json"), encoding="utf-8")) for m, _, _ in MOTORER}
 EXTRA.append(("motor", "Engine", 0.0, float(len(MOTORER)), 0.0, True))
@@ -114,7 +115,27 @@ HEMLIGA = [
     # KÖREN "kör": motorn KÖR (mänskliga röster, tre sångare per ton) i ett mjukt rum. A-G-E-G-A.
     dict(id="koren", namn="KÖREN", ljudnamn="kör", melodi=[9, 7, 4, 7, 9], scen="koren", motor="kor",
          satt={"vol": 0.8, "rvb": 0.32, "rsize": 0.7}),
+    # KNAPPSATSEN "Klassisk": trummaskinen PULS bakom en retro sifferknappsats. Ingen melodi: koden 1984 + ENTER på
+    # knappsatsen (menyn: ENTER CODE) låser upp den; fler koder låser upp fler trumset (TRUMSET).
+    dict(id="knappsatsen", namn="KNAPPSATSEN", ljudnamn="Klassisk", melodi=None, scen="knappsats", motor="puls",
+         satt={"vol": 0.8, "rvb": 0.12, "rsize": 0.35}),
 ]
+# KNAPPSATSEN: trummaskinen PULS bakom en retro sifferknappsats. Man låser upp den (och trumseten) med koder på
+# knappsatsen: kod + ENTER. Varje trumset har en kod, ett tempo och ett eget grundmönster (16 sextondelar per rad:
+# X = betonat slag, x = slag, . = inget). Tonerna: 36 KICK, 37 RIM, 38 SNARE, 39 CLAP, 41/43/45/47 pukorna,
+# 42 stängd hihat, 44 koskälla, 46 öppen hihat (PULS: tonnummer % 12).
+TRUMSET = [
+    ("1984", "Klassisk", 112, {36: "X......X.X......", 38: "....X.......X...", 42: "x.x.x.x.x.x.x.xx", 46: "..............X."}),
+    ("0909", "Hård", 130, {36: "X...X...X...X...", 39: "....X.......X...", 42: "xx.xxx.xxx.xxx.x", 46: "..X...X...X...X."}),
+    ("1993", "Boom bap", 90, {36: "X......x..X.....", 38: "....X.......X...", 42: "x.x.x.x.x.x.x.x.", 37: ".......x........"}),
+    ("0707", "Tajt", 120, {36: "X...X...X...X...", 38: "....X.......X..x", 42: "xxxxxxxxxxxxxxxx"}),
+    ("1982", "Elektro", 118, {36: "X..X......X..X..", 39: "....X.......X...", 42: "x.x.x.x.x.x.x.x.", 44: "..x....x..x....."}),
+    ("0303", "Djup", 122, {36: "X...X...X...X...", 39: "....X.......X...", 46: "..X...X...X...X.", 37: "...x..x....x..x."}),
+    ("1979", "Industri", 135, {36: "X.X.X..XX.X.X..X", 38: "....X..X....X...", 42: "xxxxxxxxxxxxxxxx", 41: "......x.......x."}),
+    ("1111", "Mjuk", 92, {36: "X.......X..x....", 37: "....x.......x...", 42: "x.x.x.x.x.x.x.x."}),
+    ("2020", "Lofi", 84, {36: "X......X..X.....", 38: "....X.......X...", 42: "x.xxx.x.x.xxx.x."}),
+]
+
 # Banden i KASSETTEN (och under FX när den är hittad): varje band ställer in bandet (SLITEN) på sitt sätt.
 # namn, etikett (står på kassetten), färg (randen), inställningar
 BAND = [
@@ -303,6 +324,17 @@ def main():
             mi = next(x for x in data["motorer"] if x["id"] == h["motor"])
             if h["ljudnamn"] not in mi["ljud"]: sys.exit(f"{h['id']}: {h['motor']} har inget ljud {h['ljudnamn']!r}")
             e["motor"] = h["motor"]; e["ljud"] = mi["forsta"] + mi["ljud"].index(h["ljudnamn"])
+        if h["id"] == "knappsatsen":   # trumseten: kod, ljud (index), tempo och grundmönstret som [steg, längd, ton, styrka]
+            mi = next(x for x in data["motorer"] if x["id"] == "puls")
+            e["trumset"] = []
+            for kod, ln, bpm, rader in TRUMSET:
+                if ln not in mi["ljud"]: sys.exit(f"TRUMSET: PULS har inget ljud {ln!r}")
+                if len(kod) != 4 or not kod.isdigit(): sys.exit(f"TRUMSET: koden {kod!r} ska vara fyra siffror")
+                for ton, r in rader.items():
+                    if len(r) != 16 or set(r) - set("Xx."): sys.exit(f"TRUMSET {ln}: raden {ton} ska vara 16 tecken X, x eller .")
+                toner = sorted([st, 1, ton, 118 if c == "X" else 88] for ton, r in rader.items() for st, c in enumerate(r) if c != ".")
+                e["trumset"].append(dict(kod=kod, ljud=mi["forsta"] + mi["ljud"].index(ln), namn=ln, bpm=bpm, toner=toner))
+            if len({t["kod"] for t in e["trumset"]}) != len(TRUMSET): sys.exit("TRUMSET: två trumset har samma kod")
         if h["scen"]:
             sj = os.path.join(ROT, f"ui/{h['scen']}/{h['scen']}.json")
             if not os.path.exists(sj): sys.exit(f"{h['id']}: saknar {sj}")

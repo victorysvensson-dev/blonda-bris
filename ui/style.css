@@ -184,6 +184,9 @@ main { position: relative; }
 #menu .it { text-align: left; font-size: 11px; letter-spacing: .14em; padding: 8px 0 8px 19px; opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
 #menu .it:hover { opacity: 1; }
 #menu .it.on { color: var(--a); opacity: 1; }
+/* KNAPPSATSEN: skriv en kod (överst i menyn, med en liten knappsats) */
+#menu .kodrad { display: flex; align-items: center; gap: 10px; padding: 10px 0 12px 0; margin-bottom: 6px; border-bottom: 1px solid var(--line); width: 100%; }
+#menu .kodrad .ic { width: 17px; height: 17px; flex: none; }
 #menu .foot { border-top: 1px solid var(--faint); padding-top: 16px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; font-size: 10px; letter-spacing: .18em; color: var(--mute); }
 #menu .foot button { letter-spacing: .24em; color: var(--ink); font-weight: 500; }
 #menu .foot button.mute { color: var(--mute); }
@@ -320,7 +323,7 @@ main { position: relative; }
    Mörkt läge med patchens scen (kristall.js, sjon.js, kassett.js). Bakgrund och accent sätts av applyTheme. */
 #kristall, #kassett, #sjon { display: none; }
 #sjon, .himmel { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-#norrsken, #nattag, #orgel, #analog, #analog_strale, #koren { display: none; }
+#norrsken, #nattag, #orgel, #analog, #analog_strale, #koren, #knappsatsen { display: none; }
 #hemskylt { position: fixed; left: 50%; top: 84px; transform: translate(-50%, -6px); z-index: 30; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; transition: opacity .5s, transform .5s;
   color: var(--ink); text-align: center; }

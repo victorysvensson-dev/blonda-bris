@@ -21,6 +21,18 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.0
+
+- **KNAPPSATSEN (SECRET 09):** en retro sifferknappsats i beige, grått och orange (renderad i Blender,
+  tools/knappsats.py), överst i menyn under ENTER CODE. Koden 1984 + ENTER låser upp trummaskinen PULS (blonda-motor);
+  fel kod ger ett felljud och knappsatsen skakar. Tangenterna klickar som en mekanisk knappsats (åtta olika klick).
+  - NUM LOCK växlar mellan att skriva kod (lampan lyser) och att spela.
+  - Spelläget: 1 KICK, 2 SNARE, 3 CLAP, 4 C.HAT, 5 O.HAT, 6 RIM, 7/8/9/. pukor, 0 BELL. ENTER spelar och stoppar
+    mönstret (tangenterna går ner i takt), + spelar in (på närmaste sextondel), - tömmer mönstret (två tryck),
+    / och * ändrar tempot. LCD-fönstret visar trumset, tempo och stegen.
+  - Fler koder låser upp fler trumset (nio i allt, med eget tempo och grundmönster). Pilarna bläddrar bland de upplåsta.
+  - En riktig sifferknappsats (eller sifferraden) fungerar också.
+
 ## 1.21.2
 
 - **Glidet i alla hemliga är uppmätt och jämnare** (blonda-motor 0.10.1): FILTER och WAH i ORGELN och NORRSKEN gör

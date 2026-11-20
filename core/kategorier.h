@@ -32,7 +32,7 @@ inline constexpr unsigned char kBrowseOrder[kNumFactory] = {
 };
 
 struct ExtraParam { const char* id; const char* name; double min, max, def; bool integer; };
-constexpr int kNumExtra = 162;
+constexpr int kNumExtra = 195;
 inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"rvb", "Reverb", 0.0, 1.0, 0.2, false},
     {"rsize", "Reverb Size", 0.0, 1.0, 0.55, false},
@@ -76,7 +76,7 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"tawet", "TAPE Mix", 0.0, 1.0, 1.0, false},
     {"taoutv", "TAPE Output", 0.0, 1.0, 0.75, false},
     {"tarec", "TAPE Rec Level", 0.0, 1.0, 0.6, false},
-    {"motor", "Engine", 0.0, 5.0, 0.0, true},
+    {"motor", "Engine", 0.0, 6.0, 0.0, true},
     {"ogb16", "ORGEL Bourdon 16'", 0, 1, 0.4, false},
     {"ogp8", "ORGEL Principal 8'", 0, 1, 0.8, false},
     {"ogf8", "ORGEL Flute 8'", 0, 1, 0, false},
@@ -196,18 +196,52 @@ inline constexpr ExtraParam kExtra[kNumExtra] = {
     {"krporta", "KÖR Portamento", 0, 1, 0, false},
     {"krdetune", "KÖR Detune", 0, 1, 0.1, false},
     {"krmwosc", "KÖR Wheel > Vibrato", 0, 1, 0.5, false},
+    {"pubdlev", "PULS Kick Level", 0, 1, 0.85, false},
+    {"pubdtun", "PULS Kick Tune", 0, 1, 0.35, false},
+    {"pubddec", "PULS Kick Decay", 0, 1, 0.45, false},
+    {"pubdton", "PULS Kick Punch", 0, 1, 0.35, false},
+    {"pusdlev", "PULS Snare Level", 0, 1, 0.7, false},
+    {"pusdtun", "PULS Snare Tune", 0, 1, 0.5, false},
+    {"pusddec", "PULS Snare Decay", 0, 1, 0.4, false},
+    {"pusdton", "PULS Snare Snappy", 0, 1, 0.5, false},
+    {"purslev", "PULS Rim Level", 0, 1, 0.55, false},
+    {"purstun", "PULS Rim Tune", 0, 1, 0.5, false},
+    {"pursdec", "PULS Rim Decay", 0, 1, 0.3, false},
+    {"purston", "PULS Rim Click", 0, 1, 0.4, false},
+    {"pucplev", "PULS Clap Level", 0, 1, 0.65, false},
+    {"pucptun", "PULS Clap Tune", 0, 1, 0.5, false},
+    {"pucpdec", "PULS Clap Decay", 0, 1, 0.4, false},
+    {"pucpton", "PULS Clap Spread", 0, 1, 0.4, false},
+    {"puchlev", "PULS Closed Hat Level", 0, 1, 0.5, false},
+    {"puchtun", "PULS Closed Hat Tune", 0, 1, 0.5, false},
+    {"puchdec", "PULS Closed Hat Decay", 0, 1, 0.3, false},
+    {"puchton", "PULS Closed Hat Noise", 0, 1, 0.3, false},
+    {"puohlev", "PULS Open Hat Level", 0, 1, 0.45, false},
+    {"puohtun", "PULS Open Hat Tune", 0, 1, 0.5, false},
+    {"puohdec", "PULS Open Hat Decay", 0, 1, 0.45, false},
+    {"puohton", "PULS Open Hat Noise", 0, 1, 0.3, false},
+    {"putmlev", "PULS Tom Level", 0, 1, 0.65, false},
+    {"putmtun", "PULS Tom Tune", 0, 1, 0.4, false},
+    {"putmdec", "PULS Tom Decay", 0, 1, 0.45, false},
+    {"putmton", "PULS Tom Sweep", 0, 1, 0.4, false},
+    {"pucblev", "PULS Cowbell Level", 0, 1, 0.45, false},
+    {"pucbtun", "PULS Cowbell Tune", 0, 1, 0.5, false},
+    {"pucbdec", "PULS Cowbell Decay", 0, 1, 0.35, false},
+    {"pucbton", "PULS Cowbell Tone", 0, 1, 0.5, false},
+    {"pudrv", "PULS Drive", 0, 1, 0.0, false},
 };
 
 // de hemliga patcharnas motorer (motor = index + 1); fabriksljuden har index efter BRIS
 struct MotorInfo { const char* id; const char* name; const char* prefix; int firstPreset; int numPresets; };
-constexpr int kNumMotorer = 5;
-constexpr int kNumAllPresets = 192;
+constexpr int kNumMotorer = 6;
+constexpr int kNumAllPresets = 202;
 inline constexpr MotorInfo kMotorer[kNumMotorer] = {
     {"orgel", "ORGEL", "og", 90, 7},
     {"sloja", "SLÖJA", "sj", 97, 7},
     {"stav", "STAV", "sv", 104, 6},
     {"one", "ONE", "on", 110, 70},
     {"kor", "KÖR", "kr", 180, 12},
+    {"puls", "PULS", "pu", 192, 10},
 };
 
 // glid på tangenterna / MPE-slide (läge = index + 1)

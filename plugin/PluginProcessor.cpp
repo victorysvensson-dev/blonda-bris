@@ -133,7 +133,9 @@ static bool lasWav(const char* d, int n, std::vector<float>& ut, double& sr) {
 }
 
 void BrisProcessor::loadSfx() {
-    static const char* const namn[] = {"bris_knapp.wav", "bris_kort.wav", "bris_rec.wav", "bris_upp.wav", "bris_lucka.wav", "bris_in.wav"};
+    static const char* const namn[] = {"bris_knapp.wav", "bris_kort.wav", "bris_rec.wav", "bris_upp.wav", "bris_lucka.wav", "bris_in.wav",
+        "bris_klick0.wav", "bris_klick1.wav", "bris_klick2.wav", "bris_klick3.wav", "bris_klick4.wav", "bris_klick5.wav",
+        "bris_klick6.wav", "bris_klick7.wav", "bris_fel0.wav", "bris_fel1.wav", "bris_ratt.wav"};
     for (int id = 0; id < (int)std::size(namn); ++id) {
         for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
             if (juce::String(BinaryData::originalFilenames[i]) != namn[id]) continue;

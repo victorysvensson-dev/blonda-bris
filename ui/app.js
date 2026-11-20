@@ -12,8 +12,9 @@
 
   // ---------------------------------------------------------------- tillstånd
   const S = {
+    kits: [], trum: {}, tempo: 120, hostTempo: false,   // KNAPPSATSEN: upplåsta trumset (koder), egna mönster per trumset, tempot
     v: {}, preset: 65, tab: "play", oct: 0, standalone: false, web: Bridge.mode === "web", midi: [],
-    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null, fr: -1, fm: 0, an: -1 }, mod: {},
+    m: { env: 0, lfo: 0, pk: 0, mask: 0, nc: 0, glid: 0, scope: null, fr: -1, fm: 0, an: -1, step: -1, stepT: 0 }, mod: {},
     kz: 1, kh: null,
     motion: !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches),   // MOTION i menyn
     egna: [], eget: null,
@@ -40,7 +41,13 @@
   const TEMA = { kristall: { accent: "#a47cff", bg: "#0b0a13" }, sjon: { accent: "#8fd3ff", bg: "#050b14" }, kassett: { accent: "#ffad4a", bg: "#110d0a" },
     norrsken: { accent: "#6dffb0", bg: "#03080c" }, nattag: { accent: "#ffc46b", bg: "#07070b" }, orgel: { accent: "#e8c27a", bg: "#0d0a08" },
     analog: { accent: "#ffa848", bg: "#0b0806" },
-    koren: { accent: "#ffc98a", bg: "#09090d" } };
+    koren: { accent: "#ffc98a", bg: "#09090d" }, knappsatsen: { accent: "#ff8a3d", bg: "#0b0a09" } };
+  // KNAPPSATSEN (se kp-funktionerna längre ner): läget, tangenternas toner och menyns ikon
+  const KP = { oppen: false, lage: "kod", kod: "", spelar: false, rec: false, fragaRensa: 0, meddelande: null, felNr: 0, klickNr: 0, upprepa: 0, hall: new Map() };
+  const KP_TON = { 1: 36, 2: 38, 3: 39, 4: 42, 5: 46, 6: 37, 7: 41, 8: 43, 9: 45, 0: 44, punkt: 47 };   // KICK SNARE CLAP C.HAT O.HAT RIM pukorna BELL
+  const KP_SFX = { KLICK: 6, FEL: 14, RATT: 16 };   // core/ljudeffekter.h
+  const KP_IKON = '<svg class="ic" viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8.6 7h.8M11.6 7h.8M14.6 7h.8M8.6 10.5h.8M11.6 10.5h.8M14.6 10.5h.8M8.6 14h.8M11.6 14h.8M14.6 14h.8M8.6 17.5h3.8"/></svg>';
+  const kpSet = () => (hemOf("knappsatsen") || {}).trumset || [];
   // ljuspass-scenernas ljus per ton (linjär färg): KRISTALL lila/bärnsten, ORGELN levande ljus (djupare nertill)
   const ljusFarg = (n) => {
     if (S.secret === "orgel") { const t = Math.min(1, Math.max(0, (n - 36) / 60)); return [1.0, 0.5 + 0.25 * t, 0.2 + 0.25 * t]; }
@@ -54,6 +61,7 @@
     if (S.secret === "nattag") return [255, 196, 110];   // gatlyktornas natriumljus
     if (S.secret === "analog") return [255, 168, 72];    // oscilloskopets bärnstensfosfor
     if (S.secret === "koren") return [255, 196, 130];    // ljusens sken
+    if (S.secret === "knappsatsen") return [255, 138, 61];   // ENTER-tangentens orange
     if (S.secret === "orgel") return [240, 196, 120];    // levande ljus mot tenn
     return krBarn(n) ? KR.barn : KR.lila;
   };
@@ -121,6 +129,13 @@
         rt: "LIFE", right: [["s", "krliv", "LIFE"], ["s", "krens", "ENSEMBLE"], ["s", "krandning", "BREATH"], ["s", "krord", "MOUTH"]] },
       filter: { name: "AMP", kt: "ENVELOPE", knobs: [["kraa", "A"], ["krad", "D"], ["krasus", "S"], ["krar", "R"]],
         rt: "VIBRATO", right: [["s", "krvib", "DEPTH"], ["s", "krvtakt", "RATE"], ["s", "krbredd", "WIDTH"], ["s", "krvela", "VELOCITY"]] },
+    },
+    puls: {   // KNAPPSATSEN: trummaskinen PULS (åtta trumljud, fyra rattar var)
+      play: [["s", "pudrv", "DRIVE"], ["s", "rvb", "REVERB"], ["s", "vol", "VOLUME"]],
+      osc: { name: "DRUMS", kt: "LEVEL", knobs: [["pubdlev", "KICK"], ["pusdlev", "SNARE"], ["pucplev", "CLAP"], ["puchlev", "HATS"]],
+        rt: "TUNE", right: [["s", "pubdtun", "KICK"], ["s", "pusdtun", "SNARE"], ["s", "putmtun", "TOMS"], ["s", "pucbtun", "BELL"]] },
+      filter: { name: "SHAPE", kt: "DECAY", knobs: [["pubddec", "KICK"], ["pusddec", "SNARE"], ["puchdec", "C.HAT"], ["puohdec", "O.HAT"]],
+        rt: "CHARACTER", right: [["s", "pubdton", "PUNCH"], ["s", "pusdton", "SNAPPY"], ["s", "pucpton", "SPREAD"], ["s", "puchton", "NOISE"]] },
     },
     stav: {
       play: [["s", "svton", "TONE"], ["s", "svtrem", "TREMOLO"], ["s", "rvb", "REVERB"]],
@@ -608,7 +623,7 @@
 
   // ---------------------------------------------------------------- ljud och växt
   function applyTheme() {
-    const pl = plantOf(S.preset), tema = S.secret ? TEMA[S.secret] : null, kr = !!tema;
+    const pl = plantOf(S.preset), tema = S.secret ? TEMA[S.secret] : KP.oppen ? TEMA.knappsatsen : null, kr = !!tema;
     const r = document.documentElement.style;
     const col = kr ? tema.accent : pl.color, bg = kr ? tema.bg : pl.bg, rgb = hexRgb(col);
     r.setProperty("--a", col); r.setProperty("--a2", `rgba(${rgb},.38)`); r.setProperty("--a3", `rgba(${rgb},.12)`); r.setProperty("--bg", bg);
@@ -616,8 +631,8 @@
     for (const h of HEM) document.documentElement.classList.toggle("h-" + h.id, S.secret === h.id);
     INK = kr ? "233,228,244" : "43,37,33";
     const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.content = bg;
-    flower.set(pl, pl.color); flower.vila(kr);
-    for (const id in SCEN) SCEN[id].visa(S.secret === id);
+    flower.set(pl, pl.color); flower.vila(kr || KP.oppen);
+    for (const id in SCEN) SCEN[id].visa(KP.oppen ? id === "knappsatsen" : S.secret === id);   // knappsatsen öppnad för en kod: bara den
     knobEls.forEach((k) => k._draw());
     browserEl && browserEl._upd();
     document.querySelectorAll("#list .it").forEach((b) => b.classList.toggle("on", b.classList.contains("hem") ? S.secret === b.dataset.hem : b.dataset.i !== undefined && !S.eget && !S.secret && +b.dataset.i === S.preset));
@@ -633,7 +648,7 @@
       b.querySelector(".l").textContent = l; b.querySelector(".s").textContent = k;
     });
   }
-  function selectPreset(i) { lamnaHemlig(); S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
+  function selectPreset(i) { KP.oppen = false; lamnaHemlig(); S.eget = null; Bridge.send({ t: "preset", i }); onPreset(i); saveUi(); }
   // en hemlig patch: ett fabriksljud med inställningar ovanpå (MOOD, bandet ...), en egen scen och det mörka läget.
   // De gamla värdena sparas och sätts tillbaka när man lämnar den (ett annat ljud).
   function valjHemlig(id) {
@@ -646,6 +661,7 @@
     for (const k in satt) { S.fore[k] = S.v[k]; setParam(k, satt[k], true); }
     if (harBand) { S.band = bi; if (SCEN[id] && SCEN[id].band) SCEN[id].band(D.band[bi], true); }
     S.secret = id; applyTheme(); buildMenu(); buildPanels(); saveUi();
+    if (id === "knappsatsen") { KP.lage = "spel"; KP.kod = ""; KP.meddelande = null; kpSkicka(); kpVisa(); }   // trummaskinen: spelläget, mönstret till kärnan
   }
   // ett anslag: en ny ton från tangenterna här (direkt) eller från en klaviatur (via mätarna). Tonföljden räknas,
   // och utan arp får den hemliga patchens scen tonen (SJÖN: en droppe; med arp är det arpens slag som blir droppar)
@@ -749,6 +765,7 @@
     const var_ = S.secret;
     S.secret = null;
     if (var_ === "kassett") { Bridge.send({ t: "band", k: 0, tyst: 1 }); setTimeout(buildPanels, 0); }   // bandet stannar (tyst)
+    if (var_ === "knappsatsen") kpLamna();   // trummaskinen stannar (annars spelar mönstret vidare i det nya ljudet)
     if (S.fore) for (const k in S.fore) if (S.fore[k] !== undefined) setParam(k, S.fore[k], true);
     S.fore = null;
     if (hemOf(var_) && hemOf(var_).motor) setTimeout(buildPanels, 0);   // BRIS flikar tillbaka
@@ -756,6 +773,11 @@
   function onPreset(i) { S.preset = i; applyTheme(); }
   function step(d) {
     const m = motorNu() && MOT.find((x) => x.id === motorNu());
+    if (m && m.id === "puls") {   // KNAPPSATSEN: pilarna bläddrar bland de upplåsta trumseten
+      const lista = kpSet().filter((t) => S.kits.includes(t.kod)); if (!lista.length) return;
+      const k = Math.max(0, lista.findIndex((t) => t.ljud === S.preset));
+      kpValjSet(lista[(k + d + lista.length) % lista.length]); return;
+    }
     if (m) {   // i en hemlig patch med egen motor: pilarna bläddrar bland motorns ljud (utom init)
       const n = m.ljud.length - 1, k = Math.max(0, S.preset - m.forsta - 1);
       valjMotorLjud(m.forsta + 1 + ((k + d + n) % n)); return;
@@ -786,6 +808,11 @@
         rad.append(b, x); it.append(rad);
       });
       g.append(it); list.append(g);
+    }
+    { // knappsatsen: skriv en kod (alltid här; koden är hemligheten)
+      const b = el("button", "it kodrad", `${KP_IKON}<span>ENTER CODE</span>`); b.setAttribute("aria-label", "Enter code");
+      b.onclick = () => { closeMenu(); kpOppna(); };
+      list.append(b);
     }
     const uppl = HEM.filter((h) => S.hemliga.includes(h.id));
     if (uppl.length) {
@@ -1345,7 +1372,7 @@
     }
   }
 
-  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemliga: S.hemliga, secret: S.secret, fore: S.fore, band: S.band, fxVal: S.fxVal,
+  function saveUi() { Bridge.send({ t: "ui", s: JSON.stringify({ tab: S.tab, oct: S.oct, glid: S.glid.m, kz: S.kz, kh: S.kh, motion: S.motion, eget: S.eget, hemliga: S.hemliga, secret: S.secret, fore: S.fore, band: S.band, fxVal: S.fxVal, kits: S.kits, trum: S.trum,
     pads: { list: S.pads.list, hold: S.pads.hold, follow: S.pads.follow, open: S.pads.open } }) }); }
 
   // ---------------------------------------------------------------- ljudstart (webben)
@@ -1357,6 +1384,134 @@
   // rak överkant, rundade hörn nertill (de svarta tangenterna)
   function nedRund(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x, y); g.lineTo(x + w, y); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.closePath(); }
   function roundRect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+  // ---------------------------------------------------------------- KNAPPSATSEN
+  // En retro sifferknappsats (ui/knappsats.js), menyn: ENTER CODE. NUM LOCK växlar mellan att skriva en kod (lampan
+  // lyser) och att spela. Kod + ENTER: ett trumsets kod låser upp det (första gången också KNAPPSATSEN, trummaskinen
+  // PULS); annars fel kod (felljud, knappsatsen skakar). Spelläget: siffrorna är trumljud, ENTER spelar och stoppar
+  // mönstret, + spelar in (slagen läggs på närmaste sextondel), - tömmer mönstret (två tryck), / och * ändrar tempot.
+  const kpNu = () => kpSet().find((t) => t.ljud === S.preset) || null;
+  const kpMonster = () => { const t = kpNu(); return t ? (S.trum[t.kod] || t.toner) : []; };
+  const kpSynlig = () => !!SCEN.knappsatsen && (S.secret === "knappsatsen" || KP.oppen);
+  function kpSfx(id) { Bridge.send({ t: "sfx", i: id, g: 1, r: 1 }); }
+  function kpKlick() { KP.klickNr = (KP.klickNr + 1 + Math.floor(Math.random() * 7)) % 8; kpSfx(KP_SFX.KLICK + KP.klickNr); }   // aldrig samma två gånger i rad
+  function kpMeddelande(r1, r2, ms) { KP.meddelande = { rader: [r1, r2], till: performance.now() + ms }; kpVisa(); }
+  function kpVisa() {
+    const sc = SCEN.knappsatsen; if (!sc) return;
+    sc.lampa(KP.lage === "kod");
+    if (KP.meddelande && KP.meddelande.till > performance.now()) { sc.lcd(...KP.meddelande.rader); return; }
+    if (KP.lage === "kod") { sc.lcd("ENTER CODE", (KP.kod + "____").slice(0, 4).split("").join(" ")); return; }
+    const t = kpNu(), lista = kpSet();
+    const r1 = ((KP.rec ? "REC " : "") + (t ? t.namn.toUpperCase() : "PULS")).padEnd(12).slice(0, 12) + String(Math.round(S.tempo)).padStart(4);
+    let r2;
+    if (KP.spelar && S.m.step >= 0) {   // stegen: # där mönstret är nu, o där det finns slag
+      const m = kpMonster(); r2 = Array.from({ length: 16 }, (_, i) => (i === S.m.step ? "#" : m.some((n) => n[0] === i) ? "o" : ".")).join("");
+    } else r2 = "STOP".padEnd(10) + (t ? `KIT ${lista.indexOf(t) + 1}/${lista.length}` : "");
+    sc.lcd(r1, r2);
+  }
+  function kpOppna() {   // från menyn: knappsatsen fram, i kodläget
+    ensureAudio();
+    KP.lage = "kod"; KP.kod = ""; KP.meddelande = null;
+    if (S.secret !== "knappsatsen") { KP.oppen = true; applyTheme(); }
+    kpVisa();
+  }
+  function kpStang() { if (!KP.oppen) return; KP.oppen = false; KP.kod = ""; applyTheme(); }
+  function kpLamna() { KP.spelar = false; KP.rec = false; KP.lage = "kod"; Bridge.send({ t: "play", on: false }); }
+  function kpSkicka() { Bridge.send({ t: "pattern", rate: 4, notes: kpMonster() }); Bridge.send({ t: "play", on: KP.spelar }); }
+  function kpSattMonster(m) { const t = kpNu(); if (!t) return; S.trum[t.kod] = m; Bridge.send({ t: "pattern", rate: 4, notes: m }); saveUi(); }
+  function kpTempo(bpm) { S.tempo = Math.max(40, Math.min(240, Math.round(bpm))); Bridge.send({ t: "tempo", bpm: S.tempo }); kpVisa(); }
+  function kpValjSet(t) {
+    if (S.preset !== t.ljud) valjMotorLjud(t.ljud);
+    if (!S.hostTempo) kpTempo(t.bpm);
+    kpSkicka(); kpVisa();
+  }
+  function kpProva() {
+    const t = kpSet().find((x) => x.kod === KP.kod);
+    KP.kod = "";
+    if (!t) { kpSfx(KP_SFX.FEL + (KP.felNr++ % 2)); SCEN.knappsatsen && SCEN.knappsatsen.skaka(); kpMeddelande("ERROR", "WRONG CODE", 1400); return; }
+    kpSfx(KP_SFX.RATT);
+    const nytt = !S.kits.includes(t.kod); if (nytt) S.kits.push(t.kod);
+    if (S.secret !== "knappsatsen") { const ny = !S.hemliga.includes("knappsatsen"); KP.oppen = false; valjHemlig("knappsatsen"); visaHemlig("knappsatsen", ny); }
+    KP.lage = "spel";
+    kpValjSet(t);
+    kpMeddelande(nytt ? "UNLOCKED" : "CODE OK", `KIT ${kpSet().indexOf(t) + 1}/${kpSet().length} ${t.namn.toUpperCase()}`.slice(0, 16), 2200);
+    saveUi();
+  }
+  // ett slag i inspelningen: på närmaste sextondel. Hamnar det på nästa steg spelar mönstret det (strax), annars
+  // har det redan låtit; true = mönstret spelar slaget (tangenten ska då inte låta en gång till)
+  function kpSpelaIn(ton, vel) {
+    if (!KP.rec || !KP.spelar || S.m.step < 0 || !kpNu()) return false;
+    const steg = 60000 / S.tempo / 4, fram = performance.now() - (S.m.stepT || 0) > steg / 2;
+    const st = (S.m.step + (fram ? 1 : 0)) % 16;
+    const m = kpMonster().filter((n) => !(n[0] === st && n[2] === ton)).concat([[st, 1, ton, vel]]);
+    m.sort((a, b) => a[0] - b[0] || a[2] - b[2]);
+    kpSattMonster(m);
+    return fram;
+  }
+  function kpFunktion(namn) {
+    if (namn === "enter") { KP.spelar = !KP.spelar; if (!KP.spelar) KP.rec = false; Bridge.send({ t: "play", on: KP.spelar }); }
+    else if (namn === "plus") { KP.rec = !KP.rec; if (KP.rec && !KP.spelar) { KP.spelar = true; Bridge.send({ t: "play", on: true }); } }
+    else if (namn === "minus") {
+      const nu = performance.now();
+      if (nu < KP.fragaRensa) { KP.fragaRensa = 0; kpSattMonster([]); kpMeddelande("CLEARED", "", 900); }
+      else { KP.fragaRensa = nu + 2000; kpMeddelande("CLEAR PATTERN?", "PRESS - AGAIN", 2000); }
+    } else if (namn === "delat" || namn === "ganger") {
+      if (S.hostTempo) kpMeddelande("HOST TEMPO", String(Math.round(S.tempo)) + " BPM", 1000); else kpTempo(S.tempo + (namn === "ganger" ? 1 : -1));
+    }
+    kpVisa();
+  }
+  // en tangent trycks ner (pekare eller tangentbord): id = vem som håller den (släpps med samma id)
+  function kpNer(namn, id) {
+    const sc = SCEN.knappsatsen; if (!sc || KP.hall.has(id)) return;
+    KP.hall.set(id, namn); sc.tryck(namn);
+    ensureAudio();
+    if (namn === "numlock") {   // kod- eller spelläget (spelläget först när knappsatsen är upplåst)
+      kpKlick();
+      if (S.secret === "knappsatsen") { KP.lage = KP.lage === "kod" ? "spel" : "kod"; KP.kod = ""; KP.meddelande = null; }
+      kpVisa(); return;
+    }
+    if (KP.lage === "kod") {
+      kpKlick();
+      if (/^[0-9]$/.test(namn)) { if (KP.kod.length >= 4) KP.kod = ""; KP.kod += namn; KP.meddelande = null; }
+      else if (namn === "minus") KP.kod = KP.kod.slice(0, -1);
+      else if (namn === "enter") { kpProva(); return; }
+      kpVisa(); return;
+    }
+    const ton = KP_TON[namn];
+    if (ton !== undefined) { if (!kpSpelaIn(ton, 112)) uiNot(ton, 112); return; }
+    kpKlick(); kpFunktion(namn);
+    if (namn === "delat" || namn === "ganger") {   // tempot: håll in för att ändra snabbare
+      clearTimeout(KP.upprepa);
+      const igen = (ms) => { KP.upprepa = setTimeout(() => { if ([...KP.hall.values()].includes(namn)) { kpFunktion(namn); igen(70); } }, ms); };
+      igen(420);
+    }
+  }
+  function kpUpp(id) {
+    const namn = KP.hall.get(id); if (namn === undefined) return;
+    KP.hall.delete(id); SCEN.knappsatsen && SCEN.knappsatsen.slapp(namn);
+    if (KP_TON[namn] !== undefined && KP.lage === "spel") uiOff(KP_TON[namn]);
+  }
+  // mönstret har gått till ett nytt steg: tangenterna för slagen där trycks ner en kort stund (den spelar själv)
+  function kpSteg(st) {
+    if (S.secret !== "knappsatsen" || !KP.spelar || st < 0 || !SCEN.knappsatsen) return;
+    for (const n of kpMonster()) if (n[0] === st) {
+      const namn = Object.keys(KP_TON).find((k) => KP_TON[k] === n[2]);
+      if (namn !== undefined) SCEN.knappsatsen.tryck(namn, 90);
+    }
+    kpVisa();
+  }
+  function kpTick() { if (KP.meddelande && KP.meddelande.till <= performance.now()) { KP.meddelande = null; kpVisa(); } }
+  const KP_KOD = { Numpad0: "0", Numpad1: "1", Numpad2: "2", Numpad3: "3", Numpad4: "4", Numpad5: "5", Numpad6: "6", Numpad7: "7", Numpad8: "8", Numpad9: "9",
+    Digit0: "0", Digit1: "1", Digit2: "2", Digit3: "3", Digit4: "4", Digit5: "5", Digit6: "6", Digit7: "7", Digit8: "8", Digit9: "9",
+    NumpadDecimal: "punkt", Period: "punkt", NumpadEnter: "enter", Enter: "enter", NumpadAdd: "plus", NumpadSubtract: "minus", Minus: "minus",
+    Backspace: "minus", NumpadMultiply: "ganger", NumpadDivide: "delat", Slash: "delat", NumLock: "numlock" };
+  window.addEventListener("keydown", (e) => {   // en riktig sifferknappsats (eller sifferraden) fungerar också
+    if (!kpSynlig() || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape") { kpStang(); return; }
+    const namn = KP_KOD[e.code]; if (!namn) return;
+    e.preventDefault(); if (!e.repeat) kpNer(namn, "k" + e.code);
+  });
+  window.addEventListener("keyup", (e) => { const namn = KP_KOD[e.code]; if (namn) kpUpp("k" + e.code); });
 
   // ---------------------------------------------------------------- start
   const flower = Blommor.create($("#fBack"), $("#fGl"), $("#fFront"), D.blommor);
@@ -1371,6 +1526,7 @@
     if (h.id === "analog" && typeof Analog !== "undefined") SCEN.analog = Analog.create(document.body, () => S.m.scope);
     if (h.id === "koren" && h.scen && typeof Kristall !== "undefined") SCEN.koren = Kristall.create($("#stage"), h.scen, "koren/", "koren");
     if (h.id === "orgel" && h.scen && typeof Kristall !== "undefined") SCEN.orgel = Kristall.create($("#stage"), h.scen, "orgel/", "orgel");
+    if (h.id === "knappsatsen" && h.scen && typeof Knappsats !== "undefined") SCEN.knappsatsen = Knappsats.create($("#stage"), h.scen, "knappsats/");
     if (h.id === "kassett" && h.scen && typeof Kassett !== "undefined") SCEN.kassett = Kassett.create($("#stage"), h.scen, "kassett/", (i, g, r) => Bridge.send({ t: "sfx", i, g, r }));
   }
   // BLONDA: bokstäverna var för sig (de rör sig när appen lyssnar), fem tryck inom tre sekunder börjar lyssna
@@ -1382,6 +1538,14 @@
         MEL.tt = nu; if (++MEL.tryck >= 5) { MEL.tryck = 0; lyssna(true); }
       });
     } }
+  // KNAPPSATSEN: tangenterna trycks (flera på en gång); ett tryck bredvid stänger den om den bara öppnades för en kod
+  $("#stage").addEventListener("pointerdown", (e) => {
+    if (!kpSynlig()) return;
+    const namn = SCEN.knappsatsen.traff(e.clientX, e.clientY);
+    if (!namn) { if (S.secret !== "knappsatsen") kpStang(); return; }
+    e.preventDefault(); kpNer(namn, e.pointerId);
+  });
+  for (const ev of ["pointerup", "pointercancel"]) window.addEventListener(ev, (e) => kpUpp(e.pointerId));
   // KASSETTEN: knapparna trycks, rattarna vrids (dra uppåt/nedåt), och ett tryck på kassetten byter band
   $("#stage").addEventListener("pointerdown", (e) => {
     if (S.secret !== "kassett" || !SCEN.kassett) return;
@@ -1462,6 +1626,8 @@
       S.secret = u.secret !== undefined ? u.secret : u.kristall ? "kristall" : null;
       if (S.secret && !S.hemliga.includes(S.secret)) S.secret = null;
       S.fore = u.fore && typeof u.fore === "object" ? u.fore : null;
+      S.kits = Array.isArray(u.kits) ? u.kits.filter((k) => kpSet().some((t) => t.kod === k)) : [];
+      S.trum = u.trum && typeof u.trum === "object" ? u.trum : {};
       S.band = Number.isInteger(u.band) && D.band && D.band[u.band] ? u.band : null; S.fxVal = typeof u.fxVal === "string" ? u.fxVal : u.fxTape ? "tape" : "kor";
       if (u.pads && Array.isArray(u.pads.list) && u.pads.list.length === 4) S.pads.list = u.pads.list.map((l) => (Array.isArray(l) ? l.filter((n) => n >= 0 && n <= 127).slice(0, 8) : []));
       if (u.pads) { S.pads.hold = !!u.pads.hold; S.pads.follow = !!u.pads.follow; S.pads.open = !!u.pads.open; } } catch (e) { /* */ } }
@@ -1478,7 +1644,9 @@
     buildFoot();
     buildPads(); Bridge.send({ t: "follow", on: S.pads.follow });
     buildKbar(); S.glid.sent = -1; updGlid(); if (S.mpe) Bridge.send({ t: "glid", m: S.glid.m, v: 0 }); else sendGlid(); applyKeysHeight();
-    Bridge.send({ t: "play", on: false });   // rullen finns inte längre: se till att den aldrig spelar
+    S.tempo = st.tempo || 120; S.hostTempo = !!st.hostTempo;
+    // mönstret spelar bara i KNAPPSATSEN (rullen finns inte längre: i alla andra ljud är den stoppad)
+    if (S.secret === "knappsatsen") { KP.spelar = !!st.playing; KP.lage = "spel"; kpSkicka(); } else { KP.spelar = false; Bridge.send({ t: "play", on: false }); }
     // layoutens mätvärden till appen (iOS skriver dem till en fil som CI läser); efter en stund och igen senare
     const diag = () => { const pr = document.createElement("div"); pr.style.cssText = "position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
       document.body.append(pr); const c = getComputedStyle(pr); const kb = $("#keys").getBoundingClientRect();
@@ -1494,6 +1662,7 @@
     S.m.env = m.env; S.m.lfo = m.lfo; S.m.pk = m.pk; S.m.pl = m.pl ?? m.pk; S.m.pr = m.pr ?? m.pk; S.m.mask = m.mask; S.m.nc = m.nc; S.m.glid = m.glid || 0;
     if (m.scope) S.m.scope = m.scope;
     S.m.fr = m.fr ?? -1; S.m.fm = m.fm || 0; S.m.an = m.an ?? -1;
+    if ((m.step ?? -1) !== S.m.step) { S.m.step = m.step ?? -1; S.m.stepT = performance.now(); kpSteg(S.m.step); }
     // bandspelaren (KASSETTEN): plats 0..1, fart, inspelat, sekunder, läge (+8 = paus), nivån på bandet
     S.m.bp = m.bp || 0; S.m.bf = m.bf || 0; S.m.bi = m.bi || 0; S.m.bs = m.bs || 0; S.m.bl = m.bl | 0; S.m.bvl = m.bvl || 0; S.m.bvr = m.bvr || 0;
     if (S.pads.armed >= 0 && m.keys) for (let w = 0; w < 4; w++) for (let b = 0; b < 32; b++) if ((m.keys[w] >>> b) & 1) padLagg(w * 32 + b);
@@ -1508,6 +1677,7 @@
     drawWave(now / 1000);
     drawKeys();
     for (const id in SCEN) SCEN[id].tick(S);
+    kpTick();
     sendGlid();
     updateMods();
   }
@@ -1518,5 +1688,6 @@
   window.__bris = { S, setParam, selectPreset, note: (n, v) => uiNot(n, v), off: (n) => uiOff(n), tab: (t) => { S.tab = t; buildPanels(); }, keys, glidMode: setGlidMode, setZoom, applyKeysHeight, flower,
     pads: { open: oppnaPads, spela: padSpela, slapp: padSlapp, follow: setFollow, namn: ackordNamn }, dev: { open: oppnaDev, close: stangDev }, ljus: () => ljus, kristall: () => SCEN.kristall || null, scen: (id) => SCEN[id] || null,
     valjHemlig, valjKristall: () => valjHemlig("kristall"), melodi: () => MEL.buf.map((e) => e.n),
-    lyssnar: () => performance.now() < MEL.till, valjBand, kassettKnapp };   // för tester
+    lyssnar: () => performance.now() < MEL.till, valjBand, kassettKnapp,
+    kp: { oppna: kpOppna, stang: kpStang, ner: kpNer, upp: kpUpp, KP, monster: kpMonster } };   // för tester
 })();

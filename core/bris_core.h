@@ -29,6 +29,7 @@
 #include "kormpe/kormpe.h"
 #include "orgelmpe/orgelmpe.h"
 #include "slojampe/slojampe.h"
+#include "puls/puls.h"
 #include "orgel/orgel.h"
 #include "sloja/sloja.h"
 #include "stav/stav.h"
@@ -73,8 +74,9 @@ inline const MotorTabell& motorTabell(int m) {
         {mstav::kParams, mstav::kNumParams, mstav::kPresets, mstav::kPresetValues},
         {mone::kParams, mone::kNumParams, mone::kPresets, mone::kPresetValues},
         {mkor::kParams, mkor::kNumParams, mkor::kPresets, mkor::kPresetValues},
+        {puls::kParams, puls::kNumParams, puls::kPresets, puls::kPresetValues},
     };
-    static_assert(kNumMotorer == 5, "motorTabell, motorRef och mätarna känner till fem motorer");
+    static_assert(kNumMotorer == 6, "motorTabell, motorRef och mätarna känner till sex motorer");
     return t[std::max(0, std::min(kNumMotorer, m))];
 }
 constexpr int kMaxMotorParams = 64;
@@ -199,17 +201,17 @@ public:
     void prepare(double sr) {
         sr_ = sr;
         synth_.prepare(sr); rum_.prepare(sr); vibe_.prepare(sr); mood_.prepare(sr); tape_.prepare(sr); band_.prepare(sr); sfx_.prepare(sr);
-        og_.prepare(sr); sj_.prepare(sr); sv_.prepare(sr); on_.prepare(sr); kr_.prepare(sr); forra_ = -1;
+        og_.prepare(sr); sj_.prepare(sr); sv_.prepare(sr); on_.prepare(sr); kr_.prepare(sr); pu_.prepare(sr); forra_ = -1;
         for (int i = 0; i < coreParams().count; ++i) setParam(i, val_[i]);
         seqPos_ = 0; seqStep_ = -1; clearSeqNotes();
     }
-    void reset() { allNotesOff(); synth_.reset(); og_.reset(); sj_.reset(); sv_.reset(); on_.reset(); kr_.reset(); forra_ = -1;
+    void reset() { allNotesOff(); synth_.reset(); og_.reset(); sj_.reset(); sv_.reset(); on_.reset(); kr_.reset(); pu_.reset(); forra_ = -1;
                    rum_.reset(); vibe_.reset(); mood_.reset(); tape_.reset(); band_.reset(); sfx_.reset(); }
 
     // ---------------------------------------------------------------- motorerna
     // 0 = BRIS, 1.. = de hemliga patcharnas motorer (kMotorer). Bara den valda får toner; den förra klingar ut.
     int motor() const { return mot_; }
-    Motor& motorRef(int m) { return m == 1 ? (Motor&)og_ : m == 2 ? (Motor&)sj_ : m == 3 ? (Motor&)sv_ : m == 4 ? (Motor&)on_ : m == 5 ? (Motor&)kr_ : (Motor&)synth_; }
+    Motor& motorRef(int m) { return m == 1 ? (Motor&)og_ : m == 2 ? (Motor&)sj_ : m == 3 ? (Motor&)sv_ : m == 4 ? (Motor&)on_ : m == 5 ? (Motor&)kr_ : m == 6 ? (Motor&)pu_ : (Motor&)synth_; }
     Motor& syn() { return motorRef(mot_); }
 
     // ---------------------------------------------------------------- bandspelaren och apparatens ljud
@@ -264,7 +266,7 @@ public:
 #if BRIS_MPE
     // Tangenterna på skärmen i BRIS MPE: varje ton får en egen MPE-kanal (2-16), så att fingrets slide (uiSlide)
     // bara påverkar den tonen.
-    // motorn som spelar (alla har uttryck per ton i BRIS MPE): f får den
+    // motorn som spelar, om den har uttryck per ton (alla utom trummaskinen PULS): f får den
     template <class F> bool medMpe(F&& f) {
         switch (mot_) {
             case 1: f(og_); return true;
@@ -272,6 +274,7 @@ public:
             case 3: f(sv_); return true;
             case 4: f(on_); return true;
             case 5: f(kr_); return true;
+            case 6: return false;
             default: f(synth_); return true;
         }
     }
@@ -305,7 +308,7 @@ public:
     void uiSlide(int, double) {}   // bara BRIS MPE har slide per ton
 #endif
     void allNotesOff() {
-        synth_.allNotesOff(); og_.allNotesOff(); sj_.allNotesOff(); sv_.allNotesOff(); on_.allNotesOff(); kr_.allNotesOff(); clearSeqNotes(); clearExpr();
+        synth_.allNotesOff(); og_.allNotesOff(); sj_.allNotesOff(); sv_.allNotesOff(); on_.allNotesOff(); kr_.allNotesOff(); pu_.allNotesOff(); clearSeqNotes(); clearExpr();
         for (int n = 0; n < 128; ++n) { keyOut_[n] = -1; keyDirect_[n] = false; pad_[n] = false; voiceRef_[n] = 0; }
         nPad_ = 0; arpNote_ = -1; arpPos_ = 0.0; arpOff_ = 0.0; arpIdx_ = -1; arpDir_ = 1;
         for (auto& k : meters_.keys) k = 0;
@@ -520,6 +523,7 @@ public:
         else if (mot_ == 3) { meters_.env = (float)sv_.envelope(); meters_.lfo = (float)sv_.lfo(); meters_.voiceMask = sv_.voiceMask(); }
         else if (mot_ == 4) { meters_.env = (float)on_.envelope(); meters_.lfo = (float)on_.lfo(); meters_.voiceMask = on_.voiceMask(); }
         else if (mot_ == 5) { meters_.env = (float)kr_.envelope(); meters_.lfo = (float)kr_.lfo(); meters_.voiceMask = kr_.voiceMask(); }
+        else if (mot_ == 6) { meters_.env = (float)std::min(1.0, pu_.peak() * 2.0); meters_.lfo = 0; meters_.voiceMask = pu_.voiceMask(); }   // trumljuden som klingar
         else { meters_.env = (float)synth_.envelope(); meters_.lfo = (float)synth_.lfo(); meters_.voiceMask = synth_.voiceMask(); }
         meters_.step = playing_ ? seqStep_ : -1;
 #if BRIS_MPE
@@ -758,6 +762,7 @@ private:
     StavMotor sv_;      // NATTÅGET (STAV MPE)
     OneMotor on_;       // ANALOG (ONE MPE)
     KorMotor kr_;       // KÖREN (KÖR MPE)
+    puls::Puls pu_;     // KNAPPSATSEN (trummaskinen PULS: inget uttryck per ton, trumljuden klingar ut av sig själva)
     int mot_ = 0, forra_ = -1;  // motorn som spelar (0 = BRIS), och den som klingar ut efter ett byte (-1 = ingen)
     double forraTyst_ = 0.0;
     GenEffect<rum::Dsp> rum_;

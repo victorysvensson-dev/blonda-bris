@@ -160,6 +160,7 @@ int main() {
     {
         const CoreParams& cp = coreParams();
         for (int m = 1; m <= kNumMotorer; ++m) {
+            if (m == 6) continue;   // trummaskinen PULS har inget glid (trumljuden klingar ut av sig själva)
             for (int mal = 1; mal <= 5; ++mal) {
                 if (m == 4 && mal == 4) continue;   // ONE-ljudet har sågvåg: PWM hörs bara på puls (testas i blonda-motor)
                 Core c, d2;
@@ -500,6 +501,28 @@ int main() {
         double tyst = 0; for (int b = 0; b < 8; ++b) { d.process(L.data(), R.data(), B); for (int s = 0; s < B; ++s) tyst = std::max(tyst, (double)std::fabs(L[s])); }
         KRAV(tyst < 1e-3, "det klingar kvar efter bytet och släppet (%.5f)", tyst);
         std::printf("MOTORER: värsta cpu %.1f%% av realtid, byte: ut %.3f, ny %.3f, tyst %.1e\n", 100 * mcpu, efter, ny, tyst);
+    }
+    // KNAPPSATSEN: trummaskinen PULS spelar mönstret (sextondelar) i tempot: fyra bastrummor och två virvlar per takt,
+    // de låter, och efter stopp kommer inga fler slag
+    {
+        Core c; c.prepare(sr); c.loadPreset(kMotorer[5].firstPreset + 1); c.setTempo(120);
+        KRAV(c.motor() == 6, "KNAPPSATSEN: trumsetet väljer inte PULS (%d)", c.motor());
+        Pattern p; p.rate = 4;
+        for (int st : {0, 4, 8, 12}) p.notes[p.count++] = {(uint8_t)st, 1, 36, 118};
+        p.notes[p.count++] = {4, 1, 38, 100}; p.notes[p.count++] = {12, 1, 38, 100};
+        c.setPattern(p); c.setPlaying(true);
+        const uint32_t n0 = c.meters().noteCount; double topp = 0; int virvelHord = 0;
+        for (int b = 0; b < (int)(2.0 * sr / B) - 2; ++b) {   // knappt 2 s i 120 bpm = en takt (nästa takts första slag kommer inte med)
+            c.process(L.data(), R.data(), B);
+            if (c.meters().voiceMask & 2) virvelHord = 1;
+            for (int s = 0; s < B; ++s) topp = std::max(topp, (double)std::fabs(L[s]));
+        }
+        const int slag = (int)(c.meters().noteCount - n0);
+        std::printf("KNAPPSATSEN: %d slag på en takt, virveln hörs %d, topp %.2f\n", slag, virvelHord, topp);
+        KRAV(slag == 6 && virvelHord && topp > 0.1 && topp < 2.0, "KNAPPSATSEN: mönstret spelar inte rätt (%d, %d, %.2f)", slag, virvelHord, topp);
+        c.setPlaying(false); const uint32_t n1 = c.meters().noteCount;
+        for (int b = 0; b < (int)(2.0 * sr / B); ++b) c.process(L.data(), R.data(), B);
+        KRAV(c.meters().noteCount == n1, "KNAPPSATSEN: det kommer slag efter stopp");
     }
     std::printf("snitt cpu %.1f%% av realtid (en kärna)\n", 100 * tot / tsec);
     std::printf(fel ? "%d FEL\n" : "ALLT OK\n", fel);

@@ -1,4 +1,5 @@
-// BLONDA BRIS – korta ljud från själva apparaten (knapparna på bandspelaren, luckan, bandet som sätts i).
+// BLONDA BRIS – korta ljud från själva apparaten (knapparna på bandspelaren, luckan, bandet som sätts i, och
+// KNAPPSATSEN: tangenternas klick, fel kod och rätt kod).
 // Ljuden ägs av skalet (pluggen läser dem ur BinaryData, webben avkodar dem i webbläsaren) och kärnan får bara
 // pekare till dem. De blandas in sist, torrt (inte genom bandet eller rummet). Ingen allokering.
 #pragma once
@@ -9,8 +10,11 @@ namespace blonda::app {
 
 class Ljudeffekter {
 public:
-    enum Id { KNAPP = 0, KORT = 1, REC = 2, UPP = 3, LUCKA = 4, IN = 5 };
-    static constexpr int kAntal = 8, kRoster = 6;
+    enum Id { KNAPP = 0, KORT = 1, REC = 2, UPP = 3, LUCKA = 4, IN = 5,
+              KLICK = 6,              // KNAPPSATSEN: åtta olika tangentklick, KLICK + 0..7
+              FEL = 14,               // fel kod: två olika, FEL + 0..1
+              RATT = 16 };            // rätt kod
+    static constexpr int kAntal = 17, kRoster = 8;
 
     void prepare(double sr) { sr_ = sr; }
     void reset() { for (auto& r : roster_) r.aktiv = false; }

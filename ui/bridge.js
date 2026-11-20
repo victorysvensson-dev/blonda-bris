@@ -76,8 +76,9 @@ const Bridge = (() => {
     pending.splice(0).forEach((m) => node.port.postMessage(m));
     await p;
     midi();
-    // apparatens ljud (knappar, lucka, band): avkodas här och skickas till kärnan i ljudtråden
-    ["knapp", "kort", "rec", "upp", "lucka", "in"].forEach(async (n, i) => {
+    // apparatens ljud (knappar, lucka, band, knappsatsens klick, fel och rätt kod): avkodas här och skickas till kärnan
+    ["knapp", "kort", "rec", "upp", "lucka", "in", "klick0", "klick1", "klick2", "klick3", "klick4", "klick5", "klick6", "klick7",
+     "fel0", "fel1", "ratt"].forEach(async (n, i) => {
       try {
         const b = await ctx.decodeAudioData(await (await fetch(`ljud/bris_${n}.wav`)).arrayBuffer());
         const d = new Float32Array(b.getChannelData(0));

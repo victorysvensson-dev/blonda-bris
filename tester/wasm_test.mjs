@@ -14,7 +14,7 @@ const dataJs = fs.readFileSync(new URL("../ui/data.js", import.meta.url), "utf8"
 const PARAMS = JSON.parse(dataJs.slice(dataJs.indexOf("{"), dataJs.lastIndexOf("}") + 1)).params.map((p) => p.id);
 const sp = (id, v) => e.bris_set_param(PARAMS.indexOf(id), v);
 // BRIS ljud, och de hemliga patcharnas motorer (ORGEL, SLÖJA, STAV: index efter BRIS 90, efter BRIS ljud 0 som i dump)
-for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105, 112, 127, 175, 181, 186]) {
+for (const p of [0, 1, 5, 20, 36, 58, 83, 89, 91, 98, 105, 112, 127, 175, 181, 186, 193, 199]) {
   e.bris_init(48000);
   e.bris_all_off();
   if (p >= 90) e.bris_load_preset(0);

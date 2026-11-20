@@ -1,0 +1,445 @@
+{
+ "motor": "puls",
+ "params": [
+  {
+   "id": "bdlev",
+   "name": "Kick Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.85,
+   "integer": false
+  },
+  {
+   "id": "bdtun",
+   "name": "Kick Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "bddec",
+   "name": "Kick Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "bdton",
+   "name": "Kick Punch",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "sdlev",
+   "name": "Snare Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.7,
+   "integer": false
+  },
+  {
+   "id": "sdtun",
+   "name": "Snare Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "sddec",
+   "name": "Snare Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "sdton",
+   "name": "Snare Snappy",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "rslev",
+   "name": "Rim Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.55,
+   "integer": false
+  },
+  {
+   "id": "rstun",
+   "name": "Rim Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "rsdec",
+   "name": "Rim Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "rston",
+   "name": "Rim Click",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "cplev",
+   "name": "Clap Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.65,
+   "integer": false
+  },
+  {
+   "id": "cptun",
+   "name": "Clap Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "cpdec",
+   "name": "Clap Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "cpton",
+   "name": "Clap Spread",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "chlev",
+   "name": "Closed Hat Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "chtun",
+   "name": "Closed Hat Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "chdec",
+   "name": "Closed Hat Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "chton",
+   "name": "Closed Hat Noise",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "ohlev",
+   "name": "Open Hat Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "ohtun",
+   "name": "Open Hat Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "ohdec",
+   "name": "Open Hat Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "ohton",
+   "name": "Open Hat Noise",
+   "min": 0,
+   "max": 1,
+   "default": 0.3,
+   "integer": false
+  },
+  {
+   "id": "tmlev",
+   "name": "Tom Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.65,
+   "integer": false
+  },
+  {
+   "id": "tmtun",
+   "name": "Tom Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "tmdec",
+   "name": "Tom Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "tmton",
+   "name": "Tom Sweep",
+   "min": 0,
+   "max": 1,
+   "default": 0.4,
+   "integer": false
+  },
+  {
+   "id": "cblev",
+   "name": "Cowbell Level",
+   "min": 0,
+   "max": 1,
+   "default": 0.45,
+   "integer": false
+  },
+  {
+   "id": "cbtun",
+   "name": "Cowbell Tune",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "cbdec",
+   "name": "Cowbell Decay",
+   "min": 0,
+   "max": 1,
+   "default": 0.35,
+   "integer": false
+  },
+  {
+   "id": "cbton",
+   "name": "Cowbell Tone",
+   "min": 0,
+   "max": 1,
+   "default": 0.5,
+   "integer": false
+  },
+  {
+   "id": "vol",
+   "name": "Volume",
+   "min": 0,
+   "max": 1,
+   "default": 0.75,
+   "integer": false
+  },
+  {
+   "id": "drv",
+   "name": "Drive",
+   "min": 0,
+   "max": 1,
+   "default": 0.0,
+   "integer": false
+  }
+ ],
+ "keep": [
+  "vol"
+ ],
+ "uiOnly": [],
+ "factoryBank": 9,
+ "voices": [
+  "bd",
+  "sd",
+  "rs",
+  "cp",
+  "ch",
+  "oh",
+  "tm",
+  "cb"
+ ],
+ "presets": [
+  {
+   "name": "init",
+   "values": {}
+  },
+  {
+   "name": "Klassisk",
+   "values": {
+    "bdtun": 0.3,
+    "bddec": 0.6,
+    "bdton": 0.2,
+    "sdton": 0.4,
+    "sddec": 0.35,
+    "chton": 0.1,
+    "ohton": 0.1,
+    "ohdec": 0.5,
+    "cpdec": 0.35,
+    "cbdec": 0.4,
+    "tmdec": 0.55,
+    "rsdec": 0.25
+   }
+  },
+  {
+   "name": "Hård",
+   "values": {
+    "bdtun": 0.42,
+    "bddec": 0.38,
+    "bdton": 0.65,
+    "sdtun": 0.55,
+    "sdton": 0.75,
+    "sddec": 0.35,
+    "chton": 0.8,
+    "ohton": 0.8,
+    "ohdec": 0.4,
+    "cpton": 0.3,
+    "cplev": 0.7,
+    "drv": 0.2
+   }
+  },
+  {
+   "name": "Boom bap",
+   "values": {
+    "bdtun": 0.38,
+    "bddec": 0.5,
+    "bdton": 0.5,
+    "sdtun": 0.42,
+    "sddec": 0.5,
+    "sdton": 0.55,
+    "chton": 0.55,
+    "chdec": 0.25,
+    "ohdec": 0.35,
+    "rslev": 0.6,
+    "drv": 0.35
+   }
+  },
+  {
+   "name": "Tajt",
+   "values": {
+    "bddec": 0.25,
+    "bdton": 0.55,
+    "sddec": 0.15,
+    "sdton": 0.6,
+    "chdec": 0.12,
+    "ohdec": 0.25,
+    "cpdec": 0.15,
+    "rsdec": 0.1,
+    "tmdec": 0.25,
+    "cbdec": 0.15
+   }
+  },
+  {
+   "name": "Elektro",
+   "values": {
+    "bdtun": 0.45,
+    "bddec": 0.4,
+    "bdton": 0.8,
+    "rslev": 0.7,
+    "rston": 0.8,
+    "cblev": 0.6,
+    "cbton": 0.65,
+    "chton": 0.05,
+    "ohton": 0.05,
+    "tmton": 0.8,
+    "tmtun": 0.55,
+    "drv": 0.25
+   }
+  },
+  {
+   "name": "Djup",
+   "values": {
+    "bdtun": 0.25,
+    "bddec": 0.7,
+    "bdton": 0.3,
+    "cplev": 0.75,
+    "cpdec": 0.6,
+    "cpton": 0.6,
+    "ohdec": 0.6,
+    "ohlev": 0.5,
+    "chlev": 0.45,
+    "sdlev": 0.55,
+    "tmtun": 0.3,
+    "tmdec": 0.6
+   }
+  },
+  {
+   "name": "Industri",
+   "values": {
+    "bdtun": 0.4,
+    "bddec": 0.5,
+    "bdton": 0.9,
+    "sdton": 0.9,
+    "sddec": 0.55,
+    "cpton": 0.8,
+    "chton": 0.9,
+    "ohton": 0.9,
+    "rston": 1,
+    "drv": 0.75
+   }
+  },
+  {
+   "name": "Mjuk",
+   "values": {
+    "bdtun": 0.32,
+    "bddec": 0.5,
+    "bdton": 0.1,
+    "sdton": 0.25,
+    "sddec": 0.3,
+    "sdlev": 0.6,
+    "chlev": 0.35,
+    "ohlev": 0.3,
+    "chton": 0.3,
+    "cplev": 0.5,
+    "rslev": 0.45,
+    "rston": 0.1
+   }
+  },
+  {
+   "name": "Lofi",
+   "values": {
+    "bdtun": 0.33,
+    "bddec": 0.45,
+    "bdton": 0.45,
+    "sdtun": 0.38,
+    "sdton": 0.45,
+    "sddec": 0.45,
+    "chtun": 0.3,
+    "ohtun": 0.3,
+    "chton": 0.5,
+    "cbtun": 0.35,
+    "drv": 0.5
+   }
+  }
+ ]
+}

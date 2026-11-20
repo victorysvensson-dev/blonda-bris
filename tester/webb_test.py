@@ -450,7 +450,52 @@ with sync_playwright() as p:
             krav(pg.evaluate("__bris.scen('koren').matt().ljus") < k1["ljus"] * 0.9, "KÖREN: ljuset klingar av när tangenterna släpps")
             gl = pg.evaluate("[...document.querySelectorAll('#kbar .opt[data-m] .l')].map((e) => e.textContent)")
             krav(gl == ["OFF", "VOWEL", "VIBRATO", "TREMOLO", "EFFORT", "WAH"], f"KÖREN: glidet har körens egna mål ({gl})")
+            # KNAPPSATSEN: menyn ENTER CODE visar knappsatsen (kodläget, lampan lyser); fel kod ger ERROR, 1984 + ENTER låser
+            # upp trummaskinen (SECRET 09, PULS, trumsetet Klassisk); ENTER spelar mönstret och tangenterna går ner i takt
+            pg.click("#menuBtn"); pg.wait_for_timeout(300); pg.click("#menu .kodrad"); pg.wait_for_timeout(300)
+            pg.wait_for_function("__bris.scen('knappsatsen').klar()", timeout=10000); pg.wait_for_timeout(300)
+            kl = pg.evaluate("({ l: __bris.scen('knappsatsen').lage(), cv: getComputedStyle(document.querySelector('#knappsatsen')).display, kr: getComputedStyle(document.querySelector('#koren')).display })")
+            krav(kl["cv"] == "block" and kl["kr"] == "none" and kl["l"]["lampa"] and kl["l"]["lcd"][0] == "ENTER CODE", f"KNAPPSATSEN: ENTER CODE visar knappsatsen i kodläget ({kl})")
+            def kp(namn):
+                x, y = pg.evaluate(f"__bris.scen('knappsatsen').punkt('{namn}')"); pg.mouse.move(x, y); pg.mouse.down(); pg.wait_for_timeout(60); pg.mouse.up(); pg.wait_for_timeout(120)
+            for n in ("1", "2", "3", "4"): kp(n)
+            krav(pg.evaluate("__bris.scen('knappsatsen').lage().lcd[1]") == "1 2 3 4", "KNAPPSATSEN: siffrorna syns i LCD-fönstret")
+            kp("enter")
+            kf = pg.evaluate("({ l: __bris.scen('knappsatsen').lage(), s: __bris.S.secret })")
+            krav(kf["l"]["lcd"][0] == "ERROR" and kf["s"] == "koren", f"KNAPPSATSEN: fel kod ger ERROR och låser inte upp ({kf})")
+            for n in ("1", "9", "8", "4", "enter"): kp(n)
+            pg.wait_for_timeout(400)
+            kr = pg.evaluate("""({ s: __bris.S.secret, p: __bris.S.preset, m: __bris.S.v.motor, kits: __bris.S.kits, l: __bris.scen('knappsatsen').lage(), tempo: __bris.S.tempo,
+                skylt: document.querySelector('#hemskylt').textContent, nm: document.querySelector('.browser .nm').textContent })""")
+            set0 = D["hemliga"][[h["id"] for h in D["hemliga"]].index("knappsatsen")]["trumset"][0]
+            krav(kr["s"] == "knappsatsen" and kr["p"] == set0["ljud"] and kr["m"] == 6 and kr["kits"] == ["1984"] and not kr["l"]["lampa"] and "SECRET 09" in kr["skylt"]
+                 and "KLASSISK" in kr["nm"] and kr["tempo"] == set0["bpm"], f"KNAPPSATSEN: 1984 + ENTER låser upp trummaskinen ({kr})")
+            nc0 = pg.evaluate("__bris.S.m.nc"); kp("enter"); pg.wait_for_timeout(1600)
+            ks = pg.evaluate("({ nc: __bris.S.m.nc, st: __bris.S.m.step, pk: __bris.S.m.pk, l: __bris.scen('knappsatsen').lage() })")
+            pg.screenshot(path=f"{UT}/knappsatsen.png")
+            krav(ks["nc"] - nc0 >= 6 and ks["st"] >= 0 and ks["pk"] > 0.05 and "#" in ks["l"]["lcd"][1], f"KNAPPSATSEN: ENTER spelar mönstret ({ks})")
+            kp("enter"); pg.wait_for_timeout(500); nc1 = pg.evaluate("__bris.S.m.nc"); pg.wait_for_timeout(800)
+            krav(pg.evaluate("__bris.S.m.nc") == nc1, "KNAPPSATSEN: ENTER igen stoppar")
+            # tangenterna är trumljud: KICK (1) låter; NUM LOCK tillbaka till kodläget (lampan), en ny kod byter trumset
+            pk = 0; kp("1")
+            for _ in range(4): pg.wait_for_timeout(60); pk = max(pk, pg.evaluate("__bris.S.m.pk || 0"))
+            krav(pk > 0.05, f"KNAPPSATSEN: tangenten 1 slår an bastrumman (topp {pk:.3f})")
+            kp("numlock")
+            krav(pg.evaluate("__bris.scen('knappsatsen').lage().lampa"), "KNAPPSATSEN: NUM LOCK tänder lampan (kodläget)")
+            for n in ("1", "9", "9", "3", "enter"): kp(n)
+            pg.wait_for_timeout(300)
+            k2 = pg.evaluate("({ p: __bris.S.preset, kits: __bris.S.kits, tempo: __bris.S.tempo })")
+            set2 = D["hemliga"][[h["id"] for h in D["hemliga"]].index("knappsatsen")]["trumset"][2]
+            krav(k2["p"] == set2["ljud"] and k2["kits"] == ["1984", "1993"] and k2["tempo"] == set2["bpm"], f"KNAPPSATSEN: koden 1993 låser upp Boom bap ({k2})")
+            pg.click(".browser .arr:last-child"); pg.wait_for_timeout(300)
+            krav(pg.evaluate("__bris.S.preset") == set0["ljud"], "KNAPPSATSEN: pilen bläddrar bara bland upplåsta trumset")
+            # en riktig sifferknappsats: NumpadEnter spelar, och att lämna KNAPPSATSEN stoppar mönstret
+            pg.keyboard.press("NumpadEnter"); pg.wait_for_timeout(700)
+            krav(pg.evaluate("__bris.kp.KP.spelar"), "KNAPPSATSEN: NumpadEnter på tangentbordet spelar")
             for hid, mot, flik, namn in (("norrsken", 2, "VEIL", "NORRSKEN"), ("nattag", 3, "TINE", "NATTÅGET"), ("orgel", 1, "STOPS", "ORGELN"), ("koren", 5, "VOICES", "KÖREN"), ("analog", 4, "OSC", "ANALOG")):
+                if hid == "norrsken":   # det första bytet lämnar KNAPPSATSEN: mönstret stannar
+                    pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(500); nc2 = pg.evaluate("__bris.S.m.nc"); pg.wait_for_timeout(700)
+                    krav(pg.evaluate("__bris.S.m.nc") == nc2 and not pg.evaluate("__bris.kp.KP.spelar"), "KNAPPSATSEN: att lämna den stoppar mönstret")
                 pg.evaluate(f"__bris.valjHemlig('{hid}')"); pg.wait_for_timeout(500)
                 r = pg.evaluate("({ m: __bris.S.v.motor, p: __bris.S.preset, tabs: [...document.querySelectorAll('#tabs button')].map((b) => b.textContent) })")
                 flikar_ok = r["tabs"] == ["PLAY", "OSC", "FILTER", "AMP", "MOD", "FX", "MOOD", "ARP"] if hid == "analog" else ("MOD" not in r["tabs"] and "OSC" not in r["tabs"])
@@ -470,7 +515,7 @@ with sync_playwright() as p:
             pg.wait_for_timeout(600)
             pg.click("#menuBtn"); pg.wait_for_timeout(300)
             hm = pg.evaluate("[...document.querySelectorAll('#list .grp.hemlig .it')].map((b) => b.dataset.hem + (b.classList.contains('on') ? '*' : ''))")
-            krav(hm == ["kristall", "sjon", "kassett", "norrsken", "nattag", "orgel", "analog*", "koren"], f"menyn: SECRET med alla åtta, ANALOG vald ({hm})")
+            krav(hm == ["kristall", "sjon", "kassett", "norrsken", "nattag", "orgel", "analog*", "koren", "knappsatsen"], f"menyn: SECRET med alla nio, ANALOG vald ({hm})")
             pg.screenshot(path=f"{UT}/hemliga_meny.png")
             pg.click("#menuClose"); pg.wait_for_timeout(200)
             pg.evaluate(f"__bris.selectPreset({p0})"); pg.wait_for_timeout(300)
