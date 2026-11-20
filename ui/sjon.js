@@ -24,6 +24,7 @@ const Sjon = (() => {
     uniform vec3 uC[${MAX}];             // droppens färg (ett svagt sken i ringarna)
     uniform sampler2D uL;                // landskapet (fjäll och skog, renderat i Blender): dag överst, natt spegelvänd under
     uniform float uLand;                 // 0 = bilden har inte laddats än, 1 = laddad (tonar in)
+    uniform float uLandHimmel;           // 1 = landskapet ritas i himlen här (innan duken ovanpå har sin bild)
     uniform float uLod;                  // bildens förminskningsnivå (räknas i JS ur ytans storlek)
     // Bilden läses i grenar (himmel/vatten, inom bandet) där grannpunkterna kan ta olika väg; derivatorna, som annars
     // väljer nivån, är då odefinierade och ger en rand vid bandets kant. Nivån sätts därför direkt (uLod). Utan
@@ -98,7 +99,9 @@ const Sjon = (() => {
         c = mix(c, mix(mix(nattm, dagm, uDag), grym, uGry * 0.6), tack * 0.92);
       }
       // landskapet (berg och skog) skymmer allt bakom sig: ur bilden som räknades en gång (natt och dag blandas)
-      if (upp >= 0.0 && upp < LH && uLand > 0.0) {
+      // (i speglingen; ovanför horisonten bara tills den stora bilden har laddats: sedan ligger landskapet i full
+      // upplösning i en egen duk ovanpå, se ritaLand)
+      if ((skarpa < 1.0 || uLandHimmel > 0.5) && upp >= 0.0 && upp < LH && uLand > 0.0) {
         // bildens mitt i skärmens mitt; på en smal skärm syns mitten av panoramat
         float tx = 0.5 + (s.x - 0.5) * uAsp / LASP, h = upp / LH;
         vec4 L = uDag < 0.001 ? landBild(vec2(tx, 0.5 + 0.5 * h)) : uDag > 0.999 ? landBild(vec2(tx, 0.5 - 0.5 * h))
@@ -160,6 +163,24 @@ const Sjon = (() => {
   function create(parent) {
     const cv = document.createElement("canvas"); cv.id = "sjon";
     parent.prepend(cv);   // först i body: appen ritas ovanpå
+    // landskapet (fjäll och skog) ovanför horisonten: en egen duk ovanpå himlen, i skärmens fulla upplösning (ytan med
+    // himmel och vatten räknas i halv upplösning, det skulle göra den detaljerade bilden suddig). Det skymmer allt i
+    // himlen bakom sig (moln, sol, stjärnfall), precis som i shadern. Speglingen i vattnet läser samma bild i shadern.
+    // (duken och den stora bilden kommer först en stund efter att sjön har visats första gången: de behövs inte
+    // annars, och sjön öppnas utan att stanna upp; tills dess ritar shadern landskapet ur den mindre bilden)
+    const cvL = document.createElement("canvas"); cvL.id = "sjon_land"; cvL.className = "himmel"; cvL.style.display = "none";
+    let storBegard = false;
+    function laddaStor() {
+      if (storBegard) return; storBegard = true;
+      setTimeout(() => {
+        const imL = new Image(); imL.src = "sjon/land.webp";
+        (imL.decode ? imL.decode() : new Promise((ok) => { imL.onload = ok; })).then(() => {
+          cv.after(cvL); landBildEl = imL; landNyckel = ""; if (aktiv) cvL.style.display = "block";
+        }, () => console.warn("sjön: kunde inte ladda landskapet"));
+      }, 3000);
+    }
+    let gL = null;   // (skapas när den behövs)
+    let landBildEl = null, landNyckel = "";
     const gl = cv.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
     let prog = null, u = {}, buf = null, aktiv = false, t0 = performance.now(), nasta = 0, lugn = 0;
     let landTex = null, landT0 = -1, lodExt = null;   // landskapsbilden och när den laddades (den tonar in)
@@ -177,7 +198,7 @@ const Sjon = (() => {
         lodExt = gl.getExtension("EXT_shader_texture_lod");   // (före kompileringen: då finns GL_EXT_shader_texture_lod i shadern)
         prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
         if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uL", "uLand", "uMoln", "uLod"]) u[k] = gl.getUniformLocation(prog, k);
+        for (const k of ["uRes", "uT", "uHy", "uN", "uAsp", "uMx", "uMy", "uMr", "uD", "uC", "uSol", "uDag", "uGry", "uPuls", "uSf", "uSfL", "uL", "uLand", "uMoln", "uLod", "uLandHimmel"]) u[k] = gl.getUniformLocation(prog, k);
         // landskapet: ett eget program som ritar i två bilder (natt, dag) när storleken ändras
         // landskapet: bilden laddas när sjön skapas (tools/sjon_bilder.py), med mipmaps (den förminskas mycket)
         landTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, landTex);
@@ -193,7 +214,7 @@ const Sjon = (() => {
           landT0 = nu();
         };
         im.onerror = () => console.warn("sjön: kunde inte ladda landskapet");
-        im.src = "sjon/land.webp";
+        im.src = "sjon/land_s.webp";
         u.aP = gl.getAttribLocation(prog, "aP");
         buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
       } catch (e) { console.warn("sjön:", e.message); prog = null; }
@@ -232,11 +253,51 @@ const Sjon = (() => {
       gl.uniform4fv(u.uMoln, MOLN);
       // landskapet tonar in kort första gången det är klart (innan dess syns bara himlen bakom)
       gl.uniform1f(u.uLand, landT0 >= 0 ? Math.min(1, (nu() - landT0) / 0.35) : 0);
-      // nivån: hur många bildpunkter i bilden som faller på en bildpunkt på ytan (2048 × 512 per halva, se LASP och LH)
+      // nivån: hur många bildpunkter i bilden som faller på en bildpunkt på ytan (land_s.webp: 2048 × 512 per halva, se LASP och LH)
       gl.uniform1f(u.uLod, Math.max(0, Math.log2(Math.max(2048 / (LASP * h), 512 / (LH * h)))));
+      gl.uniform1f(u.uLandHimmel, landBildEl ? 0 : 1);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, landTex); gl.uniform1i(u.uL, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(u.aP); gl.vertexAttribPointer(u.aP, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      ritaLand(L);
+    }
+    // landskapet i full upplösning: natten och dagen ur bilden (dagen i övre halvan, natten spegelvänd i den undre),
+    // blandade efter dagen, gryningens värme och diset vid vattnet ovanpå, som i shadern. Ritas om bara när något ändras.
+    function ritaLand(L) {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const W = Math.max(2, Math.round(cvL.clientWidth * dpr)), H = Math.max(2, Math.round(cvL.clientHeight * dpr));
+      const fade = landT0 >= 0 ? Math.min(1, (nu() - landT0) / 0.35) : 0;
+      const nyckel = [W, H, L.dag.toFixed(3), L.gry.toFixed(3), L.hy, fade.toFixed(2), !!landBildEl].join(",");
+      if (nyckel === landNyckel || !landBildEl) return;
+      landNyckel = nyckel;
+      if (cvL.width !== W || cvL.height !== H) { cvL.width = W; cvL.height = H; }
+      if (!gL) gL = cvL.getContext("2d");
+      const g = gL; g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
+      g.clearRect(0, 0, W, H);
+      if (!landBildEl || fade <= 0) return;
+      const im = landBildEl, IW = im.naturalWidth, HH = im.naturalHeight / 2;
+      const topp = (L.hy - LH) * H, bh = LH * H;
+      // vilken del av panoramat som syns: mitten, lika bred som skärmen (i skärmhöjder: L.asp av LASP)
+      let t0 = 0.5 - 0.5 * L.asp / LASP, t1 = 0.5 + 0.5 * L.asp / LASP, x0 = 0, x1 = W;
+      if (t0 < 0) { x0 = W * (-t0) / (t1 - t0); x1 = W - x0; t0 = 0; t1 = 1; }   // (bredare skärm än bilden)
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "medium";
+      g.globalAlpha = fade;
+      if (L.dag < 0.999) {   // natten (spegelvänd i bilden: horisonten överst i den undre halvan)
+        g.save(); g.translate(0, topp + bh); g.scale(1, -1);
+        g.drawImage(im, t0 * IW, HH, (t1 - t0) * IW, HH, x0, 0, x1 - x0, bh); g.restore();
+      }
+      if (L.dag > 0.001) { g.globalAlpha = fade * (L.dag < 0.999 ? L.dag : 1); g.drawImage(im, t0 * IW, 0, (t1 - t0) * IW, HH, x0, topp, x1 - x0, bh); }
+      g.globalAlpha = 1; g.globalCompositeOperation = "source-atop";   // bara på landskapet
+      if (L.gry > 0.002) { g.fillStyle = `rgba(255,110,40,${0.08 * L.gry})`; g.fillRect(0, topp, W, bh); }
+      // diset vid vattnet: horisontens färg, starkast nere vid stranden (som shaderns exp(-upp * 90))
+      const mx = (a, b, t) => a + (b - a) * t;
+      const hr = [mx(0.020, 0.62, L.dag) + 0.95 * L.gry * 0.5, mx(0.040, 0.77, L.dag) + 0.42 * L.gry * 0.5, mx(0.075, 0.90, L.dag) + 0.18 * L.gry * 0.5]
+        .map((v) => Math.round(Math.min(1, v * 0.9) * 255));
+      const styrka = 0.06 + 0.25 * L.dag + 0.2 * L.gry, hy = L.hy * H;
+      const grad = g.createLinearGradient(0, hy, 0, hy - H * 0.06);
+      for (let i = 0; i <= 6; i++) { const u_ = i / 6; grad.addColorStop(u_, `rgba(${hr[0]},${hr[1]},${hr[2]},${styrka * Math.exp(-u_ * 0.06 * 90)})`); }
+      g.fillStyle = grad; g.fillRect(0, hy - H * 0.06, W, H * 0.06);
+      g.globalCompositeOperation = "source-over";
     }
     // ett stjärnfall: startar högt upp på en slumpad plats och faller snett nedåt åt vänster eller höger
     // långt = långt bort: ett litet, kort och svagt stjärnfall, lägre ner mot skogen
@@ -249,7 +310,7 @@ const Sjon = (() => {
       sf.liv = (0.7 + Math.random() * 0.5) * (langt ? 0.6 : 1); sf.fart = (0.45 + Math.random() * 0.25) * (langt ? 0.3 : 1); sf.t0 = nu();
     }
     return {
-      visa(pa) { aktiv = !!pa; cv.style.display = aktiv ? "block" : "none"; tFor = 0; },
+      visa(pa) { aktiv = !!pa; cv.style.display = aktiv ? "block" : "none"; cvL.style.display = aktiv && landBildEl ? "block" : "none"; tFor = 0; landNyckel = ""; if (aktiv) laddaStor(); },
       // träffar ett tryck på skärmen månen (på natten) eller solen (på dagen)? Lite generöst runt om.
       traff(x, y) {
         const L = lage(), sx = x / innerWidth, sy = y / innerHeight;

@@ -21,6 +21,13 @@ böj på tonkanalerna följer den senast spelade tonen. Motorn har ett filter oc
 slås ihop i stället för att vara helt per ton.
 På iPad och iPhone får allt plats utan att man skrollar, stående som liggande.
 
+## 1.22.5
+
+- **SJÖN:** skarp. Ytan med himmel och vatten räknas i halv upplösning (för att gå fort), och det gjorde fjällen och
+  skogen suddiga. Nu ligger landskapet i en egen duk ovanpå himlen i skärmens fulla upplösning, ur en bild som är
+  dubbelt så bred (4096 bildpunkter). Speglingen i vattnet läser en mindre bild. Den stora bilden laddas en stund
+  efter att sjön har öppnats, så att den öppnas utan att stanna upp; tills dess syns den mindre.
+
 ## 1.22.4
 
 - **SJÖN:** ingen rand i himlen längre (överkanten på landskapet: bilden läses nu med en bestämd skärpenivå i stället

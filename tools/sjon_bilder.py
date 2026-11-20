@@ -1,13 +1,13 @@
 """Gör om SJÖNs landskap (tools/sjon_land.py: dag.png, natt.png, RGBA med genomskinlig himmel) till en bild för appen.
 
-Båda läggs i en webp på 2048 × 1024 (tvåpotens, så att webbläsaren kan göra mipmaps): dagen i övre halvan med
+Båda läggs i en webp på 4096 × 1024 (tvåpotens, så att webbläsaren kan göra mipmaps): dagen i övre halvan med
 horisonten nedåt, natten i undre halvan spegelvänd (horisonten uppåt), så att de möts vid horisonten där båda är
 täckta och inget genomskinligt blöder in vid mipmaps. Färgen är rak (inte förmultiplicerad); himlen ovanför
 landskapet får färgen från kanten under (så att kanterna inte blir mörka när bilden förminskas). Shadern i
 ui/sjon.js läser dagen vid t = 0,5 - 0,5·h och natten vid t = 0,5 + 0,5·h (h = höjd över horisonten / bandets höjd).
 
 python3 tools/sjon_bilder.py <mapp med dag.png och natt.png>
-Utdata: ui/sjon/land.webp
+Utdata: ui/sjon/land.webp (landskapet ovanför horisonten, i full upplösning) och land_s.webp (halva bredden, speglingen)
 """
 import argparse, os
 import numpy as np
@@ -18,7 +18,7 @@ ap.add_argument("mapp")
 ap.add_argument("--kvalitet", type=int, default=86)
 a = ap.parse_args()
 ROT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-W, H = 2048, 512
+W, H = 4096, 512
 
 def las(namn):
     im = np.asarray(Image.open(os.path.join(a.mapp, namn + ".png")).convert("RGBA")).astype(np.float32) / 255.0
@@ -34,4 +34,6 @@ dag, natt = las("dag"), las("natt")
 bild = np.concatenate([dag, natt[::-1]], axis=0)
 ut = os.path.join(ROT, "ui", "sjon"); os.makedirs(ut, exist_ok=True)
 Image.fromarray(bild, "RGBA").save(os.path.join(ut, "land.webp"), quality=a.kvalitet, method=6)
-print("ui/sjon/land.webp", os.path.getsize(os.path.join(ut, "land.webp")) // 1024, "KB")
+# en mindre för speglingen i vattnet (shadern: vattnet är mjukt, och en mindre bild laddas och förbereds fortare)
+Image.fromarray(bild, "RGBA").resize((W // 2, H * 2), Image.LANCZOS).save(os.path.join(ut, "land_s.webp"), quality=a.kvalitet, method=6)
+for f in ("land.webp", "land_s.webp"): print("ui/sjon/" + f, os.path.getsize(os.path.join(ut, f)) // 1024, "KB")
